@@ -446,7 +446,8 @@
     state.displayPose = {
       x: state.robot.x,
       y: state.robot.y,
-      direction: state.robot.direction
+      direction: state.robot.direction,
+      angle: directionAngle(state.robot.direction)
     };
   }
 
@@ -549,13 +550,16 @@
           endsCommand: true
         });
       } else {
+        var turnAmount = event.command === "turn-left" ? -Math.PI / 2 : Math.PI / 2;
         steps.push({
           type: "turn",
           commandIndex: event.commandIndex,
           event: event,
           from: { direction: event.from.direction },
           to: { direction: event.after.direction },
-          duration: 220,
+          fromAngle: directionAngle(event.from.direction),
+          toAngle: directionAngle(event.from.direction) + turnAmount,
+          duration: 280,
           endsCommand: true
         });
       }
@@ -586,15 +590,18 @@
       state.displayPose.x = lerp(step.from.x, step.to.x, eased);
       state.displayPose.y = lerp(step.from.y, step.to.y, eased);
       state.displayPose.direction = step.event.from.direction;
+      state.displayPose.angle = directionAngle(step.event.from.direction);
     } else if (step.type === "bump") {
       var bump = Math.sin(progress * Math.PI) * 0.18;
       state.displayPose.x = lerp(step.from.x, step.to.x, bump);
       state.displayPose.y = lerp(step.from.y, step.to.y, bump);
       state.displayPose.direction = step.event.from.direction;
+      state.displayPose.angle = directionAngle(step.event.from.direction);
     } else if (step.type === "turn") {
       state.displayPose.x = step.event.from.x;
       state.displayPose.y = step.event.from.y;
-      state.displayPose.direction = progress < 0.5 ? step.from.direction : step.to.direction;
+      state.displayPose.direction = step.from.direction;
+      state.displayPose.angle = lerp(step.fromAngle, step.toAngle, eased);
     }
 
     drawAll();
@@ -641,6 +648,15 @@
 
   function lerp(start, end, amount) {
     return start + (end - start) * amount;
+  }
+
+  function directionAngle(direction) {
+    return {
+      north: -Math.PI / 2,
+      east: 0,
+      south: Math.PI / 2,
+      west: Math.PI
+    }[direction];
   }
 
   function ensureCanvasSize(canvas, context) {
@@ -1263,14 +1279,15 @@
 
   function robotBasis(pose, layout) {
     var center = cellCenter(pose.x, pose.y, layout);
-    var delta = core.DIR_DELTA[pose.direction];
-    var rightDirection = {
-      north: "east",
-      east: "south",
-      south: "west",
-      west: "north"
-    }[pose.direction];
-    var rightDelta = core.DIR_DELTA[rightDirection];
+    var angle = typeof pose.angle === "number" ? pose.angle : directionAngle(pose.direction);
+    var delta = {
+      x: Math.cos(angle),
+      y: Math.sin(angle)
+    };
+    var rightDelta = {
+      x: Math.cos(angle + Math.PI / 2),
+      y: Math.sin(angle + Math.PI / 2)
+    };
     var nose = cellCenter(pose.x + delta.x * 0.42, pose.y + delta.y * 0.42, layout);
     var sidePoint = cellCenter(
       pose.x + rightDelta.x * 0.42,
@@ -1636,7 +1653,14 @@
 
     var robotX = offsetX + (state.displayPose.x + 0.5) * cell;
     var robotY = offsetY + (state.displayPose.y + 0.5) * cell;
-    var delta = core.DIR_DELTA[state.displayPose.direction];
+    var robotAngle =
+      typeof state.displayPose.angle === "number"
+        ? state.displayPose.angle
+        : directionAngle(state.displayPose.direction);
+    var delta = {
+      x: Math.cos(robotAngle),
+      y: Math.sin(robotAngle)
+    };
     mapCtx.fillStyle = "#c96f38";
     mapCtx.beginPath();
     mapCtx.moveTo(robotX + delta.x * cell * 0.42, robotY + delta.y * cell * 0.42);
