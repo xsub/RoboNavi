@@ -64,7 +64,7 @@
       helpObjectiveTitle: "Restore the beacon",
       helpObjectiveText: "Queue a route that guides the robot to every beacon.",
       helpProgramTitle: "Build a program",
-      helpProgramText: "Add turns and forward moves, then execute the whole sequence.",
+      helpProgramText: "Add turns and forward moves, then execute the sequence. C clears it; X resets the level.",
       helpEnergyTitle: "Plan before running",
       helpEnergyText: "Every run has a startup cost. Longer, correct programs save energy.",
       helpTerrainTitle: "Read the terrain",
@@ -203,7 +203,7 @@
       helpObjectiveTitle: "Uruchom nadajnik",
       helpObjectiveText: "Zaprogramuj trasę, która doprowadzi robota do każdego nadajnika.",
       helpProgramTitle: "Zbuduj program",
-      helpProgramText: "Dodaj skręty i ruchy naprzód, a następnie uruchom całą sekwencję.",
+      helpProgramText: "Dodaj skręty i ruchy naprzód, a potem uruchom sekwencję. C ją czyści, a X resetuje poziom.",
       helpEnergyTitle: "Planuj przed startem",
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Dłuższy poprawny program oszczędza energię.",
       helpTerrainTitle: "Czytaj teren",
@@ -486,6 +486,13 @@
   function removeCommand(index) {
     if (state.animating) return;
     state.commands.splice(index, 1);
+    state.highlightIndex = null;
+    renderAll();
+  }
+
+  function clearProgram() {
+    if (state.animating) return;
+    state.commands = [];
     state.highlightIndex = null;
     renderAll();
   }
@@ -1805,13 +1812,7 @@
     }
   });
 
-  els.clearProgram.addEventListener("click", function () {
-    if (!state.animating) {
-      state.commands = [];
-      state.highlightIndex = null;
-      renderAll();
-    }
-  });
+  els.clearProgram.addEventListener("click", clearProgram);
 
   els.executeProgram.addEventListener("click", executeProgram);
 
@@ -1873,6 +1874,12 @@
         state.commands.pop();
         renderAll();
       }
+    } else if (key === "c") {
+      event.preventDefault();
+      clearProgram();
+    } else if (key === "x") {
+      event.preventDefault();
+      resetLevel(false);
     } else if (event.key === "Enter") {
       event.preventDefault();
       executeProgram();
