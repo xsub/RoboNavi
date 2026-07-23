@@ -613,7 +613,7 @@
       (width - 56) * 2 / boardSpan,
       (height - 84) * 2 / (boardSpan * isoRatio)
     );
-    tileW = Math.max(32, Math.min(140, tileW));
+    tileW = Math.max(20, Math.min(140, tileW));
     var tileH = tileW * isoRatio;
     return {
       tileW: tileW,
@@ -1010,7 +1010,7 @@
 
   function drawWall(x, y, layout) {
     var colors = wallPalettes[(x * 2 + y) % wallPalettes.length];
-    var lift = Math.max(8, Math.min(26, layout.tileW * 0.19));
+    var lift = Math.max(4, Math.min(26, layout.tileW * 0.19));
     var top = tilePath(x, y, layout, lift);
     var base = tilePath(x, y, layout, 0);
     var rightFace = [base[1], base[2], top[2], top[1]];
@@ -1119,7 +1119,7 @@
     var baseAccent = collected ? "#58c9a3" : "#5aaec4";
     var signal = "#f4b83f";
     var signalBright = "#fff7b2";
-    var scale = Math.max(0.84, Math.min(2.05, layout.tileW / 60));
+    var scale = Math.max(0.42, Math.min(2.05, layout.tileW / 60));
 
     ctx.save();
     ctx.translate(center.x, center.y);
@@ -1421,7 +1421,7 @@
 
   function drawRobot(pose, layout) {
     var basis = robotBasis(pose, layout);
-    var scale = Math.max(0.7, Math.min(1.9, layout.tileW / 64));
+    var scale = Math.max(0.45, Math.min(1.9, layout.tileW / 64));
 
     ctx.save();
     ctx.translate(basis.center.x, basis.center.y);
