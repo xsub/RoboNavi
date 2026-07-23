@@ -14,6 +14,8 @@ the whole program.
 ## Features
 
 - 20 hand-authored levels with progressively larger boards
+- Procedural levels with configurable size, route count, and wall density
+- Dijkstra validation and A* reference programs for generated boards
 - Forward, left, and right command programming
 - Floor, walls, sand, ice, charging stations, and signal beacons
 - Optional route preview without a ghost robot
@@ -28,7 +30,7 @@ the whole program.
 - `UNDO`: remove the last command
 - `CLEAR`: empty the command queue
 - `EXECUTE`: run the program
-- `RANDOM`: load a different random campaign level
+- `RANDOM`: open the procedural generator
 - Keyboard: `L`, `F`, `R`, arrow keys, `Backspace`, `Enter`, `C` to clear
   the program, and `X` to reset the level
 
@@ -48,26 +50,25 @@ Then open [http://localhost:4173](http://localhost:4173).
 npm test
 ```
 
-The test suite validates syntax, all level reference solutions, energy targets,
-terrain behavior, and campaign structure. GitHub Actions runs it on every push
-to `main` and on every pull request.
+The test suite validates syntax, all campaign reference solutions, terrain
+behavior, Dijkstra route counting, A* programs, generated levels, and energy
+reserves. GitHub Actions runs it on every push to `main` and on every pull
+request.
 
-## Roadmap: Procedural Levels
+## Procedural Generator
 
-The next campaign mode will generate deterministic levels from a stored seed.
-Its validation and scoring pipeline will:
+`RANDOM` creates a new board instead of selecting an existing campaign level.
+The generator pipeline:
 
-1. Build a weighted state graph that includes position, robot orientation,
-   collected beacons, terrain costs, and available energy.
-2. Use Dijkstra-based validation to reject generated boards that cannot be
-   completed within the energy budget or do not provide at least two viable,
-   meaningfully distinct routes.
-3. Use A* to calculate the most efficient reference solution for the accepted
-   board.
-4. Derive energy, execution-count, and three-star thresholds from that reference
-   cost, then score the player's program against those targets.
-5. Store the seed and reference metadata so every generated challenge can be
-   replayed and tested deterministically.
+1. Builds a weighted grid and places walls and sand.
+2. Uses Dijkstra to verify reachability and count shortest routes.
+3. Rejects boards below the selected minimum route count.
+4. Uses A* over position and robot orientation to find the optimal command
+   program.
+5. Sets the energy target from the A* result and adds a practical battery
+   reserve above that optimum.
+6. Stores the seed and search metadata on the generated level for deterministic
+   testing.
 
 ## Deployment
 

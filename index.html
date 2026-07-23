@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260723-1445">
+    <link rel="stylesheet" href="styles.css?v=20260723-1840">
   </head>
   <body>
     <div class="app-shell">
@@ -185,7 +185,58 @@
       </div>
     </dialog>
 
+    <dialog id="generator-dialog" class="generator-dialog" aria-labelledby="generator-title">
+      <form id="generator-form" class="generator-window">
+        <header class="generator-head">
+          <div>
+            <span class="help-code">RN://GENERATOR</span>
+            <h2 id="generator-title" data-i18n="generatorTitle">Random level generator</h2>
+          </div>
+          <button id="close-generator" class="icon-button" type="button" aria-label="Close generator">×</button>
+        </header>
+        <div class="algorithm-strip" aria-label="Generation algorithms">
+          <span>DIJKSTRA</span>
+          <span>A*</span>
+        </div>
+        <div class="generator-options">
+          <label>
+            <span data-i18n="generatorSize">Board size</span>
+            <select id="generator-size">
+              <option value="9">9 × 9</option>
+              <option value="11" selected>11 × 11</option>
+              <option value="13">13 × 13</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="generatorSolutions">Minimum solutions</span>
+            <select id="generator-solutions">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="generatorDensity">Wall density</span>
+            <select id="generator-density">
+              <option value="relaxed" data-i18n="generatorRelaxed">Relaxed</option>
+              <option value="balanced" data-i18n="generatorBalanced" selected>Balanced</option>
+              <option value="dense" data-i18n="generatorDense">Dense</option>
+            </select>
+          </label>
+        </div>
+        <p id="generator-status" class="generator-status" role="status" aria-live="polite"></p>
+        <div class="generator-actions">
+          <button id="cancel-generator" class="quiet-button" type="button" data-i18n="cancel">Cancel</button>
+          <button id="generate-level" class="execute-button" type="submit" data-i18n="generate">Generate</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="src/core.js"></script>
+    <script src="src/generator.js"></script>
     <script src="src/app.js"></script>
   </body>
 </html>

@@ -2,6 +2,7 @@
   "use strict";
 
   var core = window.RoboNaviCore;
+  var generator = window.RoboNaviGenerator;
   var storageKey = "robonavi-progress-v1";
   var terrainColors = {
     floor: { top: "#b9dfea", edge: "#7facbd", detail: "#eefbff", low: "#9fcbd9" },
@@ -42,6 +43,19 @@
       levels: "Levels",
       random: "Random",
       reset: "Reset",
+      generatorTitle: "Random level generator",
+      generatorSize: "Board size",
+      generatorSolutions: "Minimum solutions",
+      generatorDensity: "Wall density",
+      generatorRelaxed: "Relaxed",
+      generatorBalanced: "Balanced",
+      generatorDense: "Dense",
+      cancel: "Cancel",
+      generate: "Generate",
+      generating: "Generating and validating",
+      generatorFailed: "Generation failed. Try different options.",
+      generatedLevel: "Generated map",
+      generatedSubtitle: "Dijkstra: {routes} routes | A*: {commands} commands",
       program: "Program",
       shadow: "Shadow",
       undo: "Undo",
@@ -182,6 +196,19 @@
       levels: "Poziomy",
       random: "Losowy",
       reset: "Resetuj",
+      generatorTitle: "Generator losowego poziomu",
+      generatorSize: "Rozmiar planszy",
+      generatorSolutions: "Minimum rozwiązań",
+      generatorDensity: "Gęstość ścian",
+      generatorRelaxed: "Luźna",
+      generatorBalanced: "Średnia",
+      generatorDense: "Gęsta",
+      cancel: "Anuluj",
+      generate: "Generuj",
+      generating: "Generowanie i walidacja",
+      generatorFailed: "Generowanie nie powiodło się. Zmień opcje.",
+      generatedLevel: "Plansza losowa",
+      generatedSubtitle: "Dijkstra: {routes} tras | A*: {commands} komend",
       program: "Program",
       shadow: "Podgląd",
       undo: "Cofnij",
@@ -338,6 +365,15 @@
     helpButton: document.getElementById("help-button"),
     helpDialog: document.getElementById("help-dialog"),
     closeHelp: document.getElementById("close-help"),
+    generatorDialog: document.getElementById("generator-dialog"),
+    generatorForm: document.getElementById("generator-form"),
+    closeGenerator: document.getElementById("close-generator"),
+    cancelGenerator: document.getElementById("cancel-generator"),
+    generateLevel: document.getElementById("generate-level"),
+    generatorSize: document.getElementById("generator-size"),
+    generatorSolutions: document.getElementById("generator-solutions"),
+    generatorDensity: document.getElementById("generator-density"),
+    generatorStatus: document.getElementById("generator-status"),
     languageSwitch: document.querySelector(".language-switch"),
     boardPanel: document.querySelector(".board-panel"),
     controlPanel: document.querySelector(".control-panel")
@@ -406,6 +442,20 @@
   }
 
   function localizedLevel(level) {
+    if (level.generated && level.generation) {
+      var routeCount =
+        level.generation.routeCount >= level.generation.routeLimit
+          ? level.generation.routeCount + "+"
+          : String(level.generation.routeCount);
+      return {
+        name: text("generatedLevel"),
+        subtitle: uppercase(
+          copy().generatedSubtitle
+            .replace("{routes}", routeCount)
+            .replace("{commands}", String(level.generation.optimalCommands))
+        )
+      };
+    }
     var levelCopy = copy().levelData[level.id] || {
       name: level.name,
       subtitle: level.subtitle
@@ -451,9 +501,9 @@
     };
   }
 
-  function loadLevel(index) {
+  function activateLevel(level, index) {
     state.levelIndex = index;
-    state.level = core.LEVELS[index];
+    state.level = level;
     state.robot = core.createInitialState(state.level);
     state.commands = [];
     state.runCount = 0;
@@ -463,6 +513,14 @@
     setMessage("ready");
     syncDisplayPose();
     renderAll();
+  }
+
+  function loadLevel(index) {
+    activateLevel(core.LEVELS[index], index);
+  }
+
+  function loadGeneratedLevel(level) {
+    activateLevel(level, -1);
   }
 
   function resetLevel(keepProgram) {
@@ -1705,7 +1763,9 @@
     var level = state.level;
     var levelCopy = localizedLevel(level);
     els.levelName.textContent =
-      String(state.levelIndex + 1).padStart(2, "0") + " " + levelCopy.name;
+      (level.generated ? "RND" : String(state.levelIndex + 1).padStart(2, "0")) +
+      " " +
+      levelCopy.name;
     els.levelSubtitle.textContent = levelCopy.subtitle;
     els.energyValue.textContent =
       formatEnergy(state.robot.energyRemaining) + " / " + formatEnergy(level.energyMax);
@@ -1724,6 +1784,7 @@
     els.undoCommand.disabled = state.animating || state.commands.length === 0;
     els.clearProgram.disabled = state.animating || state.commands.length === 0;
     els.resetLevel.disabled = state.animating;
+    els.randomLevel.disabled = state.animating;
 
     renderLevels();
     renderQueue();
@@ -1819,6 +1880,7 @@
 
     els.languageSwitch.setAttribute("aria-label", text("language"));
     els.closeHelp.setAttribute("aria-label", text("closeHelp"));
+    els.closeGenerator.setAttribute("aria-label", text("cancel"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.canvas.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute("aria-label", text("mapLabel"));
@@ -1834,9 +1896,57 @@
       button.setAttribute("aria-label", text("addCommand") + ": " + commandName);
     });
 
+    if (els.generatorStatus.dataset.messageKey) {
+      els.generatorStatus.textContent = text(els.generatorStatus.dataset.messageKey);
+    }
+
     if (state.robot && shouldRender !== false) {
       renderAll();
     }
+  }
+
+  function setGeneratorStatus(key) {
+    els.generatorStatus.dataset.messageKey = key || "";
+    els.generatorStatus.textContent = key ? text(key) : "";
+  }
+
+  function openGeneratorDialog() {
+    if (state.animating) return;
+    setGeneratorStatus("");
+    if (typeof els.generatorDialog.showModal === "function") {
+      els.generatorDialog.showModal();
+    } else {
+      els.generatorDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeGeneratorDialog() {
+    if (typeof els.generatorDialog.close === "function") {
+      els.generatorDialog.close();
+    } else {
+      els.generatorDialog.removeAttribute("open");
+    }
+  }
+
+  function createGeneratedLevel() {
+    setGeneratorStatus("generating");
+    els.generateLevel.disabled = true;
+
+    window.setTimeout(function () {
+      try {
+        var level = generator.generateLevel({
+          size: Number(els.generatorSize.value),
+          minSolutions: Number(els.generatorSolutions.value),
+          density: els.generatorDensity.value
+        });
+        loadGeneratedLevel(level);
+        closeGeneratorDialog();
+      } catch (error) {
+        setGeneratorStatus("generatorFailed");
+      } finally {
+        els.generateLevel.disabled = false;
+      }
+    }, 20);
   }
 
   els.levelList.addEventListener("click", function (event) {
@@ -1869,11 +1979,7 @@
 
   els.executeProgram.addEventListener("click", executeProgram);
 
-  els.randomLevel.addEventListener("click", function () {
-    if (state.animating || core.LEVELS.length < 2) return;
-    var offset = 1 + Math.floor(Math.random() * (core.LEVELS.length - 1));
-    loadLevel((state.levelIndex + offset) % core.LEVELS.length);
-  });
+  els.randomLevel.addEventListener("click", openGeneratorDialog);
 
   els.resetLevel.addEventListener("click", function () {
     resetLevel(false);
@@ -1912,8 +2018,22 @@
     }
   });
 
+  els.generatorForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    createGeneratedLevel();
+  });
+
+  els.closeGenerator.addEventListener("click", closeGeneratorDialog);
+  els.cancelGenerator.addEventListener("click", closeGeneratorDialog);
+
+  els.generatorDialog.addEventListener("click", function (event) {
+    if (event.target === els.generatorDialog) {
+      closeGeneratorDialog();
+    }
+  });
+
   window.addEventListener("keydown", function (event) {
-    if (els.helpDialog.open) return;
+    if (els.helpDialog.open || els.generatorDialog.open) return;
     if (event.target && ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].indexOf(event.target.tagName) !== -1) {
       return;
     }
