@@ -6,7 +6,7 @@ const core = window.RoboNaviCore;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const COLORS = {
-  background: "#e7f2f3",
+  background: "#000000",
   floor: ["#bdd8e2", "#c5dfe7"],
   floorEdge: "#90adb7",
   wall: "#b6cbb2",
@@ -660,12 +660,12 @@ function updateTimerSprite(sprite, seconds, visible) {
 
 function createStudioEnvironment(renderer, compact) {
   const environment = new THREE.Scene();
-  environment.background = new THREE.Color("#b8c6c3");
+  environment.background = new THREE.Color("#101819");
 
   const room = new THREE.Mesh(
     new THREE.BoxGeometry(24, 18, 24),
     new THREE.MeshBasicMaterial({
-      color: "#aebbb7",
+      color: "#111a1a",
       side: THREE.BackSide
     })
   );
@@ -674,17 +674,17 @@ function createStudioEnvironment(renderer, compact) {
 
   [
     {
-      color: "#fff8e9",
+      color: "#806849",
       position: [-5, 6.5, -4],
       scale: [5.5, 3.2]
     },
     {
-      color: "#d6f5f3",
+      color: "#497b78",
       position: [6, 4.5, 1],
       scale: [4.5, 3.5]
     },
     {
-      color: "#f3dce9",
+      color: "#765267",
       position: [-1, 3.5, 7],
       scale: [4.2, 2.6]
     }
@@ -734,7 +734,7 @@ class RoboNaviThreeView {
     );
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.78;
+    this.renderer.toneMappingExposure = 0.74;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.domElement.setAttribute("aria-hidden", "true");
@@ -751,7 +751,7 @@ class RoboNaviThreeView {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(COLORS.background);
     this.scene.environment = createStudioEnvironment(this.renderer, this.compact);
-    this.scene.environmentIntensity = 0.72;
+    this.scene.environmentIntensity = 0.35;
     this.camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 100);
     this.camera.position.set(12, 13, 12);
     this.camera.lookAt(0, 0.2, 0);
@@ -774,6 +774,7 @@ class RoboNaviThreeView {
   addStudio() {
     const hemisphere = new THREE.HemisphereLight("#f5ffff", "#c7b5c5", 1.05);
     this.scene.add(hemisphere);
+    this.hemisphereLight = hemisphere;
 
     const key = new THREE.DirectionalLight("#fff4df", 1.85);
     key.position.set(-7, 13, -5);
@@ -789,17 +790,19 @@ class RoboNaviThreeView {
     const fill = new THREE.DirectionalLight("#bdeeff", 0.72);
     fill.position.set(10, 7, 9);
     this.scene.add(fill);
+    this.fillLight = fill;
 
     const rim = new THREE.DirectionalLight("#f3cce1", 0.38);
     rim.position.set(-9, 5, 10);
     this.scene.add(rim);
+    this.rimLight = rim;
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(70, 70),
       new THREE.MeshStandardMaterial({
-        color: "#edf3f2",
-        metalness: 0.02,
-        roughness: 0.94
+        color: "#020505",
+        metalness: 0.08,
+        roughness: 0.9
       })
     );
     ground.rotation.x = -Math.PI / 2;
@@ -807,10 +810,10 @@ class RoboNaviThreeView {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const grid = new THREE.GridHelper(70, 70, "#aac5c8", "#cbdcdd");
+    const grid = new THREE.GridHelper(70, 70, "#17484a", "#0c2426");
     grid.position.y = -0.305;
     grid.material.transparent = true;
-    grid.material.opacity = 0.2;
+    grid.material.opacity = 0.34;
     grid.material.depthWrite = false;
     this.scene.add(grid);
   }
@@ -1221,6 +1224,7 @@ class RoboNaviThreeView {
 
   update(snapshot) {
     this.snapshot = snapshot;
+    this.updateLighting(snapshot.globalLight);
     const signature = this.levelSignature(snapshot.level);
     if (signature !== this.levelKey) {
       this.levelKey = signature;
@@ -1229,6 +1233,15 @@ class RoboNaviThreeView {
     this.updateRobot(snapshot);
     this.updateBeacons(snapshot);
     this.updatePath(snapshot.path, snapshot.level);
+  }
+
+  updateLighting(value) {
+    const amount = Math.max(0, Math.min(100, Number(value) || 0)) / 100;
+    this.hemisphereLight.intensity = 0.05 + amount * 1;
+    this.keyLight.intensity = 0.08 + amount * 1.77;
+    this.fillLight.intensity = 0.02 + amount * 0.7;
+    this.rimLight.intensity = 0.02 + amount * 0.36;
+    this.scene.environmentIntensity = 0.04 + amount * 0.68;
   }
 
   disable() {

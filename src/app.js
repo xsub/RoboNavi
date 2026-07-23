@@ -4,6 +4,7 @@
   var core = window.RoboNaviCore;
   var generator = window.RoboNaviGenerator;
   var storageKey = "robonavi-progress-v1";
+  var lightStorageKey = "robonavi-global-light-v1";
   var terrainColors = {
     floor: { top: "#bdd8e2", edge: "#789aa7", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#a7884b", detail: "#fff0bd", low: "#bfa05f" },
@@ -59,6 +60,8 @@
       congratulations: "Congratulations!",
       inductPower: "Induct power",
       program: "Program",
+      light: "Light",
+      globalLight: "Global light",
       shadow: "Shadow",
       undo: "Undo",
       clear: "Clear",
@@ -221,6 +224,8 @@
       congratulations: "Gratulacje!",
       inductPower: "Moc indukcji",
       program: "Program",
+      light: "Światło",
+      globalLight: "Światło globalne",
       shadow: "Podgląd",
       undo: "Cofnij",
       clear: "Wyczyść",
@@ -372,6 +377,8 @@
     levelList: document.getElementById("level-list"),
     randomLevel: document.getElementById("random-level"),
     resetLevel: document.getElementById("reset-level"),
+    lightLevel: document.getElementById("light-level"),
+    lightValue: document.getElementById("light-value"),
     previewToggle: document.getElementById("preview-toggle"),
     commandQueue: document.getElementById("command-queue"),
     undoCommand: document.getElementById("undo-command"),
@@ -416,6 +423,7 @@
     displayPose: null,
     commands: [],
     preview: false,
+    globalLight: loadGlobalLight(),
     runCount: 0,
     highlightIndex: null,
     animating: false,
@@ -435,6 +443,27 @@
       return saved === "pl" ? "pl" : "en";
     } catch (error) {
       return "en";
+    }
+  }
+
+  function clampGlobalLight(value) {
+    return Math.max(0, Math.min(100, Number(value) || 0));
+  }
+
+  function loadGlobalLight() {
+    try {
+      var saved = localStorage.getItem(lightStorageKey);
+      return saved === null ? 45 : clampGlobalLight(saved);
+    } catch (error) {
+      return 45;
+    }
+  }
+
+  function saveGlobalLight() {
+    try {
+      localStorage.setItem(lightStorageKey, String(state.globalLight));
+    } catch (error) {
+      // The live control still works when storage is unavailable.
     }
   }
 
@@ -1117,6 +1146,7 @@
       },
       path: createThreeRenderPath(),
       activeStep: activeStep,
+      globalLight: state.globalLight,
       batterySecondsRemaining: state.batterySecondsRemaining,
       gameOver: state.gameOver,
       complete: core.isComplete(state.level, state.robot)
@@ -1193,19 +1223,20 @@
       });
     }
 
+    drawCanvasLightOverlay(size.width, size.height);
     drawCanvasFinish(size.width, size.height);
   }
 
   function drawBackdrop(width, height) {
     var gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, "#deeff6");
-    gradient.addColorStop(0.52, "#e8f5ef");
-    gradient.addColorStop(1, "#f4e5ee");
+    gradient.addColorStop(0, "#020506");
+    gradient.addColorStop(0.52, "#050a0b");
+    gradient.addColorStop(1, "#000000");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
-    ctx.strokeStyle = "rgba(65, 113, 126, 0.075)";
+    ctx.strokeStyle = "rgba(88, 192, 190, 0.08)";
     ctx.lineWidth = 1;
     for (var i = -height; i < width + height; i += 72) {
       ctx.beginPath();
@@ -1221,13 +1252,22 @@
       ctx.stroke();
     }
 
-    ctx.fillStyle = "rgba(77, 132, 142, 0.14)";
+    ctx.fillStyle = "rgba(89, 202, 195, 0.2)";
     for (var bolt = 0; bolt < 8; bolt += 1) {
       var boltX = 24 + bolt * Math.max(58, (width - 48) / 7);
       ctx.beginPath();
       ctx.arc(boltX, height - 22, 1.6, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  function drawCanvasLightOverlay(width, height) {
+    var darkness = (1 - state.globalLight / 100) * 0.42;
+    if (darkness <= 0) return;
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, " + darkness.toFixed(3) + ")";
+    ctx.fillRect(0, 0, width, height);
     ctx.restore();
   }
 
@@ -2291,6 +2331,8 @@
     els.runTarget.textContent = String(level.parRuns);
     els.facingValue.textContent =
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
+    els.lightLevel.value = String(state.globalLight);
+    els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
     els.previewToggle.checked = state.preview;
     els.executeProgram.disabled =
       state.animating ||
@@ -2426,6 +2468,7 @@
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
+    els.lightLevel.setAttribute("aria-label", text("globalLight"));
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -2534,6 +2577,13 @@
 
   els.previewToggle.addEventListener("change", function () {
     state.preview = els.previewToggle.checked;
+    drawAll();
+  });
+
+  els.lightLevel.addEventListener("input", function () {
+    state.globalLight = clampGlobalLight(els.lightLevel.value);
+    els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
+    saveGlobalLight();
     drawAll();
   });
 

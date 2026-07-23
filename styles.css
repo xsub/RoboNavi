@@ -400,7 +400,7 @@ strong {
   position: relative;
   min-height: 420px;
   overflow: hidden;
-  background: #e3f1f3;
+  background: #000;
 }
 
 .canvas-wrap::after {
@@ -419,7 +419,7 @@ strong {
   z-index: 1;
   inset: 0;
   overflow: hidden;
-  background: #e3f1f3;
+  background: #000;
   opacity: 0;
   pointer-events: none;
   transition: opacity 220ms ease;
@@ -437,7 +437,7 @@ strong {
   display: block;
   width: 100%;
   height: clamp(430px, 62vw, 680px);
-  background: #e3f1f3;
+  background: #000;
   transition: opacity 160ms ease;
 }
 
@@ -578,6 +578,66 @@ strong {
 
 .toggle input {
   accent-color: var(--violet);
+}
+
+.program-options,
+.lighting-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.program-options {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.lighting-control {
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.lighting-control input[type="range"] {
+  width: 72px;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border: 2px solid #4b4e50;
+  border-radius: 3px;
+  background: #1d2521;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+}
+
+.lighting-control input[type="range"]::-webkit-slider-thumb {
+  width: 12px;
+  height: 18px;
+  appearance: none;
+  border: 2px solid #5c4228;
+  border-radius: 3px;
+  background: #e6ad5d;
+  box-shadow: 0 0 7px rgba(255, 188, 91, 0.45);
+}
+
+.lighting-control input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 16px;
+  border: 2px solid #5c4228;
+  border-radius: 3px;
+  background: #e6ad5d;
+  box-shadow: 0 0 7px rgba(255, 188, 91, 0.45);
+}
+
+.lighting-control output {
+  width: 3.2em;
+  color: #744823;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 850;
+  text-align: right;
 }
 
 .command-queue {
@@ -1023,7 +1083,7 @@ h1 {
 .canvas-wrap {
   min-height: 0;
   border: 3px solid #202426;
-  background: #e3f1f3;
+  background: #000;
   box-shadow:
     inset 0 0 22px rgba(40, 55, 58, 0.18),
     0 0 0 2px #85898a;
@@ -2086,6 +2146,43 @@ kbd {
 
   .section-head h2 {
     font-size: 0.65rem;
+  }
+
+  .program-options {
+    gap: 4px;
+  }
+
+  .lighting-control {
+    gap: 3px;
+    font-size: 0.44rem;
+  }
+
+  .lighting-control input[type="range"] {
+    width: 44px;
+    height: 9px;
+    border-width: 1px;
+  }
+
+  .lighting-control input[type="range"]::-webkit-slider-thumb {
+    width: 8px;
+    height: 13px;
+    border-width: 1px;
+  }
+
+  .lighting-control input[type="range"]::-moz-range-thumb {
+    width: 7px;
+    height: 11px;
+    border-width: 1px;
+  }
+
+  .lighting-control output {
+    width: 2.8em;
+    font-size: 0.44rem;
+  }
+
+  .toggle {
+    gap: 3px;
+    font-size: 0.48rem;
   }
 
   .level-actions {

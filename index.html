@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-3d1">
+    <link rel="stylesheet" href="styles.css?v=20260724-light1">
   </head>
   <body>
     <div class="app-shell">
@@ -94,10 +94,17 @@
           <section class="panel-section">
             <div class="section-head">
               <h2 data-i18n="program">Program</h2>
-              <label class="toggle">
-                <input id="preview-toggle" type="checkbox">
-                <span data-i18n="shadow">Shadow</span>
-              </label>
+              <div class="program-options">
+                <label class="lighting-control">
+                  <span data-i18n="light">Light</span>
+                  <input id="light-level" type="range" min="0" max="100" step="5" value="45">
+                  <output id="light-value" for="light-level">45%</output>
+                </label>
+                <label class="toggle">
+                  <input id="preview-toggle" type="checkbox">
+                  <span data-i18n="shadow">Shadow</span>
+                </label>
+              </div>
             </div>
             <div id="command-queue" class="command-queue" aria-live="polite"></div>
             <div class="command-pad">
@@ -262,7 +269,7 @@
 
     <script src="src/core.js?v=20260723-2035"></script>
     <script src="src/generator.js?v=20260723-2035"></script>
-    <script src="src/app.js?v=20260724-queue1"></script>
-    <script type="module" src="src/three-renderer.mjs?v=20260724-3d2"></script>
+    <script src="src/app.js?v=20260724-light1"></script>
+    <script type="module" src="src/three-renderer.mjs?v=20260724-light1"></script>
   </body>
 </html>

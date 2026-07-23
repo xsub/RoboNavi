@@ -19,6 +19,7 @@ the whole program.
 - Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, walls, sand, ice, charging stations, and signal beacons
 - Three.js 3D board and robot with metallic PBR materials and dynamic beacon lights
+- Black cockpit display with a persistent global-light control
 - Automatic Canvas fallback when WebGL or JavaScript modules are unavailable
 - Optional route preview without a ghost robot
 - Energy and execution targets with three-star scoring
