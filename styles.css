@@ -467,6 +467,19 @@ strong {
   gap: 10px;
 }
 
+.level-actions {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.level-actions .quiet-button {
+  width: auto;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
 .section-head h2 {
   color: var(--violet-deep);
 }
@@ -1233,6 +1246,12 @@ kbd {
     padding: 6px;
   }
 
+  .level-actions .quiet-button {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+
   .level-list {
     gap: 4px;
   }
@@ -1470,6 +1489,16 @@ kbd {
   .panel-section {
     gap: 6px;
     padding: 6px;
+  }
+
+  .level-actions {
+    gap: 4px;
+  }
+
+  .level-actions .quiet-button {
+    min-height: 32px;
+    padding: 0 7px;
+    font-size: 0.61rem;
   }
 
   .command-queue {

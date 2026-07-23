@@ -40,6 +40,7 @@
       runs: "Runs",
       best: "Best",
       levels: "Levels",
+      random: "Random",
       reset: "Reset",
       program: "Program",
       shadow: "Shadow",
@@ -179,6 +180,7 @@
       runs: "Uruchomienia",
       best: "Najlepiej",
       levels: "Poziomy",
+      random: "Losowy",
       reset: "Resetuj",
       program: "Program",
       shadow: "Podgląd",
@@ -323,6 +325,7 @@
     runMessage: document.getElementById("run-message"),
     objectiveStatus: document.getElementById("objective-status"),
     levelList: document.getElementById("level-list"),
+    randomLevel: document.getElementById("random-level"),
     resetLevel: document.getElementById("reset-level"),
     previewToggle: document.getElementById("preview-toggle"),
     commandQueue: document.getElementById("command-queue"),
@@ -1815,6 +1818,12 @@
   els.clearProgram.addEventListener("click", clearProgram);
 
   els.executeProgram.addEventListener("click", executeProgram);
+
+  els.randomLevel.addEventListener("click", function () {
+    if (state.animating || core.LEVELS.length < 2) return;
+    var offset = 1 + Math.floor(Math.random() * (core.LEVELS.length - 1));
+    loadLevel((state.levelIndex + offset) % core.LEVELS.length);
+  });
 
   els.resetLevel.addEventListener("click", function () {
     resetLevel(false);

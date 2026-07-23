@@ -28,6 +28,7 @@ the whole program.
 - `UNDO`: remove the last command
 - `CLEAR`: empty the command queue
 - `EXECUTE`: run the program
+- `RANDOM`: load a different random campaign level
 - Keyboard: `L`, `F`, `R`, arrow keys, `Backspace`, `Enter`, `C` to clear
   the program, and `X` to reset the level
 
