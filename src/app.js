@@ -351,7 +351,7 @@
     robot: null,
     displayPose: null,
     commands: [],
-    preview: true,
+    preview: false,
     runCount: 0,
     highlightIndex: null,
     animating: false,
@@ -728,7 +728,9 @@
       }
     });
 
-    if (state.preview && !state.animating && state.commands.length > 0) {
+    if (state.animating && state.animation) {
+      drawExecutionPath(layout);
+    } else if (state.preview && state.commands.length > 0) {
       drawPreview(layout);
     }
 
@@ -1135,9 +1137,31 @@
 
   function drawPreview(layout) {
     var preview = core.simulate(state.level, state.commands, state.robot);
-    var points = [cellCenter(state.robot.x, state.robot.y, layout)];
+    drawPathOverlay(
+      layout,
+      preview.events,
+      state.robot,
+      "rgba(80, 183, 202, 0.8)",
+      "rgba(80, 183, 202, 0.34)"
+    );
+  }
+
+  function drawExecutionPath(layout) {
+    var events = state.animation.result.events;
+    var start = events.length > 0 ? events[0].from : state.robot;
+    drawPathOverlay(
+      layout,
+      events,
+      start,
+      "rgba(88, 211, 169, 0.96)",
+      "rgba(88, 211, 169, 0.58)"
+    );
+  }
+
+  function drawPathOverlay(layout, events, start, strokeColor, glowColor) {
+    var points = [cellCenter(start.x, start.y, layout)];
     var collisionPoint = null;
-    preview.events.forEach(function (event) {
+    events.forEach(function (event) {
       event.path.forEach(function (point) {
         points.push(cellCenter(point.x, point.y, layout));
       });
@@ -1148,7 +1172,9 @@
 
     if (points.length > 1) {
       ctx.save();
-      ctx.strokeStyle = "rgba(80, 183, 202, 0.8)";
+      ctx.strokeStyle = strokeColor;
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 7;
       ctx.lineWidth = 4;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
