@@ -1781,38 +1781,93 @@
     );
   }
 
+  function drawRobotEllipse(
+    basis,
+    forward,
+    side,
+    height,
+    radiusX,
+    radiusY,
+    topColor,
+    bottomColor,
+    strokeColor
+  ) {
+    var center = robotPoint(basis, forward, side, height);
+    var gradient = ctx.createLinearGradient(
+      center.x,
+      center.y - radiusY,
+      center.x,
+      center.y + radiusY
+    );
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(1, bottomColor);
+    ctx.fillStyle = gradient;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    return center;
+  }
+
   function drawRobotTrack(basis, side) {
     drawRobotPrism(
       basis,
       {
         forward: -1,
         side: side,
-        halfForward: 11,
-        halfSide: 4,
+        halfForward: 11.5,
+        halfSide: 5,
         bottom: 2,
-        top: 12
+        top: 13
       },
       {
-        top: "#6d9eaa",
-        front: "#527f89",
-        back: "#5c8993",
-        side: "#426d77",
-        stroke: "#315760"
+        top: "#4b4d4e",
+        front: "#353738",
+        back: "#3e4041",
+        side: "#242728",
+        stroke: "#17191a"
       }
     );
 
     var outsideSign = side > 0 ? 1 : -1;
     if (Math.sign(basis.py) === outsideSign) {
       [-6, 1, 7].forEach(function (forward, index) {
-        var wheel = robotPoint(basis, forward, side + outsideSign * 4.15, 6.7);
-        ctx.fillStyle = index === 1 ? "#385f68" : "#456f78";
-        ctx.strokeStyle = "#a9d3d8";
-        ctx.lineWidth = 1;
+        var wheel = robotPoint(basis, forward, side + outsideSign * 5.1, 7);
+        ctx.fillStyle = index === 1 ? "#818789" : "#aeb4b5";
+        ctx.strokeStyle = "#25292a";
+        ctx.lineWidth = 1.25;
         ctx.beginPath();
-        ctx.arc(wheel.x, wheel.y, index === 1 ? 3.2 : 2.7, 0, Math.PI * 2);
+        ctx.arc(wheel.x, wheel.y, index === 1 ? 3 : 3.45, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        ctx.fillStyle = "#464b4d";
+        ctx.beginPath();
+        ctx.arc(wheel.x, wheel.y, index === 1 ? 1.25 : 1.5, 0, Math.PI * 2);
+        ctx.fill();
       });
+
+      ctx.strokeStyle = "rgba(216, 221, 218, 0.34)";
+      ctx.lineWidth = 0.8;
+      for (var tread = -9; tread <= 9; tread += 3) {
+        var treadTop = robotPoint(
+          basis,
+          tread,
+          side + outsideSign * 5.15,
+          11.5
+        );
+        var treadBottom = robotPoint(
+          basis,
+          tread,
+          side + outsideSign * 5.15,
+          2.8
+        );
+        ctx.beginPath();
+        ctx.moveTo(treadTop.x, treadTop.y);
+        ctx.lineTo(treadBottom.x, treadBottom.y);
+        ctx.stroke();
+      }
     }
   }
 
@@ -1820,30 +1875,35 @@
     var shoulder = robotPoint(basis, 0, side * 12, 29);
     var elbow = robotPoint(basis, 1, side * 17, 23);
     var hand = robotPoint(basis, 7, side * 18, 18);
-    ctx.strokeStyle = "#9b5c43";
+    ctx.strokeStyle = "#773718";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.moveTo(shoulder.x, shoulder.y);
     ctx.lineTo(elbow.x, elbow.y);
     ctx.lineTo(hand.x, hand.y);
     ctx.stroke();
-    ctx.strokeStyle = "#f2b06a";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#e27b32";
+    ctx.lineWidth = 4.3;
     ctx.stroke();
 
     [shoulder, elbow].forEach(function (joint) {
-      ctx.fillStyle = "#e95858";
-      ctx.strokeStyle = "#8f4646";
+      ctx.fillStyle = "#e7863e";
+      ctx.strokeStyle = "#743717";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(joint.x, joint.y, 3.4, 0, Math.PI * 2);
+      ctx.arc(joint.x, joint.y, 3.7, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     });
 
-    ctx.strokeStyle = "#9b5c43";
+    ctx.fillStyle = "#a8adae";
+    ctx.beginPath();
+    ctx.arc(hand.x, hand.y, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#713718";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(hand.x, hand.y);
@@ -1855,39 +1915,51 @@
 
   function drawRobotFace(basis) {
     var actualFrontVisible = basis.uy > 0;
-    var faceForward = actualFrontVisible ? 7.25 : -7.25;
+    var faceForward = actualFrontVisible ? 10.5 : -10.5;
     var face = [
-      robotPoint(basis, faceForward, -6.5, 42),
-      robotPoint(basis, faceForward, 6.5, 42),
-      robotPoint(basis, faceForward, 6.5, 50),
-      robotPoint(basis, faceForward, -6.5, 50)
+      robotPoint(basis, faceForward, -8.5, 41),
+      robotPoint(basis, faceForward, 8.5, 41),
+      robotPoint(basis, faceForward, 8.5, 51),
+      robotPoint(basis, faceForward, -8.5, 51)
     ];
 
     if (actualFrontVisible) {
-      drawPolygon(face, "#315e69", "#244b55", 1.2);
-      [-3.1, 3.1].forEach(function (side) {
-        var eye = robotPoint(basis, 7.55, side, 46.4);
+      drawPolygon(face, "#17272c", "#0d171a", 1.35);
+      [-4.1, 4.1].forEach(function (side) {
+        var eye = robotPoint(basis, 10.85, side, 47);
         ctx.save();
-        ctx.shadowColor = "#a8ffe2";
-        ctx.shadowBlur = 5;
-        ctx.fillStyle = "#d9fff0";
+        ctx.shadowColor = "#70f5f2";
+        ctx.shadowBlur = 7;
+        ctx.fillStyle = "#9dffff";
         ctx.beginPath();
-        ctx.arc(eye.x, eye.y, 1.65, 0, Math.PI * 2);
+        ctx.ellipse(eye.x, eye.y, 2, 2.75, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
+
+      var mouth = robotPoint(basis, 10.9, 0, 43.7);
+      ctx.save();
+      ctx.strokeStyle = "#8ffcf2";
+      ctx.shadowColor = "#70f5f2";
+      ctx.shadowBlur = 5;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.arc(mouth.x, mouth.y - 1, 2.2, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+      ctx.restore();
     } else {
-      drawPolygon(face, "#86acb7", "#5f8791", 1.1);
-      ctx.strokeStyle = "#d6f2f1";
-      ctx.lineWidth = 1.2;
-      [-2, 1.5].forEach(function (height) {
-        var ventA = robotPoint(basis, -7.55, -4, 46 + height);
-        var ventB = robotPoint(basis, -7.55, 4, 46 + height);
-        ctx.beginPath();
-        ctx.moveTo(ventA.x, ventA.y);
-        ctx.lineTo(ventB.x, ventB.y);
-        ctx.stroke();
-      });
+      var rearPort = robotPoint(basis, -10.8, 0, 46.5);
+      ctx.fillStyle = "#bd652b";
+      ctx.strokeStyle = "#763718";
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.arc(rearPort.x, rearPort.y, 4.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#e9a15f";
+      ctx.beginPath();
+      ctx.arc(rearPort.x, rearPort.y, 2.4, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -1899,7 +1971,7 @@
     ctx.translate(basis.center.x, basis.center.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = "rgba(66, 111, 121, 0.18)";
+    ctx.fillStyle = "rgba(43, 54, 56, 0.22)";
     ctx.beginPath();
     ctx.ellipse(0, 4, 22, 9, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1916,11 +1988,11 @@
       basis,
       { forward: 0, side: 0, halfForward: 13, halfSide: 15, bottom: 10, top: 18 },
       {
-        top: "#ffe0b2",
-        front: "#f2b46e",
-        back: "#eaa25c",
-        side: "#dc8e4d",
-        stroke: "#9c6445"
+        top: "#f4a356",
+        front: "#df7730",
+        back: "#cb6325",
+        side: "#ba5121",
+        stroke: "#713516"
       }
     );
 
@@ -1932,74 +2004,62 @@
         drawRobotArm(basis, side);
       });
 
-    drawRobotPrism(
+    drawRobotEllipse(
       basis,
-      { forward: -1, side: 0, halfForward: 9, halfSide: 11, bottom: 18, top: 35 },
-      {
-        top: "#ffd39b",
-        front: "#f2a75e",
-        back: "#e6934b",
-        side: "#d9833f",
-        stroke: "#9b5d3c"
-      }
+      -1,
+      0,
+      28,
+      14.5,
+      15.5,
+      "#ffad62",
+      "#c95e24",
+      "#743619"
     );
 
-    var chestLight = robotPoint(basis, 8.4, 0, 26);
+    var chestLight = robotPoint(basis, 10.5, 0, 28);
     if (basis.uy > 0) {
-      ctx.save();
-      ctx.shadowColor = "#e95858";
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = "#ff7770";
+      ctx.fillStyle = "#b9bdbd";
+      ctx.strokeStyle = "#6f7272";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(chestLight.x, chestLight.y, 2.4, 0, Math.PI * 2);
+      ctx.arc(chestLight.x, chestLight.y, 2.7, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
+      ctx.stroke();
     }
 
-    drawRobotPrism(
+    drawRobotEllipse(
       basis,
-      { forward: 0, side: 0, halfForward: 3.5, halfSide: 4, bottom: 35, top: 40 },
-      {
-        top: "#84b9bd",
-        front: "#5f9098",
-        back: "#557f89",
-        side: "#4f7a83",
-        stroke: "#3d6670"
-      }
+      0,
+      0,
+      37,
+      6,
+      3.2,
+      "#d5d8d7",
+      "#777d7e",
+      "#4c5152"
     );
-    drawRobotPrism(
+    drawRobotEllipse(
       basis,
-      { forward: 0, side: 0, halfForward: 7, halfSide: 10, bottom: 39, top: 54 },
-      {
-        top: "#fff0d7",
-        front: "#f7c180",
-        back: "#eeb06d",
-        side: "#dd9958",
-        stroke: "#9b6644"
-      }
+      0,
+      0,
+      47,
+      17,
+      17.5,
+      "#ffb567",
+      "#ca5c23",
+      "#743518"
     );
-    drawRobotFace(basis);
 
-    var arrowTip = robotPoint(basis, 5.4, 0, 54.5);
-    var arrowLeft = robotPoint(basis, -2.2, -4.2, 54.5);
-    var arrowRight = robotPoint(basis, -2.2, 4.2, 54.5);
-    drawPolygon([arrowTip, arrowLeft, arrowRight], "#e95858", "#8e4242", 1);
-
-    var antennaBase = robotPoint(basis, -1.8, -2.5, 54);
-    ctx.strokeStyle = "#934747";
-    ctx.lineWidth = 2;
+    var visibleSide = basis.py >= 0 ? 1 : -1;
+    var sidePort = robotPoint(basis, 0, visibleSide * 15, 47);
+    ctx.fillStyle = "#d76e2c";
+    ctx.strokeStyle = "#743518";
+    ctx.lineWidth = 1.15;
     ctx.beginPath();
-    ctx.moveTo(antennaBase.x, antennaBase.y);
-    ctx.lineTo(antennaBase.x - 1, antennaBase.y - 10);
-    ctx.stroke();
-    ctx.save();
-    ctx.shadowColor = "#ef5350";
-    ctx.shadowBlur = 7;
-    ctx.fillStyle = "#ff625d";
-    ctx.beginPath();
-    ctx.arc(antennaBase.x - 1, antennaBase.y - 11.5, 2.8, 0, Math.PI * 2);
+    ctx.arc(sidePort.x, sidePort.y, 3.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
+    ctx.stroke();
+    drawRobotFace(basis);
     ctx.restore();
   }
 
@@ -2438,6 +2498,7 @@
   }
 
   window.addEventListener("resize", scheduleCanvasRedraw);
+  window.addEventListener("load", scheduleCanvasRedraw);
   if (typeof window.ResizeObserver === "function") {
     var canvasResizeObserver = new window.ResizeObserver(scheduleCanvasRedraw);
     canvasResizeObserver.observe(els.canvas);
