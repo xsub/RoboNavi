@@ -408,6 +408,7 @@
   var celebrationTimer = null;
   var confettiParticles = [];
   var batteryTimerId = null;
+  var threeRenderer = null;
   var state = {
     levelIndex: 0,
     level: core.LEVELS[0],
@@ -706,6 +707,7 @@
     var step = animation.step;
     var progress = Math.min(1, (timestamp - animation.startedAt) / step.duration);
     var eased = easeInOut(progress);
+    animation.stepProgress = progress;
     state.highlightIndex = step.commandIndex;
 
     if (step.type === "move") {
@@ -742,6 +744,7 @@
       }
       animation.index += 1;
       animation.step = null;
+      animation.stepProgress = 0;
     }
 
     window.requestAnimationFrame(tickAnimation);
@@ -1042,8 +1045,82 @@
   }
 
   function drawAll() {
-    drawBoard();
+    if (!threeRenderer) {
+      drawBoard();
+    }
     drawMiniMap();
+    if (threeRenderer) {
+      try {
+        threeRenderer.update(createThreeRenderSnapshot());
+      } catch (error) {
+        if (typeof threeRenderer.disable === "function") {
+          threeRenderer.disable();
+        }
+        threeRenderer = null;
+        els.canvas.parentElement.classList.remove("three-ready");
+        drawBoard();
+        console.warn("RoboNavi switched back to the Canvas renderer.", error);
+      }
+    }
+  }
+
+  function createThreeRenderPath() {
+    var events = null;
+    var start = null;
+    var mode = null;
+    if (state.animating && state.animation) {
+      events = state.animation.result.events;
+      start = events.length > 0 ? events[0].from : state.robot;
+      mode = "execute";
+    } else if (state.preview && state.commands.length > 0) {
+      var preview = core.simulate(state.level, state.commands, state.robot);
+      events = preview.events;
+      start = state.robot;
+      mode = "preview";
+    }
+    if (!events || !start) return null;
+
+    var points = [{ x: start.x, y: start.y }];
+    var collision = null;
+    events.forEach(function (event) {
+      (event.path || []).forEach(function (point) {
+        points.push({ x: point.x, y: point.y });
+      });
+      if (event.blockedAt) {
+        collision = { x: event.blockedAt.x, y: event.blockedAt.y };
+      }
+    });
+    return {
+      mode: mode,
+      points: points,
+      collision: collision
+    };
+  }
+
+  function createThreeRenderSnapshot() {
+    var activeStep =
+      state.animation && state.animation.step
+        ? {
+            type: state.animation.step.type,
+            command: state.animation.step.event.command,
+            progress: state.animation.stepProgress || 0
+          }
+        : null;
+    return {
+      level: state.level,
+      robot: state.robot,
+      displayPose: {
+        x: state.displayPose.x,
+        y: state.displayPose.y,
+        direction: state.displayPose.direction,
+        angle: state.displayPose.angle
+      },
+      path: createThreeRenderPath(),
+      activeStep: activeStep,
+      batterySecondsRemaining: state.batterySecondsRemaining,
+      gameOver: state.gameOver,
+      complete: core.isComplete(state.level, state.robot)
+    };
   }
 
   function drawBoard() {
@@ -2558,6 +2635,22 @@
     canvasResizeObserver.observe(els.canvas);
     canvasResizeObserver.observe(els.miniMap);
   }
+
+  window.RoboNaviRenderBridge = {
+    attach: function (renderer) {
+      if (!renderer || typeof renderer.update !== "function") return;
+      threeRenderer = renderer;
+      els.canvas.parentElement.classList.add("three-ready");
+      renderer.update(createThreeRenderSnapshot());
+    },
+    detach: function (renderer) {
+      if (renderer && threeRenderer !== renderer) return;
+      threeRenderer = null;
+      els.canvas.parentElement.classList.remove("three-ready");
+      drawBoard();
+    },
+    snapshot: createThreeRenderSnapshot
+  };
 
   applyLanguage(state.language, false);
   loadLevel(0);

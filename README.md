@@ -18,12 +18,14 @@ the whole program.
 - Dijkstra validation and A* reference programs for generated boards
 - Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, walls, sand, ice, charging stations, and signal beacons
+- Three.js 3D board and robot with metallic PBR materials and dynamic beacon lights
+- Automatic Canvas fallback when WebGL or JavaScript modules are unavailable
 - Optional route preview without a ghost robot
 - Energy and execution targets with three-star scoring
 - Full-screen confetti celebration after the final beacon
 - A 60-second beacon-network countdown after the first battery is installed
 - English and Polish interface
-- Desktop and mobile layouts
+- Desktop and compact iPhone landscape layouts
 - Local progress saved in the browser
 
 ## Controls
@@ -41,13 +43,16 @@ the whole program.
 
 ## Local Development
 
-The game has no build step. Open `index.html` directly or start a local server:
+The game has no build step. Start a local server to use the Three.js renderer:
 
 ```bash
 npm run dev
 ```
 
 Then open [http://localhost:4173](http://localhost:4173).
+
+Opening `index.html` directly keeps the Canvas renderer available as a fallback.
+The pinned Three.js runtime and its MIT license are stored in `vendor/three`.
 
 ## Tests
 
