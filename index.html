@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="RoboNavi is a small robot-programming puzzle game prototype."
+    >
+    <title>RoboNavi</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">RoboNavi</p>
+          <h1 id="level-name">Level</h1>
+          <p id="level-subtitle" class="subtitle"></p>
+        </div>
+        <div class="status-strip" aria-live="polite">
+          <div>
+            <span class="label">Energy</span>
+            <strong id="energy-value">0 / 0</strong>
+          </div>
+          <div>
+            <span class="label">Runs</span>
+            <strong id="run-count">0</strong>
+          </div>
+          <div>
+            <span class="label">Best</span>
+            <strong id="best-stars">---</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="game-layout">
+        <section class="board-panel" aria-label="Game board">
+          <div class="canvas-wrap">
+            <canvas id="game-canvas" aria-label="Isometric puzzle board"></canvas>
+            <canvas id="mini-map" aria-label="Top-down map"></canvas>
+          </div>
+          <div class="message-row">
+            <span id="run-message">Ready</span>
+            <span id="objective-status">0 / 1 beacons</span>
+          </div>
+        </section>
+
+        <aside class="control-panel" aria-label="Command controls">
+          <section class="panel-section">
+            <div class="section-head">
+              <h2>Levels</h2>
+              <button id="reset-level" class="quiet-button" type="button">Reset</button>
+            </div>
+            <div id="level-list" class="level-list"></div>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-head">
+              <h2>Program</h2>
+              <label class="toggle">
+                <input id="preview-toggle" type="checkbox" checked>
+                <span>Shadow</span>
+              </label>
+            </div>
+            <div id="command-queue" class="command-queue" aria-live="polite"></div>
+            <div class="command-pad">
+              <button class="command-button" type="button" data-command="turn-left" title="Turn left" aria-label="Add turn left command">
+                <span>L</span>
+              </button>
+              <button class="command-button primary-command" type="button" data-command="forward" title="Forward" aria-label="Add forward command">
+                <span>F</span>
+              </button>
+              <button class="command-button" type="button" data-command="turn-right" title="Turn right" aria-label="Add turn right command">
+                <span>R</span>
+              </button>
+            </div>
+            <div class="action-row">
+              <button id="undo-command" class="quiet-button" type="button">Undo</button>
+              <button id="clear-program" class="quiet-button" type="button">Clear</button>
+              <button id="execute-program" class="execute-button" type="button">Execute</button>
+            </div>
+          </section>
+
+          <section class="panel-section stats-panel">
+            <div>
+              <span class="label">Energy target</span>
+              <strong id="energy-target">0</strong>
+            </div>
+            <div>
+              <span class="label">Run target</span>
+              <strong id="run-target">1</strong>
+            </div>
+            <div>
+              <span class="label">Facing</span>
+              <strong id="facing-value">N</strong>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script src="src/core.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "robonavi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small robot-programming puzzle game prototype.",
+  "scripts": {
+    "test": "node --check src/core.js && node --check src/app.js && node tests/core.test.js",
+    "dev": "python3 -m http.server 4173"
+  }
+}

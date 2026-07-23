@@ -1,0 +1,619 @@
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory();
+  } else {
+    root.RoboNaviCore = factory();
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  var DIRECTIONS = ["north", "east", "south", "west"];
+  var COMMANDS = ["forward", "turn-left", "turn-right"];
+  var EPSILON = 0.00001;
+  var COSTS = {
+    startup: 0.5,
+    turn: 0.25,
+    collision: 0.5
+  };
+  var TERRAIN = {
+    floor: { label: "Floor", cost: 1, passable: true },
+    sand: { label: "Sand", cost: 2, passable: true },
+    ice: { label: "Ice", cost: 1, passable: true },
+    charger: { label: "Charge", cost: 1, passable: true },
+    wall: { label: "Wall", cost: Infinity, passable: false }
+  };
+  var TILE_FROM_CHAR = {
+    ".": "floor",
+    "#": "wall",
+    "s": "sand",
+    "i": "ice",
+    "c": "charger"
+  };
+  var DIR_DELTA = {
+    north: { x: 0, y: -1 },
+    east: { x: 1, y: 0 },
+    south: { x: 0, y: 1 },
+    west: { x: -1, y: 0 }
+  };
+  var DIR_LABEL = {
+    north: "N",
+    east: "E",
+    south: "S",
+    west: "W"
+  };
+
+  var LEVELS = [
+    {
+      id: "wake-beacon",
+      name: "Wake Beacon",
+      subtitle: "A straight path to the first signal.",
+      width: 7,
+      height: 7,
+      energyMax: 8,
+      parEnergy: 4,
+      parRuns: 1,
+      start: { x: 1, y: 5, direction: "north" },
+      goals: [{ x: 1, y: 2 }],
+      solution: "FFF",
+      grid: [
+        "#######",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#######"
+      ]
+    },
+    {
+      id: "right-angle",
+      name: "Right Angle",
+      subtitle: "One corner, one clean route.",
+      width: 7,
+      height: 7,
+      energyMax: 9,
+      parEnergy: 7,
+      parRuns: 1,
+      start: { x: 1, y: 5, direction: "north" },
+      goals: [{ x: 4, y: 2 }],
+      solution: "FFFRFFF",
+      grid: [
+        "#######",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#######"
+      ]
+    },
+    {
+      id: "soft-shortcut",
+      name: "Soft Shortcut",
+      subtitle: "Sand is predictable, but hungry.",
+      width: 8,
+      height: 8,
+      energyMax: 11,
+      parEnergy: 10,
+      parRuns: 1,
+      start: { x: 1, y: 5, direction: "east" },
+      goals: [{ x: 6, y: 5 }],
+      solution: "FFFFF",
+      grid: [
+        "########",
+        "#......#",
+        "#......#",
+        "#......#",
+        "#......#",
+        "#.ssss.#",
+        "#......#",
+        "########"
+      ]
+    },
+    {
+      id: "ice-slide",
+      name: "Ice Slide",
+      subtitle: "A tile can move more than expected.",
+      width: 7,
+      height: 7,
+      energyMax: 7,
+      parEnergy: 5,
+      parRuns: 1,
+      start: { x: 1, y: 5, direction: "north" },
+      goals: [{ x: 1, y: 1 }],
+      solution: "FF",
+      grid: [
+        "#######",
+        "#.....#",
+        "#i....#",
+        "#i....#",
+        "#.....#",
+        "#.....#",
+        "#######"
+      ]
+    },
+    {
+      id: "outer-maze",
+      name: "Outer Maze",
+      subtitle: "A wall keeps the simple path honest.",
+      width: 8,
+      height: 8,
+      energyMax: 13,
+      parEnergy: 11,
+      parRuns: 1,
+      start: { x: 1, y: 6, direction: "north" },
+      goals: [{ x: 6, y: 1 }],
+      solution: "FFFFFRFFFFF",
+      grid: [
+        "########",
+        "#......#",
+        "#.####.#",
+        "#.#....#",
+        "#.#.##.#",
+        "#...#..#",
+        "#......#",
+        "########"
+      ]
+    },
+    {
+      id: "long-corner",
+      name: "Long Corner",
+      subtitle: "The same turn from a different heading.",
+      width: 9,
+      height: 9,
+      energyMax: 15,
+      parEnergy: 13,
+      parRuns: 1,
+      start: { x: 7, y: 7, direction: "west" },
+      goals: [{ x: 1, y: 1 }],
+      solution: "FFFFFFRFFFFFF",
+      grid: [
+        "#########",
+        "#.......#",
+        "#.#####.#",
+        "#.#...#.#",
+        "#.#.#.#.#",
+        "#...#...#",
+        "#.#####.#",
+        "#.......#",
+        "#########"
+      ]
+    },
+    {
+      id: "two-beacons",
+      name: "Two Beacons",
+      subtitle: "A route can collect more than one signal.",
+      width: 8,
+      height: 8,
+      energyMax: 13,
+      parEnergy: 11,
+      parRuns: 1,
+      start: { x: 1, y: 6, direction: "north" },
+      goals: [
+        { x: 1, y: 1 },
+        { x: 6, y: 1 }
+      ],
+      solution: "FFFFFRFFFFF",
+      grid: [
+        "########",
+        "#......#",
+        "#......#",
+        "#.####.#",
+        "#......#",
+        "#......#",
+        "#......#",
+        "########"
+      ]
+    },
+    {
+      id: "charge-crossing",
+      name: "Charge Crossing",
+      subtitle: "The station turns a tight plan into a possible one.",
+      width: 8,
+      height: 8,
+      energyMax: 8,
+      parEnergy: 12,
+      parRuns: 1,
+      chargerPower: 4,
+      start: { x: 1, y: 6, direction: "east" },
+      goals: [{ x: 6, y: 1 }],
+      solution: "FFFLFFFFFRFF",
+      grid: [
+        "########",
+        "#......#",
+        "#......#",
+        "#......#",
+        "#......#",
+        "#......#",
+        "#...c..#",
+        "########"
+      ]
+    },
+    {
+      id: "ice-rail",
+      name: "Ice Rail",
+      subtitle: "A short command can cross a long strip.",
+      width: 9,
+      height: 9,
+      energyMax: 9,
+      parEnergy: 7,
+      parRuns: 1,
+      start: { x: 1, y: 2, direction: "east" },
+      goals: [{ x: 7, y: 2 }],
+      solution: "FFF",
+      grid: [
+        "#########",
+        "#.......#",
+        "#..iii..#",
+        "#..#.#..#",
+        "#..#.#..#",
+        "#..s.s..#",
+        "#.......#",
+        "#.......#",
+        "#########"
+      ]
+    },
+    {
+      id: "signal-run",
+      name: "Signal Run",
+      subtitle: "A quiet perimeter route around rough ground.",
+      width: 10,
+      height: 10,
+      energyMax: 17,
+      parEnergy: 15,
+      parRuns: 1,
+      start: { x: 1, y: 8, direction: "north" },
+      goals: [
+        { x: 1, y: 1 },
+        { x: 8, y: 1 }
+      ],
+      solution: "FFFFFFFRFFFFFFF",
+      grid: [
+        "##########",
+        "#........#",
+        "#.####...#",
+        "#....#...#",
+        "#.ss.#.i.#",
+        "#.##.#.i.#",
+        "#....#...#",
+        "#.c..#...#",
+        "#........#",
+        "##########"
+      ]
+    }
+  ];
+
+  function roundEnergy(value) {
+    return Math.round(value * 100) / 100;
+  }
+
+  function cloneState(state) {
+    return {
+      x: state.x,
+      y: state.y,
+      direction: state.direction,
+      energyRemaining: state.energyRemaining,
+      energySpent: state.energySpent,
+      collected: state.collected || 0
+    };
+  }
+
+  function createInitialState(level) {
+    var state = {
+      x: level.start.x,
+      y: level.start.y,
+      direction: level.start.direction,
+      energyRemaining: level.energyMax,
+      energySpent: 0,
+      collected: 0
+    };
+    collectAt(level, state);
+    return state;
+  }
+
+  function normalizeCommand(command) {
+    var value = typeof command === "string" ? command : command && command.type;
+    if (value === "F") return "forward";
+    if (value === "L") return "turn-left";
+    if (value === "R") return "turn-right";
+    if (COMMANDS.indexOf(value) === -1) {
+      throw new Error("Unknown command: " + value);
+    }
+    return value;
+  }
+
+  function parseProgram(program) {
+    return String(program || "")
+      .toUpperCase()
+      .split("")
+      .filter(Boolean)
+      .map(function (char) {
+        return normalizeCommand(char);
+      });
+  }
+
+  function commandToken(command) {
+    var normalized = normalizeCommand(command);
+    if (normalized === "forward") return "F";
+    if (normalized === "turn-left") return "L";
+    return "R";
+  }
+
+  function turn(direction, amount) {
+    var index = DIRECTIONS.indexOf(direction);
+    return DIRECTIONS[(index + amount + DIRECTIONS.length) % DIRECTIONS.length];
+  }
+
+  function inside(level, x, y) {
+    return x >= 0 && y >= 0 && x < level.width && y < level.height;
+  }
+
+  function terrainAt(level, x, y) {
+    if (!inside(level, x, y)) return "wall";
+    var char = level.grid[y][x];
+    return TILE_FROM_CHAR[char] || "floor";
+  }
+
+  function canEnter(level, x, y) {
+    return TERRAIN[terrainAt(level, x, y)].passable;
+  }
+
+  function spend(state, amount) {
+    if (state.energyRemaining + EPSILON < amount) {
+      state.energySpent = roundEnergy(state.energySpent + state.energyRemaining);
+      state.energyRemaining = 0;
+      return false;
+    }
+    state.energyRemaining = roundEnergy(state.energyRemaining - amount);
+    state.energySpent = roundEnergy(state.energySpent + amount);
+    return true;
+  }
+
+  function collectAt(level, state) {
+    var newlyCollected = [];
+    level.goals.forEach(function (goal, index) {
+      var mask = 1 << index;
+      if ((state.collected & mask) === 0 && goal.x === state.x && goal.y === state.y) {
+        state.collected |= mask;
+        newlyCollected.push(index);
+      }
+    });
+    return newlyCollected;
+  }
+
+  function isComplete(level, state) {
+    var allMask = (1 << level.goals.length) - 1;
+    return (state.collected & allMask) === allMask;
+  }
+
+  function enterCell(level, state, x, y) {
+    var terrain = terrainAt(level, x, y);
+    var cost = TERRAIN[terrain].cost;
+    if (!spend(state, cost)) {
+      return { entered: false, terrain: terrain, cost: cost, collected: [], recharged: 0 };
+    }
+    state.x = x;
+    state.y = y;
+    var collected = collectAt(level, state);
+    var recharged = 0;
+    if (terrain === "charger") {
+      recharged = level.chargerPower || 4;
+      state.energyRemaining = roundEnergy(
+        Math.min(level.energyMax, state.energyRemaining + recharged)
+      );
+    }
+    return {
+      entered: true,
+      terrain: terrain,
+      cost: cost,
+      collected: collected,
+      recharged: recharged
+    };
+  }
+
+  function moveForward(level, state, commandIndex) {
+    var event = {
+      commandIndex: commandIndex,
+      command: "forward",
+      from: cloneState(state),
+      before: cloneState(state),
+      after: null,
+      path: [],
+      cost: 0,
+      collected: [],
+      recharged: 0,
+      blockedAt: null,
+      status: "ok"
+    };
+    var delta = DIR_DELTA[state.direction];
+    var nextX = state.x + delta.x;
+    var nextY = state.y + delta.y;
+
+    if (!canEnter(level, nextX, nextY)) {
+      event.blockedAt = { x: nextX, y: nextY };
+      event.cost = Math.min(COSTS.collision, state.energyRemaining);
+      spend(state, COSTS.collision);
+      event.status = "collision";
+      event.after = cloneState(state);
+      return event;
+    }
+
+    while (true) {
+      var entered = enterCell(level, state, nextX, nextY);
+      if (!entered.entered) {
+        event.blockedAt = { x: nextX, y: nextY };
+        event.status = "out-of-energy";
+        event.after = cloneState(state);
+        return event;
+      }
+
+      event.cost = roundEnergy(event.cost + entered.cost);
+      event.recharged = roundEnergy(event.recharged + entered.recharged);
+      event.collected = event.collected.concat(entered.collected);
+      event.path.push({
+        x: state.x,
+        y: state.y,
+        terrain: entered.terrain,
+        cost: entered.cost
+      });
+
+      if (terrainAt(level, state.x, state.y) !== "ice") {
+        break;
+      }
+
+      nextX = state.x + delta.x;
+      nextY = state.y + delta.y;
+      if (!canEnter(level, nextX, nextY)) {
+        break;
+      }
+    }
+
+    if (isComplete(level, state)) {
+      event.status = "complete";
+    }
+    event.after = cloneState(state);
+    return event;
+  }
+
+  function turnRobot(level, state, command, commandIndex) {
+    var event = {
+      commandIndex: commandIndex,
+      command: command,
+      from: cloneState(state),
+      before: cloneState(state),
+      after: null,
+      path: [],
+      cost: COSTS.turn,
+      collected: [],
+      recharged: 0,
+      blockedAt: null,
+      status: "ok"
+    };
+    if (!spend(state, COSTS.turn)) {
+      event.status = "out-of-energy";
+      event.after = cloneState(state);
+      return event;
+    }
+    state.direction = turn(state.direction, command === "turn-left" ? -1 : 1);
+    if (isComplete(level, state)) {
+      event.status = "complete";
+    }
+    event.after = cloneState(state);
+    return event;
+  }
+
+  function simulate(level, commands, startState) {
+    var state = startState ? cloneState(startState) : createInitialState(level);
+    var events = [];
+    var normalized = commands.map(normalizeCommand);
+
+    if (normalized.length > 0) {
+      if (!spend(state, COSTS.startup)) {
+        return {
+          finalState: cloneState(state),
+          events: [
+            {
+              commandIndex: -1,
+              command: "startup",
+              from: cloneState(state),
+              before: cloneState(state),
+              after: cloneState(state),
+              path: [],
+              cost: COSTS.startup,
+              collected: [],
+              recharged: 0,
+              blockedAt: null,
+              status: "out-of-energy"
+            }
+          ],
+          completed: false,
+          stoppedReason: "out-of-energy"
+        };
+      }
+    }
+
+    for (var index = 0; index < normalized.length; index += 1) {
+      var command = normalized[index];
+      var event =
+        command === "forward"
+          ? moveForward(level, state, index)
+          : turnRobot(level, state, command, index);
+      events.push(event);
+
+      if (event.status === "collision" || event.status === "out-of-energy") {
+        return {
+          finalState: cloneState(state),
+          events: events,
+          completed: false,
+          stoppedReason: event.status
+        };
+      }
+      if (event.status === "complete") {
+        return {
+          finalState: cloneState(state),
+          events: events,
+          completed: true,
+          stoppedReason: "complete"
+        };
+      }
+    }
+
+    return {
+      finalState: cloneState(state),
+      events: events,
+      completed: isComplete(level, state),
+      stoppedReason: isComplete(level, state) ? "complete" : "program-ended"
+    };
+  }
+
+  function scoreCompletion(level, finalState, runCount) {
+    if (!isComplete(level, finalState)) return 0;
+    var stars = 1;
+    if (finalState.energySpent <= level.parEnergy + EPSILON) stars += 1;
+    if (runCount <= level.parRuns) stars += 1;
+    return stars;
+  }
+
+  function validateLevel(level) {
+    if (level.grid.length !== level.height) {
+      throw new Error(level.id + " has invalid grid height");
+    }
+    level.grid.forEach(function (row) {
+      if (row.length !== level.width) {
+        throw new Error(level.id + " has invalid grid width");
+      }
+    });
+    if (!canEnter(level, level.start.x, level.start.y)) {
+      throw new Error(level.id + " starts on a blocked tile");
+    }
+    level.goals.forEach(function (goal) {
+      if (!canEnter(level, goal.x, goal.y)) {
+        throw new Error(level.id + " has a blocked goal");
+      }
+    });
+    return true;
+  }
+
+  LEVELS.forEach(validateLevel);
+
+  return {
+    COMMANDS: COMMANDS,
+    COSTS: COSTS,
+    DIR_DELTA: DIR_DELTA,
+    DIR_LABEL: DIR_LABEL,
+    DIRECTIONS: DIRECTIONS,
+    LEVELS: LEVELS,
+    TERRAIN: TERRAIN,
+    canEnter: canEnter,
+    cloneState: cloneState,
+    commandToken: commandToken,
+    createInitialState: createInitialState,
+    isComplete: isComplete,
+    parseProgram: parseProgram,
+    scoreCompletion: scoreCompletion,
+    simulate: simulate,
+    terrainAt: terrainAt,
+    turn: turn,
+    validateLevel: validateLevel
+  };
+});
