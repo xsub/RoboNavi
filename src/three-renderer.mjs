@@ -118,6 +118,7 @@ function physicalMaterial(options) {
     clearcoatRoughness: options.clearcoatRoughness ?? 0.32,
     transparent: options.transparent || false,
     opacity: options.opacity ?? 1,
+    depthWrite: options.depthWrite ?? true,
     transmission: options.transmission || 0,
     emissive: options.emissive || "#000000",
     emissiveIntensity: options.emissiveIntensity || 0
@@ -144,18 +145,27 @@ function createMaterials() {
       map: wallTexture,
       metalness: 0.32,
       roughness: 0.4,
-      clearcoat: 0.38
+      clearcoat: 0.38,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false
     }),
     wallSide: physicalMaterial({
       color: "#8ca692",
       metalness: 0.28,
-      roughness: 0.48
+      roughness: 0.48,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false
     }),
     wallCap: physicalMaterial({
       color: COLORS.wallCap,
       metalness: 0.32,
       roughness: 0.3,
-      clearcoat: 0.52
+      clearcoat: 0.52,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false
     }),
     wallEdge: physicalMaterial({
       color: COLORS.wallEdge,
