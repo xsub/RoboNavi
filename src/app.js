@@ -2356,7 +2356,10 @@
       }
       chip.type = "button";
       chip.dataset.commandIndex = String(index);
-      chip.textContent = core.commandToken(command);
+      chip.textContent =
+        type === "forward" || type === "turn-left" || type === "turn-right"
+          ? copy().commandLabels[type]
+          : core.commandToken(command);
       chip.title = text("remove") + ": " + uppercase(copy().commands[type]);
       chip.setAttribute(
         "aria-label",
