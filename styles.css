@@ -1020,7 +1020,7 @@ h1 {
     0 5px 0 #2d3032,
     0 8px 12px rgba(0, 0, 0, 0.3);
   color: #d9ff9c;
-  font-size: 0.7rem;
+  font-size: 1.35rem;
   line-height: 1;
   text-shadow: 0 0 8px rgba(192, 255, 120, 0.58);
 }
@@ -1267,7 +1267,7 @@ kbd {
   .command-button span {
     height: 38px;
     border-width: 3px;
-    font-size: 0.62rem;
+    font-size: 1.2rem;
   }
 
   .quiet-button,
@@ -1495,7 +1495,7 @@ kbd {
   .command-button span {
     height: 36px;
     border-width: 3px;
-    font-size: 0.58rem;
+    font-size: 1.1rem;
   }
 
   .quiet-button,

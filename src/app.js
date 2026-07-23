@@ -75,9 +75,9 @@
         "turn-right": "Turn right"
       },
       commandLabels: {
-        forward: "Forward",
-        "turn-left": "Left",
-        "turn-right": "Right"
+        forward: "^",
+        "turn-left": "<",
+        "turn-right": ">"
       },
       directions: { north: "N", east: "E", south: "S", west: "W" },
       messages: {
@@ -214,9 +214,9 @@
         "turn-right": "Skręt w prawo"
       },
       commandLabels: {
-        forward: "Naprzód",
-        "turn-left": "Lewo",
-        "turn-right": "Prawo"
+        forward: "^",
+        "turn-left": "<",
+        "turn-right": ">"
       },
       directions: { north: "PŁN", east: "WSCH", south: "PŁD", west: "ZACH" },
       messages: {
