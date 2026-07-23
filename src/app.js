@@ -1895,7 +1895,21 @@
     }
   });
 
-  window.addEventListener("resize", drawAll);
+  var resizeFrame = null;
+  function scheduleCanvasRedraw() {
+    if (!state.robot || resizeFrame !== null) return;
+    resizeFrame = window.requestAnimationFrame(function () {
+      resizeFrame = null;
+      drawAll();
+    });
+  }
+
+  window.addEventListener("resize", scheduleCanvasRedraw);
+  if (typeof window.ResizeObserver === "function") {
+    var canvasResizeObserver = new window.ResizeObserver(scheduleCanvasRedraw);
+    canvasResizeObserver.observe(els.canvas);
+    canvasResizeObserver.observe(els.miniMap);
+  }
 
   applyLanguage(state.language, false);
   loadLevel(0);

@@ -1562,3 +1562,264 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+
+@media (orientation: landscape) and (min-width: 600px) and (max-height: 560px) {
+  body {
+    overflow: hidden;
+  }
+
+  .app-shell {
+    width: calc(100vw - 8px);
+    height: calc(100dvh - 8px);
+    min-height: 0;
+    margin: 4px auto;
+    padding: 6px;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) minmax(390px, 440px);
+    gap: 6px;
+    margin-bottom: 6px;
+    padding: 5px;
+    border-width: 3px;
+  }
+
+  .brand-console {
+    gap: 8px;
+  }
+
+  .brand-logo {
+    gap: 6px;
+  }
+
+  .logo-emblem {
+    width: 36px;
+    height: 32px;
+  }
+
+  .logo-wordmark strong,
+  .logo-wordmark b {
+    font-size: 0.9rem;
+  }
+
+  .logo-wordmark small {
+    display: none;
+  }
+
+  .mission-block {
+    padding-left: 8px;
+  }
+
+  .mission-kicker {
+    margin-bottom: 2px;
+    font-size: 0.48rem;
+  }
+
+  h1 {
+    font-size: 0.82rem;
+  }
+
+  .subtitle {
+    margin-top: 2px;
+    font-size: 0.52rem;
+  }
+
+  .topbar-side {
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+  }
+
+  .utility-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 3px;
+  }
+
+  .language-switch {
+    padding: 2px;
+  }
+
+  .language-switch button {
+    min-width: 26px;
+    min-height: 24px;
+    font-size: 0.52rem;
+  }
+
+  .utility-button,
+  .hela-label {
+    min-height: 28px;
+    padding: 0 6px;
+    font-size: 0.54rem;
+  }
+
+  .utility-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .status-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .status-strip > div {
+    gap: 1px;
+    padding: 3px 5px;
+    border-radius: 5px;
+  }
+
+  .status-strip .label {
+    font-size: 0.42rem;
+  }
+
+  .status-strip strong {
+    font-size: 0.7rem;
+  }
+
+  .game-layout {
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr) minmax(282px, 310px);
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .board-panel {
+    min-height: 0;
+    border-width: 4px;
+  }
+
+  .canvas-wrap {
+    min-height: 0;
+    border-width: 2px;
+  }
+
+  #game-canvas {
+    height: 100%;
+  }
+
+  #mini-map {
+    top: 6px;
+    right: 6px;
+    width: 62px;
+    height: 62px;
+    border-width: 3px;
+  }
+
+  .message-row {
+    min-height: 26px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    font-size: 0.55rem;
+  }
+
+  .control-panel {
+    min-height: 0;
+    gap: 4px;
+    padding: 5px;
+    border-width: 4px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .panel-section {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .section-head {
+    gap: 4px;
+  }
+
+  .section-head h2 {
+    font-size: 0.65rem;
+  }
+
+  .level-actions {
+    gap: 3px;
+  }
+
+  .level-actions .quiet-button {
+    min-height: 22px;
+    padding: 0 6px;
+    border-width: 2px;
+    font-size: 0.48rem;
+  }
+
+  .level-list {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .level-button {
+    min-height: 22px;
+    border-width: 2px;
+    border-radius: 5px;
+    font-size: 0.58rem;
+  }
+
+  .level-button small {
+    display: none;
+  }
+
+  .control-panel > .panel-section:nth-child(2) {
+    grid-template-rows: auto 42px 30px 26px;
+  }
+
+  .command-queue {
+    min-height: 42px;
+    max-height: 42px;
+    padding: 3px;
+    border-width: 3px;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .queue-chip {
+    height: 24px;
+    font-size: 0.62rem;
+  }
+
+  .command-pad,
+  .action-row {
+    gap: 4px;
+  }
+
+  .command-button {
+    min-height: 30px;
+  }
+
+  .command-button span {
+    height: 26px;
+    border-width: 2px;
+    border-radius: 5px;
+    font-size: 0.95rem;
+  }
+
+  .quiet-button,
+  .execute-button {
+    min-height: 26px;
+    border-width: 2px;
+    border-radius: 5px;
+    font-size: 0.52rem;
+  }
+
+  .stats-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .stats-panel > div {
+    min-height: 38px;
+    padding: 3px;
+    border-width: 2px;
+  }
+
+  .stats-panel .label {
+    font-size: 0.38rem;
+  }
+
+  .stats-panel strong {
+    font-size: 0.62rem;
+  }
+}
