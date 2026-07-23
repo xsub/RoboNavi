@@ -861,6 +861,29 @@
     return event;
   }
 
+  function minimumMovementEnergy(level, state) {
+    var currentDirection = DIRECTIONS.indexOf(state.direction);
+    var minimum = Infinity;
+
+    DIRECTIONS.forEach(function (direction, directionIndex) {
+      var delta = DIR_DELTA[direction];
+      var nextX = state.x + delta.x;
+      var nextY = state.y + delta.y;
+      if (!canEnter(level, nextX, nextY)) return;
+
+      var clockwiseTurns =
+        (directionIndex - currentDirection + DIRECTIONS.length) % DIRECTIONS.length;
+      var turns = Math.min(clockwiseTurns, DIRECTIONS.length - clockwiseTurns);
+      var terrainCost = TERRAIN[terrainAt(level, nextX, nextY)].cost;
+      minimum = Math.min(
+        minimum,
+        COSTS.startup + turns * COSTS.turn + terrainCost
+      );
+    });
+
+    return minimum;
+  }
+
   function simulate(level, commands, startState) {
     var state = startState ? cloneState(startState) : createInitialState(level);
     var events = [];
@@ -917,11 +940,22 @@
       }
     }
 
+    var completed = isComplete(level, state);
+    var nextMovementCost = minimumMovementEnergy(level, state);
+    var movementDepleted =
+      normalized.length > 0 &&
+      nextMovementCost !== Infinity &&
+      state.energyRemaining + EPSILON < nextMovementCost;
+
     return {
       finalState: cloneState(state),
       events: events,
-      completed: isComplete(level, state),
-      stoppedReason: isComplete(level, state) ? "complete" : "program-ended"
+      completed: completed,
+      stoppedReason: completed
+        ? "complete"
+        : movementDepleted
+          ? "out-of-energy"
+          : "program-ended"
     };
   }
 

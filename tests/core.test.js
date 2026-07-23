@@ -62,4 +62,29 @@ core.LEVELS.slice(10).forEach((level) => {
   assert.strictEqual(result.finalState.y, level.start.y);
 }
 
+{
+  const level = {
+    id: "depleted-after-program",
+    width: 5,
+    height: 5,
+    energyMax: 2,
+    start: { x: 2, y: 2, direction: "north" },
+    goals: [{ x: 1, y: 1 }],
+    grid: [
+      "#####",
+      "#...#",
+      "#...#",
+      "#...#",
+      "#####"
+    ]
+  };
+  const result = core.simulate(level, core.parseProgram("R"));
+  assert.strictEqual(result.finalState.energyRemaining, 1.25);
+  assert.strictEqual(
+    result.stoppedReason,
+    "out-of-energy",
+    "a finished program should report depleted energy when no further move is affordable"
+  );
+}
+
 console.log(`Validated ${core.LEVELS.length} RoboNavi levels.`);
