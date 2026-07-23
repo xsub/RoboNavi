@@ -565,7 +565,10 @@ strong {
 }
 
 .command-button {
+  width: 100%;
+  min-width: 0;
   min-height: 76px;
+  padding: 0;
   border-radius: 8px;
   background: var(--surface-strong);
   color: var(--graphite);
@@ -599,6 +602,8 @@ strong {
 
 .quiet-button,
 .execute-button {
+  width: 100%;
+  min-width: 0;
   min-height: 44px;
   border-radius: 8px;
   font-weight: 800;
@@ -618,6 +623,11 @@ strong {
 
 .stats-panel {
   grid-template-columns: repeat(3, 1fr);
+}
+
+.stats-panel > div {
+  width: 100%;
+  min-width: 0;
 }
 
 /* Cockpit shell */
