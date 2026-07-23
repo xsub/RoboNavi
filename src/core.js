@@ -8,12 +8,13 @@
   "use strict";
 
   var DIRECTIONS = ["north", "east", "south", "west"];
-  var COMMANDS = ["forward", "turn-left", "turn-right"];
+  var COMMANDS = ["forward", "turn-left", "turn-right", "battery", "induct"];
   var EPSILON = 0.00001;
   var COSTS = {
     startup: 0.5,
     turn: 0.25,
-    collision: 0.5
+    collision: 0.5,
+    battery: 0
   };
   var TERRAIN = {
     floor: { label: "Floor", cost: 1, passable: true },
@@ -54,7 +55,7 @@
       parRuns: 1,
       start: { x: 1, y: 5, direction: "north" },
       goals: [{ x: 1, y: 2 }],
-      solution: "FFF",
+      solution: "FFFB",
       grid: [
         "#######",
         "#.....#",
@@ -76,7 +77,7 @@
       parRuns: 1,
       start: { x: 1, y: 5, direction: "north" },
       goals: [{ x: 4, y: 2 }],
-      solution: "FFFRFFF",
+      solution: "FFFRFFFB",
       grid: [
         "#######",
         "#.....#",
@@ -98,7 +99,7 @@
       parRuns: 1,
       start: { x: 1, y: 5, direction: "east" },
       goals: [{ x: 6, y: 5 }],
-      solution: "FFFFF",
+      solution: "FFFFFB",
       grid: [
         "########",
         "#......#",
@@ -121,7 +122,7 @@
       parRuns: 1,
       start: { x: 1, y: 5, direction: "north" },
       goals: [{ x: 1, y: 1 }],
-      solution: "FF",
+      solution: "FFB",
       grid: [
         "#######",
         "#.....#",
@@ -143,7 +144,7 @@
       parRuns: 1,
       start: { x: 1, y: 6, direction: "north" },
       goals: [{ x: 6, y: 1 }],
-      solution: "FFFFFRFFFFF",
+      solution: "FFFFFRFFFFFB",
       grid: [
         "########",
         "#......#",
@@ -166,7 +167,7 @@
       parRuns: 1,
       start: { x: 7, y: 7, direction: "west" },
       goals: [{ x: 1, y: 1 }],
-      solution: "FFFFFFRFFFFFF",
+      solution: "FFFFFFRFFFFFFB",
       grid: [
         "#########",
         "#.......#",
@@ -193,7 +194,7 @@
         { x: 1, y: 1 },
         { x: 6, y: 1 }
       ],
-      solution: "FFFFFRFFFFF",
+      solution: "FFFFFBRFFFFFB",
       grid: [
         "########",
         "#......#",
@@ -212,12 +213,12 @@
       width: 8,
       height: 8,
       energyMax: 8,
-      parEnergy: 12,
+      parEnergy: 15,
       parRuns: 1,
       chargerPower: 4,
       start: { x: 1, y: 6, direction: "east" },
       goals: [{ x: 6, y: 1 }],
-      solution: "FFFLFFFFFRFF",
+      solution: "FFFI4LFFFFFRFFB",
       grid: [
         "########",
         "#......#",
@@ -240,7 +241,7 @@
       parRuns: 1,
       start: { x: 1, y: 2, direction: "east" },
       goals: [{ x: 7, y: 2 }],
-      solution: "FFF",
+      solution: "FFFB",
       grid: [
         "#########",
         "#.......#",
@@ -267,7 +268,7 @@
         { x: 1, y: 1 },
         { x: 8, y: 1 }
       ],
-      solution: "FFFFFFFRFFFFFFF",
+      solution: "FFFFFFFBRFFFFFFFB",
       grid: [
         "##########",
         "#........#",
@@ -297,7 +298,7 @@
         { x: 5, y: 2 },
         { x: 9, y: 2 }
       ],
-      solution: "FFFFRFFFFLFFFRFFFF",
+      solution: "FFFFBRFFFFBLFFFBRFFFFB",
       grid: [
         "###########",
         "#.........#",
@@ -328,7 +329,7 @@
         { x: 10, y: 6 },
         { x: 10, y: 1 }
       ],
-      solution: "FFFFLFFFFRFFFFFLFFFFF",
+      solution: "FFFFBLFFFFBRFFFFFBLFFFFFB",
       grid: [
         "############",
         "#..........#",
@@ -360,7 +361,7 @@
         { x: 5, y: 1 },
         { x: 10, y: 1 }
       ],
-      solution: "FFRFLFRFFFFF",
+      solution: "FFBRFBLFBRFFFFFB",
       grid: [
         "############",
         "#..........#",
@@ -383,7 +384,7 @@
       width: 13,
       height: 13,
       energyMax: 12,
-      parEnergy: 20.25,
+      parEnergy: 27.25,
       parRuns: 1,
       chargerPower: 9,
       start: { x: 1, y: 11, direction: "north" },
@@ -393,7 +394,7 @@
         { x: 6, y: 2 },
         { x: 11, y: 2 }
       ],
-      solution: "FFFFFRFFFFFLFFFFRFFFFF",
+      solution: "FFFFFBRFFFI3I4FFBLFFFFBRFFFFFB",
       grid: [
         "#############",
         "#...........#",
@@ -417,7 +418,7 @@
       width: 14,
       height: 14,
       energyMax: 20,
-      parEnergy: 36,
+      parEnergy: 52,
       parRuns: 1,
       chargerPower: 14,
       start: { x: 1, y: 12, direction: "east" },
@@ -429,7 +430,7 @@
         { x: 8, y: 7 },
         { x: 12, y: 7 }
       ],
-      solution: "FFFFFLFFFFLFFFFRFFRFFFFFFRFFFFLFFFF",
+      solution: "FFFFFLFFI4I4FFBLFFFFBRFFBRFFFFFFI1I3I4BRFFFFBLFFFFB",
       grid: [
         "##############",
         "#............#",
@@ -465,7 +466,7 @@
         { x: 10, y: 10 },
         { x: 13, y: 10 }
       ],
-      solution: "FFFFFFRFFFFLFFFFRFFFFFRFFFFFFFLFFF",
+      solution: "FFFFFFBRFFFFBLFFFFBRFFFFFBRFFFFFFFBLFFFB",
       grid: [
         "###############",
         "#..###...##...#",
@@ -491,7 +492,7 @@
       width: 15,
       height: 15,
       energyMax: 16,
-      parEnergy: 37.75,
+      parEnergy: 57.75,
       parRuns: 1,
       chargerPower: 12,
       start: { x: 1, y: 13, direction: "east" },
@@ -504,7 +505,7 @@
         { x: 12, y: 2 },
         { x: 12, y: 6 }
       ],
-      solution: "FFFFFFLFFFFFLFFFFFRFFFFFFRFFFFFFFFFFRFFFF",
+      solution: "FFFI4FFFBLFFFFFBLFFFFFBRFI1I3I4I4FFFFFBRFFFFFI4BFFFFFBRFFFFB",
       grid: [
         "###############",
         "#...##........#",
@@ -540,7 +541,7 @@
         { x: 12, y: 2 },
         { x: 12, y: 8 }
       ],
-      solution: "FFRFFLFFRFFFFFRFFFFFF",
+      solution: "FFBRFFBLFFBRFFFFFBRFFFFFFB",
       grid: [
         "################",
         "#..............#",
@@ -579,7 +580,7 @@
         { x: 4, y: 1 },
         { x: 14, y: 1 }
       ],
-      solution: "FFFFFLFFFFRFFFFFLFFFFFLFFFFFFFRFFFFRFFFFFFFFFF",
+      solution: "FFFFFBLFFFFBRFFFFFBLFFFFFBLFFFFFFFBRFFFFBRFFFFFFFFFFB",
       grid: [
         "################",
         "#..............#",
@@ -606,7 +607,7 @@
       width: 16,
       height: 16,
       energyMax: 20,
-      parEnergy: 46.25,
+      parEnergy: 68.25,
       parRuns: 1,
       chargerPower: 15,
       start: { x: 1, y: 14, direction: "north" },
@@ -620,7 +621,7 @@
         { x: 6, y: 14 },
         { x: 14, y: 14 }
       ],
-      solution: "FFFFFRFFFFLFFRFFFFFFRFFFFFFFRFFFFFLFFFLFFFFFFFF",
+      solution: "FFFI4FFBRFFFFBLFFBRFFFI4FFFBRFFFFI2I4I4I4FFFBRFFFFFBLFFFBLFFFFFFFFB",
       grid: [
         "################",
         "#......###.....#",
@@ -658,7 +659,7 @@
   }
 
   function createInitialState(level) {
-    var state = {
+    return {
       x: level.start.x,
       y: level.start.y,
       direction: level.start.direction,
@@ -666,33 +667,60 @@
       energySpent: 0,
       collected: 0
     };
-    collectAt(level, state);
-    return state;
+  }
+
+  function commandType(command) {
+    return typeof command === "string" ? command : command && command.type;
   }
 
   function normalizeCommand(command) {
-    var value = typeof command === "string" ? command : command && command.type;
+    var value = commandType(command);
     if (value === "F") return "forward";
     if (value === "L") return "turn-left";
     if (value === "R") return "turn-right";
+    if (value === "B") return "battery";
+    if (value === "I") value = "induct";
     if (COMMANDS.indexOf(value) === -1) {
       throw new Error("Unknown command: " + value);
+    }
+    if (value === "induct") {
+      var amount =
+        typeof command === "object" && command
+          ? Number(command.amount)
+          : 1;
+      return {
+        type: "induct",
+        amount: Math.max(1, Math.min(4, Math.floor(amount) || 1))
+      };
     }
     return value;
   }
 
   function parseProgram(program) {
-    return String(program || "")
-      .toUpperCase()
-      .split("")
-      .filter(Boolean)
-      .map(function (char) {
-        return normalizeCommand(char);
-      });
+    var source = String(program || "").toUpperCase().replace(/\s+/g, "");
+    var commands = [];
+    for (var index = 0; index < source.length; index += 1) {
+      var char = source[index];
+      if (char === "I") {
+        var amount = Number(source[index + 1]);
+        if (amount >= 1 && amount <= 4) {
+          index += 1;
+        } else {
+          amount = 1;
+        }
+        commands.push({ type: "induct", amount: amount });
+      } else {
+        commands.push(normalizeCommand(char));
+      }
+    }
+    return commands;
   }
 
   function commandToken(command) {
     var normalized = normalizeCommand(command);
+    var type = commandType(normalized);
+    if (type === "induct") return "I" + normalized.amount;
+    if (type === "battery") return "B";
     if (normalized === "forward") return "F";
     if (normalized === "turn-left") return "L";
     return "R";
@@ -753,20 +781,12 @@
     }
     state.x = x;
     state.y = y;
-    var collected = collectAt(level, state);
-    var recharged = 0;
-    if (terrain === "charger") {
-      recharged = level.chargerPower || 4;
-      state.energyRemaining = roundEnergy(
-        Math.min(level.energyMax, state.energyRemaining + recharged)
-      );
-    }
     return {
       entered: true,
       terrain: terrain,
       cost: cost,
-      collected: collected,
-      recharged: recharged
+      collected: [],
+      recharged: 0
     };
   }
 
@@ -861,6 +881,76 @@
     return event;
   }
 
+  function batteryAction(level, state, commandIndex) {
+    var event = {
+      commandIndex: commandIndex,
+      command: "battery",
+      from: cloneState(state),
+      before: cloneState(state),
+      after: null,
+      path: [],
+      cost: COSTS.battery,
+      collected: [],
+      recharged: 0,
+      blockedAt: null,
+      status: "ok",
+      invalidReason: null
+    };
+    event.collected = collectAt(level, state);
+    if (event.collected.length === 0) {
+      event.status = "invalid-action";
+      event.invalidReason = "battery";
+    } else if (isComplete(level, state)) {
+      event.status = "complete";
+    }
+    event.after = cloneState(state);
+    return event;
+  }
+
+  function inductOutput(amount) {
+    return amount * 2 + 1;
+  }
+
+  function inductAction(level, state, command, commandIndex) {
+    var amount = command.amount;
+    var event = {
+      commandIndex: commandIndex,
+      command: "induct",
+      inductAmount: amount,
+      inductOutput: inductOutput(amount),
+      from: cloneState(state),
+      before: cloneState(state),
+      after: null,
+      path: [],
+      cost: amount,
+      collected: [],
+      recharged: 0,
+      blockedAt: null,
+      status: "ok",
+      invalidReason: null
+    };
+
+    if (terrainAt(level, state.x, state.y) !== "charger") {
+      event.status = "invalid-action";
+      event.invalidReason = "induct";
+      event.after = cloneState(state);
+      return event;
+    }
+    if (!spend(state, amount)) {
+      event.status = "out-of-energy";
+      event.after = cloneState(state);
+      return event;
+    }
+
+    var beforeRecharge = state.energyRemaining;
+    state.energyRemaining = roundEnergy(
+      Math.min(level.energyMax, state.energyRemaining + event.inductOutput)
+    );
+    event.recharged = roundEnergy(state.energyRemaining - beforeRecharge);
+    event.after = cloneState(state);
+    return event;
+  }
+
   function minimumMovementEnergy(level, state) {
     var currentDirection = DIRECTIONS.indexOf(state.direction);
     var minimum = Infinity;
@@ -916,13 +1006,24 @@
 
     for (var index = 0; index < normalized.length; index += 1) {
       var command = normalized[index];
-      var event =
-        command === "forward"
-          ? moveForward(level, state, index)
-          : turnRobot(level, state, command, index);
+      var type = commandType(command);
+      var event;
+      if (type === "forward") {
+        event = moveForward(level, state, index);
+      } else if (type === "turn-left" || type === "turn-right") {
+        event = turnRobot(level, state, type, index);
+      } else if (type === "battery") {
+        event = batteryAction(level, state, index);
+      } else {
+        event = inductAction(level, state, command, index);
+      }
       events.push(event);
 
-      if (event.status === "collision" || event.status === "out-of-energy") {
+      if (
+        event.status === "collision" ||
+        event.status === "out-of-energy" ||
+        event.status === "invalid-action"
+      ) {
         return {
           finalState: cloneState(state),
           events: events,
@@ -942,9 +1043,13 @@
 
     var completed = isComplete(level, state);
     var nextMovementCost = minimumMovementEnergy(level, state);
+    var canInduct =
+      terrainAt(level, state.x, state.y) === "charger" &&
+      state.energyRemaining + EPSILON >= 1;
     var movementDepleted =
       normalized.length > 0 &&
       nextMovementCost !== Infinity &&
+      !canInduct &&
       state.energyRemaining + EPSILON < nextMovementCost;
 
     return {
@@ -999,9 +1104,12 @@
     TERRAIN: TERRAIN,
     canEnter: canEnter,
     cloneState: cloneState,
+    commandType: commandType,
     commandToken: commandToken,
     createInitialState: createInitialState,
+    inductOutput: inductOutput,
     isComplete: isComplete,
+    normalizeCommand: normalizeCommand,
     parseProgram: parseProgram,
     scoreCompletion: scoreCompletion,
     simulate: simulate,

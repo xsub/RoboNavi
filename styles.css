@@ -437,6 +437,16 @@ strong {
   font-weight: 650;
 }
 
+.message-row.is-game-over {
+  border-color: #8d2f35;
+  background: #4a2024;
+  color: #ffd8d2;
+}
+
+.message-row.is-game-over #objective-status {
+  color: #ffaaa2;
+}
+
 #objective-status {
   color: var(--muted);
   font-weight: 650;
@@ -573,7 +583,7 @@ strong {
 
 .command-pad {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -605,6 +615,51 @@ strong {
   background: #b9add7;
   color: #3e3654;
   box-shadow: inset 0 -3px 0 rgba(81, 69, 111, 0.2);
+}
+
+.induct-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.induct-row > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.induct-levels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.induct-levels button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 4px;
+  border: 2px solid #515559;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #d4d7d8, #929698);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    0 2px 0 #4a4d50;
+  color: #23272a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.induct-levels button.is-active {
+  border-color: #67502f;
+  background: linear-gradient(180deg, #ffe199, #d4934d);
+  color: #2d2115;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    0 2px 0 #67492e,
+    0 0 8px rgba(245, 174, 78, 0.35);
 }
 
 .action-row {
@@ -1005,7 +1060,7 @@ h1 {
 
 .control-panel > .panel-section:nth-child(2) {
   overflow: hidden;
-  grid-template-rows: auto minmax(70px, 1fr) auto auto;
+  grid-template-rows: auto minmax(70px, 1fr) auto auto auto;
 }
 
 .section-head h2 {
@@ -1114,6 +1169,25 @@ h1 {
   background: linear-gradient(145deg, #718a69, #3f5542);
   color: #d9ff9c;
   text-shadow: 0 0 8px rgba(192, 255, 120, 0.58);
+}
+
+.command-button[data-command="battery"] span {
+  border-color: #624430;
+  background: linear-gradient(145deg, #dba55d, #a85c3d);
+  color: #fff0b3;
+  text-shadow: 0 0 8px rgba(255, 207, 105, 0.64);
+}
+
+.command-button[data-command="induct"] span {
+  border-color: #365860;
+  background: linear-gradient(145deg, #70aa9b, #3f6865);
+  color: #d6fff0;
+  text-shadow: 0 0 8px rgba(126, 241, 203, 0.55);
+}
+
+.induct-row > span {
+  color: #303438;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .quiet-button,
@@ -1421,7 +1495,7 @@ kbd {
   }
 
   .control-panel > .panel-section:nth-child(2) {
-    grid-template-rows: auto minmax(52px, 1fr) auto auto;
+    grid-template-rows: auto minmax(52px, 1fr) auto auto auto;
   }
 
   .command-queue {
@@ -1430,8 +1504,18 @@ kbd {
   }
 
   .command-pad,
-  .action-row {
+  .action-row,
+  .induct-row {
     gap: 6px;
+  }
+
+  .induct-levels {
+    gap: 3px;
+  }
+
+  .induct-levels button {
+    min-height: 25px;
+    font-size: 0.56rem;
   }
 
   .command-button {
@@ -1639,7 +1723,7 @@ kbd {
 
   .control-panel > .panel-section:nth-child(2) {
     order: 1;
-    grid-template-rows: auto 56px auto auto;
+    grid-template-rows: auto 56px auto auto auto;
   }
 
   .control-panel > .panel-section:nth-child(3) {
@@ -1673,8 +1757,22 @@ kbd {
   }
 
   .command-pad,
-  .action-row {
+  .action-row,
+  .induct-row {
     gap: 5px;
+  }
+
+  .induct-row > span {
+    font-size: 0.56rem;
+  }
+
+  .induct-levels {
+    gap: 3px;
+  }
+
+  .induct-levels button {
+    min-height: 27px;
+    font-size: 0.56rem;
   }
 
   .command-button {
@@ -1964,7 +2062,7 @@ kbd {
   }
 
   .control-panel > .panel-section:nth-child(2) {
-    grid-template-rows: auto 42px 30px 26px;
+    grid-template-rows: auto 42px 30px 23px 26px;
   }
 
   .command-queue {
@@ -1981,8 +2079,27 @@ kbd {
   }
 
   .command-pad,
-  .action-row {
+  .action-row,
+  .induct-row {
     gap: 4px;
+  }
+
+  .induct-row {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .induct-row > span {
+    font-size: 0.42rem;
+  }
+
+  .induct-levels {
+    gap: 2px;
+  }
+
+  .induct-levels button {
+    min-height: 21px;
+    border-width: 1px;
+    font-size: 0.46rem;
   }
 
   .command-button {

@@ -63,6 +63,82 @@ core.LEVELS.slice(10).forEach((level) => {
 }
 
 {
+  const level = core.LEVELS[0];
+  const arrival = core.simulate(level, core.parseProgram("FFF"));
+  assert.strictEqual(
+    arrival.finalState.collected,
+    0,
+    "entering a beacon should not install its battery automatically"
+  );
+  assert.strictEqual(arrival.completed, false);
+
+  const installation = core.simulate(
+    level,
+    core.parseProgram("B"),
+    arrival.finalState
+  );
+  assert.strictEqual(installation.completed, true);
+  assert.deepStrictEqual(installation.events[0].collected, [0]);
+}
+
+{
+  const level = core.LEVELS[0];
+  const result = core.simulate(level, core.parseProgram("B"));
+  assert.strictEqual(result.stoppedReason, "invalid-action");
+  assert.strictEqual(result.events[0].invalidReason, "battery");
+}
+
+{
+  const level = {
+    id: "induct-test",
+    width: 5,
+    height: 5,
+    energyMax: 20,
+    start: { x: 2, y: 2, direction: "north" },
+    goals: [{ x: 1, y: 1 }],
+    grid: [
+      "#####",
+      "#...#",
+      "#.c.#",
+      "#...#",
+      "#####"
+    ]
+  };
+
+  [1, 2, 3, 4].forEach((amount) => {
+    const startState = {
+      ...core.createInitialState(level),
+      energyRemaining: 10
+    };
+    const result = core.simulate(
+      level,
+      [{ type: "induct", amount }],
+      startState
+    );
+    const event = result.events[0];
+    assert.strictEqual(event.inductOutput, amount * 2 + 1);
+    assert.strictEqual(event.recharged, amount * 2 + 1);
+    assert.strictEqual(result.finalState.energyRemaining, 10.5 + amount);
+    assert.strictEqual(result.finalState.energySpent, 0.5 + amount);
+  });
+
+  assert.deepStrictEqual(
+    core.parseProgram("BI2I").map(core.commandToken),
+    ["B", "I2", "I1"]
+  );
+}
+
+{
+  const level = core.LEVELS[0];
+  const result = core.simulate(
+    level,
+    [{ type: "induct", amount: 2 }]
+  );
+  assert.strictEqual(result.stoppedReason, "invalid-action");
+  assert.strictEqual(result.events[0].invalidReason, "induct");
+}
+
+{
   const level = {
     id: "depleted-after-program",
     width: 5,

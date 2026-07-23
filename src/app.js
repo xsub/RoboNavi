@@ -57,6 +57,7 @@
       generatedLevel: "Generated map",
       generatedSubtitle: "Dijkstra: {routes} routes | A*: {commands} commands",
       congratulations: "Congratulations!",
+      inductPower: "Induct power",
       program: "Program",
       shadow: "Shadow",
       undo: "Undo",
@@ -78,22 +79,26 @@
       controlsLabel: "Command controls",
       helpTitle: "Robot operator guide",
       helpObjectiveTitle: "Restore the beacon",
-      helpObjectiveText: "Queue a route that guides the robot to every beacon.",
+      helpObjectiveText: "Reach each beacon and install its battery with B before the 60-second timer expires.",
       helpProgramTitle: "Build a program",
       helpProgramText: "Add turns and forward moves, then execute the sequence. C clears it; X resets the level.",
       helpEnergyTitle: "Plan before running",
       helpEnergyText: "Every run has a startup cost. Longer, correct programs save energy.",
       helpTerrainTitle: "Read the terrain",
-      helpTerrainText: "Sand costs more, ice keeps the robot sliding, and chargers restore power.",
+      helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge.",
       commands: {
         forward: "Forward",
         "turn-left": "Turn left",
-        "turn-right": "Turn right"
+        "turn-right": "Turn right",
+        battery: "Install battery",
+        induct: "Induct charge"
       },
       commandLabels: {
         forward: "^",
         "turn-left": "<",
-        "turn-right": ">"
+        "turn-right": ">",
+        battery: "B",
+        induct: "I"
       },
       directions: { north: "N", east: "E", south: "S", west: "W" },
       messages: {
@@ -102,6 +107,9 @@
         completed: "Beacon network restored: {value}",
         blocked: "Blocked at command {value}",
         depleted: "Energy depleted",
+        invalidBattery: "Battery requires a beacon",
+        invalidInduct: "Induct requires a charging station",
+        batteryDied: "Beacon battery died! ;(",
         ended: "Program ended"
       },
       levelData: {
@@ -211,6 +219,7 @@
       generatedLevel: "Plansza losowa",
       generatedSubtitle: "Dijkstra: {routes} tras | A*: {commands} komend",
       congratulations: "Gratulacje!",
+      inductPower: "Moc indukcji",
       program: "Program",
       shadow: "Podgląd",
       undo: "Cofnij",
@@ -232,22 +241,26 @@
       controlsLabel: "Panel komend",
       helpTitle: "Przewodnik operatora robota",
       helpObjectiveTitle: "Uruchom nadajnik",
-      helpObjectiveText: "Zaprogramuj trasę, która doprowadzi robota do każdego nadajnika.",
+      helpObjectiveText: "Dotrzyj do każdego nadajnika i zainstaluj baterię klawiszem B przed upływem 60 sekund.",
       helpProgramTitle: "Zbuduj program",
       helpProgramText: "Dodaj skręty i ruchy naprzód, a potem uruchom sekwencję. C ją czyści, a X resetuje poziom.",
       helpEnergyTitle: "Planuj przed startem",
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Dłuższy poprawny program oszczędza energię.",
       helpTerrainTitle: "Czytaj teren",
-      helpTerrainText: "Piasek kosztuje więcej, lód przesuwa robota dalej, a ładowarki odnawiają energię.",
+      helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek.",
       commands: {
         forward: "Naprzód",
         "turn-left": "Skręt w lewo",
-        "turn-right": "Skręt w prawo"
+        "turn-right": "Skręt w prawo",
+        battery: "Zainstaluj baterię",
+        induct: "Ładowanie indukcyjne"
       },
       commandLabels: {
         forward: "^",
         "turn-left": "<",
-        "turn-right": ">"
+        "turn-right": ">",
+        battery: "B",
+        induct: "I"
       },
       directions: { north: "PŁN", east: "WSCH", south: "PŁD", west: "ZACH" },
       messages: {
@@ -256,6 +269,9 @@
         completed: "Sieć nadajników uruchomiona: {value}",
         blocked: "Blokada przy komendzie {value}",
         depleted: "Brak energii",
+        invalidBattery: "Bateria wymaga pola nadajnika",
+        invalidInduct: "Indukcja wymaga stacji ładowania",
+        batteryDied: "Beacon battery died! ;(",
         ended: "Program zakończony"
       },
       levelData: {
@@ -379,6 +395,7 @@
     celebration: document.getElementById("celebration"),
     confettiCanvas: document.getElementById("confetti-canvas"),
     celebrationMessage: document.getElementById("celebration-message"),
+    inductLevels: document.getElementById("induct-levels"),
     languageSwitch: document.querySelector(".language-switch"),
     boardPanel: document.querySelector(".board-panel"),
     controlPanel: document.querySelector(".control-panel")
@@ -390,6 +407,7 @@
   var celebrationFrame = null;
   var celebrationTimer = null;
   var confettiParticles = [];
+  var batteryTimerId = null;
   var state = {
     levelIndex: 0,
     level: core.LEVELS[0],
@@ -401,6 +419,9 @@
     highlightIndex: null,
     animating: false,
     animation: null,
+    gameOver: false,
+    batteryDeadline: null,
+    batterySecondsRemaining: null,
     language: loadLanguage(),
     messageKey: "ready",
     messageValue: null,
@@ -512,6 +533,7 @@
 
   function activateLevel(level, index) {
     stopCelebration();
+    resetBatteryTimer();
     state.levelIndex = index;
     state.level = level;
     state.robot = core.createInitialState(state.level);
@@ -535,6 +557,7 @@
 
   function resetLevel(keepProgram) {
     stopCelebration();
+    resetBatteryTimer();
     state.robot = core.createInitialState(state.level);
     state.runCount = 0;
     state.highlightIndex = null;
@@ -549,29 +572,46 @@
   }
 
   function addCommand(command) {
-    if (state.animating) return;
-    state.commands.push(command);
+    if (state.animating || state.gameOver) return;
+    state.commands.push(core.normalizeCommand(command));
     state.highlightIndex = null;
     setMessage("ready");
     renderAll();
   }
 
+  function setLastInductAmount(amount) {
+    if (state.animating || state.gameOver || state.commands.length === 0) return;
+    var lastIndex = state.commands.length - 1;
+    if (core.commandType(state.commands[lastIndex]) !== "induct") return;
+    state.commands[lastIndex] = {
+      type: "induct",
+      amount: Math.max(1, Math.min(4, Number(amount) || 1))
+    };
+    state.highlightIndex = null;
+    renderAll();
+  }
+
   function removeCommand(index) {
-    if (state.animating) return;
+    if (state.animating || state.gameOver) return;
     state.commands.splice(index, 1);
     state.highlightIndex = null;
     renderAll();
   }
 
   function clearProgram() {
-    if (state.animating) return;
+    if (state.animating || state.gameOver) return;
     state.commands = [];
     state.highlightIndex = null;
     renderAll();
   }
 
   function executeProgram() {
-    if (state.animating || state.commands.length === 0 || core.isComplete(state.level, state.robot)) {
+    if (
+      state.animating ||
+      state.gameOver ||
+      state.commands.length === 0 ||
+      core.isComplete(state.level, state.robot)
+    ) {
       return;
     }
     state.runCount += 1;
@@ -618,7 +658,7 @@
           duration: 260,
           endsCommand: true
         });
-      } else {
+      } else if (event.command === "turn-left" || event.command === "turn-right") {
         var turnAmount = event.command === "turn-left" ? -Math.PI / 2 : Math.PI / 2;
         steps.push({
           type: "turn",
@@ -629,6 +669,19 @@
           fromAngle: directionAngle(event.from.direction),
           toAngle: directionAngle(event.from.direction) + turnAmount,
           duration: 280,
+          endsCommand: true
+        });
+      } else {
+        steps.push({
+          type: "action",
+          commandIndex: event.commandIndex,
+          event: event,
+          from: {
+            x: event.from.x,
+            y: event.from.y,
+            direction: event.from.direction
+          },
+          duration: event.command === "induct" ? 480 : 380,
           endsCommand: true
         });
       }
@@ -671,6 +724,11 @@
       state.displayPose.y = step.event.from.y;
       state.displayPose.direction = step.from.direction;
       state.displayPose.angle = lerp(step.fromAngle, step.toAngle, eased);
+    } else {
+      state.displayPose.x = step.from.x;
+      state.displayPose.y = step.from.y;
+      state.displayPose.direction = step.from.direction;
+      state.displayPose.angle = directionAngle(step.from.direction);
     }
 
     drawAll();
@@ -679,6 +737,7 @@
       if (step.endsCommand) {
         state.robot = core.cloneState(step.event.after);
         syncDisplayPose();
+        handleExecutionEvent(step.event);
         renderUi();
       }
       animation.index += 1;
@@ -689,6 +748,7 @@
   }
 
   function finishAnimation(result) {
+    if (state.gameOver) return;
     state.robot = core.cloneState(result.finalState);
     syncDisplayPose();
     state.animating = false;
@@ -697,6 +757,7 @@
       result.events.length > 0 ? result.events[result.events.length - 1].commandIndex : null;
 
     if (result.completed) {
+      stopBatteryCountdown();
       var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
       state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
       saveProgress();
@@ -705,6 +766,9 @@
       setMessage("blocked", state.highlightIndex + 1);
     } else if (result.stoppedReason === "out-of-energy") {
       setMessage("depleted");
+    } else if (result.stoppedReason === "invalid-action") {
+      var lastEvent = result.events[result.events.length - 1];
+      setMessage(lastEvent.invalidReason === "battery" ? "invalidBattery" : "invalidInduct");
     } else {
       setMessage("ended");
     }
@@ -712,6 +776,77 @@
     if (result.completed) {
       startCelebration();
     }
+  }
+
+  function handleExecutionEvent(event) {
+    if (event.command !== "battery" || event.collected.length === 0) return;
+    if (core.isComplete(state.level, state.robot)) {
+      stopBatteryCountdown();
+      return;
+    }
+    if (event.before.collected === 0 && state.batteryDeadline === null) {
+      startBatteryCountdown();
+    }
+  }
+
+  function stopBatteryInterval() {
+    if (batteryTimerId !== null) {
+      window.clearInterval(batteryTimerId);
+      batteryTimerId = null;
+    }
+  }
+
+  function stopBatteryCountdown() {
+    stopBatteryInterval();
+    state.batteryDeadline = null;
+    state.batterySecondsRemaining = null;
+  }
+
+  function resetBatteryTimer() {
+    stopBatteryCountdown();
+    state.gameOver = false;
+  }
+
+  function startBatteryCountdown() {
+    var duration = Number(state.level.batterySeconds) || 60;
+    state.batteryDeadline = Date.now() + duration * 1000;
+    state.batterySecondsRemaining = duration;
+    stopBatteryInterval();
+    batteryTimerId = window.setInterval(updateBatteryCountdown, 200);
+    drawAll();
+  }
+
+  function updateBatteryCountdown() {
+    if (state.batteryDeadline === null || state.gameOver) return;
+    if (core.isComplete(state.level, state.robot)) {
+      stopBatteryCountdown();
+      return;
+    }
+
+    var remaining = Math.max(
+      0,
+      Math.ceil((state.batteryDeadline - Date.now()) / 1000)
+    );
+    if (remaining !== state.batterySecondsRemaining) {
+      state.batterySecondsRemaining = remaining;
+      drawAll();
+    }
+    if (remaining <= 0) {
+      triggerBatteryGameOver();
+    }
+  }
+
+  function triggerBatteryGameOver() {
+    stopBatteryInterval();
+    stopCelebration();
+    state.batterySecondsRemaining = 0;
+    state.gameOver = true;
+    state.animating = false;
+    state.animation = null;
+    state.highlightIndex = null;
+    syncDisplayPose();
+    setMessage("batteryDied");
+    renderAll();
   }
 
   function easeInOut(value) {
@@ -971,6 +1106,15 @@
     actors.forEach(function (actor) {
       actor.draw();
     });
+    if (state.batterySecondsRemaining !== null) {
+      state.level.goals.forEach(function (goal, index) {
+        drawBeaconCountdown(
+          cellCenter(goal.x, goal.y, layout),
+          (state.robot.collected & goalMask(index)) !== 0,
+          layout
+        );
+      });
+    }
 
     drawCanvasFinish(size.width, size.height);
   }
@@ -1507,6 +1651,35 @@
     ctx.arc(0, -32, 20, -Math.PI * 0.67, -Math.PI * 0.33);
     ctx.stroke();
     ctx.restore();
+
+  }
+
+  function drawBeaconCountdown(center, collected, layout) {
+    var seconds = state.batterySecondsRemaining;
+    var urgent = seconds <= 10;
+    var width = Math.max(36, Math.min(48, layout.tileW * 0.72));
+    var height = Math.max(17, Math.min(22, layout.tileW * 0.32));
+    var x = center.x - width / 2;
+    var y = center.y - Math.max(42, layout.tileW * 0.84);
+
+    ctx.save();
+    ctx.shadowColor = urgent ? "rgba(239, 92, 92, 0.62)" : "rgba(88, 211, 169, 0.48)";
+    ctx.shadowBlur = urgent ? 12 : 8;
+    ctx.fillStyle = "rgba(27, 34, 30, 0.94)";
+    ctx.fillRect(x, y, width, height);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = urgent ? "#ff6f61" : collected ? "#58d3a9" : "#ffd166";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
+    ctx.fillStyle = urgent ? "#ffb0a8" : "#e5f7c6";
+    ctx.font =
+      "800 " +
+      Math.max(10, Math.min(13, layout.tileW * 0.2)) +
+      "px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(seconds) + "S", center.x, y + height / 2 + 0.5);
+    ctx.restore();
   }
 
   function robotBasis(pose, layout) {
@@ -1920,6 +2093,7 @@
     els.runCount.textContent = String(state.runCount);
     els.bestStars.textContent = starText(bestStarsFor(level));
     renderRunMessage();
+    els.runMessage.parentElement.classList.toggle("is-game-over", state.gameOver);
     els.objectiveStatus.textContent =
       collectedCount(level, state.robot) + " / " + level.goals.length + " " + text("beacons");
     els.energyTarget.textContent = formatEnergy(level.parEnergy);
@@ -1928,14 +2102,23 @@
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
     els.previewToggle.checked = state.preview;
     els.executeProgram.disabled =
-      state.animating || state.commands.length === 0 || core.isComplete(level, state.robot);
-    els.undoCommand.disabled = state.animating || state.commands.length === 0;
-    els.clearProgram.disabled = state.animating || state.commands.length === 0;
+      state.animating ||
+      state.gameOver ||
+      state.commands.length === 0 ||
+      core.isComplete(level, state.robot);
+    els.undoCommand.disabled =
+      state.animating || state.gameOver || state.commands.length === 0;
+    els.clearProgram.disabled =
+      state.animating || state.gameOver || state.commands.length === 0;
     els.resetLevel.disabled = state.animating;
     els.randomLevel.disabled = state.animating;
+    document.querySelectorAll("[data-command], [data-induct-amount]").forEach(function (button) {
+      button.disabled = state.animating || state.gameOver;
+    });
 
     renderLevels();
     renderQueue();
+    renderInductLevels();
   }
 
   function renderLevels() {
@@ -1974,6 +2157,7 @@
       return;
     }
     state.commands.forEach(function (command, index) {
+      var type = core.commandType(command);
       var chip = document.createElement("button");
       chip.className = "queue-chip";
       if (index === state.highlightIndex) {
@@ -1982,13 +2166,26 @@
       chip.type = "button";
       chip.dataset.commandIndex = String(index);
       chip.textContent = core.commandToken(command);
-      chip.title = text("remove") + ": " + uppercase(copy().commands[command]);
+      chip.title = text("remove") + ": " + uppercase(copy().commands[type]);
       chip.setAttribute(
         "aria-label",
-        text("remove") + " " + (index + 1) + ": " + uppercase(copy().commands[command])
+        text("remove") + " " + (index + 1) + ": " + uppercase(copy().commands[type])
       );
-      chip.disabled = state.animating;
+      chip.disabled = state.animating || state.gameOver;
       els.commandQueue.appendChild(chip);
+    });
+  }
+
+  function renderInductLevels() {
+    if (!els.inductLevels) return;
+    var last = state.commands[state.commands.length - 1];
+    var activeAmount =
+      core.commandType(last) === "induct" ? core.normalizeCommand(last).amount : null;
+    els.inductLevels.querySelectorAll("[data-induct-amount]").forEach(function (button) {
+      button.classList.toggle(
+        "is-active",
+        Number(button.dataset.inductAmount) === activeAmount
+      );
     });
   }
 
@@ -2034,6 +2231,7 @@
     els.miniMap.setAttribute("aria-label", text("mapLabel"));
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
     els.celebrationMessage.textContent = text("congratulations");
+    els.inductLevels.setAttribute("aria-label", text("inductPower"));
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -2116,8 +2314,14 @@
     });
   });
 
+  els.inductLevels.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-induct-amount]");
+    if (!button) return;
+    setLastInductAmount(button.dataset.inductAmount);
+  });
+
   els.undoCommand.addEventListener("click", function () {
-    if (!state.animating && state.commands.length > 0) {
+    if (!state.animating && !state.gameOver && state.commands.length > 0) {
       state.commands.pop();
       state.highlightIndex = null;
       renderAll();
@@ -2187,6 +2391,7 @@
       return;
     }
     var key = event.key.toLowerCase();
+    if (state.gameOver && key !== "x") return;
     if (event.key === "ArrowUp" || key === "w" || key === "f") {
       event.preventDefault();
       addCommand("forward");
@@ -2196,6 +2401,15 @@
     } else if (event.key === "ArrowRight" || key === "d" || key === "r") {
       event.preventDefault();
       addCommand("turn-right");
+    } else if (key === "b") {
+      event.preventDefault();
+      addCommand("battery");
+    } else if (key === "i") {
+      event.preventDefault();
+      addCommand({ type: "induct", amount: 1 });
+    } else if (["1", "2", "3", "4"].indexOf(key) !== -1) {
+      event.preventDefault();
+      setLastInductAmount(Number(key));
     } else if (event.key === "Backspace") {
       event.preventDefault();
       if (state.commands.length > 0) {

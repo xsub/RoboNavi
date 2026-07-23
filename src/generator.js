@@ -202,12 +202,13 @@
 
       if (current.x === goal.x && current.y === goal.y) {
         var commands = reconstructProgram(cameFrom, currentKey);
+        commands.push("battery");
         return {
           found: true,
           commands: commands,
           solution: commands.map(core.commandToken).join(""),
           movementEnergy: current.cost,
-          energy: current.cost + core.COSTS.startup,
+          energy: current.cost + core.COSTS.startup + core.COSTS.battery,
           visited: visited
         };
       }

@@ -16,23 +16,27 @@ the whole program.
 - 20 hand-authored levels with progressively larger boards
 - Procedural levels with configurable size, route count, and wall density
 - Dijkstra validation and A* reference programs for generated boards
-- Forward, left, and right command programming
+- Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, walls, sand, ice, charging stations, and signal beacons
 - Optional route preview without a ghost robot
 - Energy and execution targets with three-star scoring
 - Full-screen confetti celebration after the final beacon
+- A 60-second beacon-network countdown after the first battery is installed
 - English and Polish interface
 - Desktop and mobile layouts
 - Local progress saved in the browser
 
 ## Controls
 
-- `LEFT`, `FORWARD`, `RIGHT`: add a command
+- `<`, `^`, `>`: add turn-left, forward, and turn-right commands
+- `B`: install a battery while standing on an unfinished beacon
+- `I`: inductively charge while standing on a charging station (`I1` by default)
+- `1`-`4` after `I`: invest 1-4 energy and receive 3, 5, 7, or 9 energy
 - `UNDO`: remove the last command
 - `CLEAR`: empty the command queue
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
-- Keyboard: `L`, `F`, `R`, arrow keys, `Backspace`, `Enter`, `C` to clear
+- Keyboard: `L`, `F`, `R`, `B`, `I`, `1`-`4`, arrow keys, `Backspace`, `Enter`, `C` to clear
   the program, and `X` to reset the level
 
 ## Local Development
