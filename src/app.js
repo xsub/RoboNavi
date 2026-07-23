@@ -81,7 +81,7 @@
       helpObjectiveTitle: "Restore the beacon",
       helpObjectiveText: "Reach each beacon and install its battery with B before the 60-second timer expires.",
       helpProgramTitle: "Build a program",
-      helpProgramText: "Add turns and forward moves, then execute the sequence. C clears it; X resets the level.",
+      helpProgramText: "Add commands, then execute the sequence. Z undoes, C clears, and X resets the level.",
       helpEnergyTitle: "Plan before running",
       helpEnergyText: "Every run has a startup cost. Longer, correct programs save energy.",
       helpTerrainTitle: "Read the terrain",
@@ -243,7 +243,7 @@
       helpObjectiveTitle: "Uruchom nadajnik",
       helpObjectiveText: "Dotrzyj do każdego nadajnika i zainstaluj baterię klawiszem B przed upływem 60 sekund.",
       helpProgramTitle: "Zbuduj program",
-      helpProgramText: "Dodaj skręty i ruchy naprzód, a potem uruchom sekwencję. C ją czyści, a X resetuje poziom.",
+      helpProgramText: "Dodaj komendy i uruchom sekwencję. Z cofa, C czyści, a X resetuje poziom.",
       helpEnergyTitle: "Planuj przed startem",
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Dłuższy poprawny program oszczędza energię.",
       helpTerrainTitle: "Czytaj teren",
@@ -2410,7 +2410,7 @@
     } else if (["1", "2", "3", "4"].indexOf(key) !== -1) {
       event.preventDefault();
       setLastInductAmount(Number(key));
-    } else if (event.key === "Backspace") {
+    } else if (event.key === "Backspace" || key === "z") {
       event.preventDefault();
       if (state.commands.length > 0) {
         state.commands.pop();

@@ -36,8 +36,8 @@ the whole program.
 - `CLEAR`: empty the command queue
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
-- Keyboard: `L`, `F`, `R`, `B`, `I`, `1`-`4`, arrow keys, `Backspace`, `Enter`, `C` to clear
-  the program, and `X` to reset the level
+- Keyboard: `L`, `F`, `R`, `B`, `I`, `1`-`4`, arrow keys, `Z` or `Backspace`
+  to undo, `Enter` to execute, `C` to clear, and `X` to reset the level
 
 ## Local Development
 
