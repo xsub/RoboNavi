@@ -4,34 +4,23 @@
   var core = window.RoboNaviCore;
   var storageKey = "robonavi-progress-v1";
   var terrainColors = {
-    floor: { top: "#bfe3de", edge: "#8bbeb8", detail: "#effcf8", low: "#a8d3cd" },
+    floor: { top: "#b9dfea", edge: "#7facbd", detail: "#eefbff", low: "#9fcbd9" },
     sand: { top: "#f1d78f", edge: "#d1ae62", detail: "#fff3c5", low: "#dfc276" },
     ice: { top: "#a7dded", edge: "#72b8ce", detail: "#effcff", low: "#8bcedf" },
-    charger: { top: "#9fe0bf", edge: "#65b28c", detail: "#edfff4", low: "#82cda6" },
-    wall: { top: "#b8d8ee", edge: "#7ea6c4", detail: "#eef8ff", low: "#99bdd7" }
+    charger: { top: "#ecc5d9", edge: "#b67f9f", detail: "#fff2f8", low: "#d8abc3" },
+    wall: { top: "#bde5d0", edge: "#78aa8e", detail: "#f0fff7", low: "#9fcdb4" }
   };
   var floorPalettes = [
     { top: "#b9dfe9", edge: "#86b8c5", detail: "#eefbff", low: "#a2cfd9" },
-    { top: "#bce5d1", edge: "#89bfa3", detail: "#f1fff7", low: "#a6d4bb" },
-    { top: "#ecc9dc", edge: "#c394ad", detail: "#fff1f8", low: "#d9b2c8" }
+    { top: "#c8e7f0", edge: "#91bdca", detail: "#f4fcff", low: "#afd5df" }
   ];
+  var interestPalette = {
+    top: "#ecc5d9",
+    edge: "#b67f9f",
+    detail: "#fff2f8",
+    low: "#d8abc3"
+  };
   var wallPalettes = [
-    {
-      top: "#b8d8ee",
-      detail: "#eff8ff",
-      low: "#9ebfd8",
-      edge: "#799dbc",
-      right: "#7fa6c5",
-      left: "#98bad2"
-    },
-    {
-      top: "#edc5d9",
-      detail: "#fff2f8",
-      low: "#d8abc3",
-      edge: "#b67f9f",
-      right: "#b7809f",
-      left: "#cf9fba"
-    },
     {
       top: "#bde5d0",
       detail: "#f0fff7",
@@ -41,10 +30,246 @@
       left: "#91bca4"
     }
   ];
-  var commandNames = {
-    forward: "Forward",
-    "turn-left": "Left",
-    "turn-right": "Right"
+  var languageStorageKey = "robonavi-language-v1";
+  var translations = {
+    en: {
+      controlSystem: "ROBOT CONTROL SYSTEM",
+      mission: "Mission",
+      help: "Help",
+      energy: "Energy",
+      runs: "Runs",
+      best: "Best",
+      levels: "Levels",
+      reset: "Reset",
+      program: "Program",
+      shadow: "Shadow",
+      undo: "Undo",
+      clear: "Clear",
+      execute: "Execute",
+      energyTarget: "Energy target",
+      runTarget: "Run target",
+      facing: "Facing",
+      empty: "Empty",
+      beacons: "beacons",
+      loadLevel: "Load level",
+      remove: "Remove",
+      addCommand: "Add command",
+      closeHelp: "Close help",
+      language: "Language",
+      boardLabel: "Game board",
+      canvasLabel: "Isometric puzzle board",
+      mapLabel: "Top-down map",
+      controlsLabel: "Command controls",
+      helpTitle: "Robot operator guide",
+      helpObjectiveTitle: "Restore the beacon",
+      helpObjectiveText: "Queue a route that guides the robot to every beacon.",
+      helpProgramTitle: "Build a program",
+      helpProgramText: "Add turns and forward moves, then execute the whole sequence.",
+      helpEnergyTitle: "Plan before running",
+      helpEnergyText: "Every run has a startup cost. Longer, correct programs save energy.",
+      helpTerrainTitle: "Read the terrain",
+      helpTerrainText: "Sand costs more, ice keeps the robot sliding, and chargers restore power.",
+      commands: {
+        forward: "Forward",
+        "turn-left": "Turn left",
+        "turn-right": "Turn right"
+      },
+      commandLabels: {
+        forward: "Forward",
+        "turn-left": "Left",
+        "turn-right": "Right"
+      },
+      directions: { north: "N", east: "E", south: "S", west: "W" },
+      messages: {
+        ready: "Ready",
+        executing: "Executing",
+        completed: "Beacon network restored: {value}",
+        blocked: "Blocked at command {value}",
+        depleted: "Energy depleted",
+        ended: "Program ended"
+      },
+      levelData: {
+        "wake-beacon": {
+          name: "Wake Beacon",
+          subtitle: "A straight path to the first signal."
+        },
+        "right-angle": {
+          name: "Right Angle",
+          subtitle: "One corner, one clean route."
+        },
+        "soft-shortcut": {
+          name: "Soft Shortcut",
+          subtitle: "Sand is predictable, but hungry."
+        },
+        "ice-slide": {
+          name: "Ice Slide",
+          subtitle: "A tile can move more than expected."
+        },
+        "outer-maze": {
+          name: "Outer Maze",
+          subtitle: "A wall keeps the simple path honest."
+        },
+        "long-corner": {
+          name: "Long Corner",
+          subtitle: "The same turn from a different heading."
+        },
+        "two-beacons": {
+          name: "Two Beacons",
+          subtitle: "A route can collect more than one signal."
+        },
+        "charge-crossing": {
+          name: "Charge Crossing",
+          subtitle: "The station turns a tight plan into a possible one."
+        },
+        "ice-rail": {
+          name: "Ice Rail",
+          subtitle: "A short command can cross a long strip."
+        },
+        "signal-run": {
+          name: "Signal Run",
+          subtitle: "A quiet perimeter route around rough ground."
+        },
+        "zigzag-relay": {
+          name: "Zigzag Relay",
+          subtitle: "Four signals trace a narrow switching route."
+        },
+        "sand-divide": {
+          name: "Sand Divide",
+          subtitle: "A long relay where every rough tile matters."
+        },
+        "ice-junction": {
+          name: "Ice Junction",
+          subtitle: "Chain three slides and stop on the right cells."
+        },
+        "charge-relay": {
+          name: "Charge Relay",
+          subtitle: "The route is longer than one battery can survive."
+        },
+        "final-network": {
+          name: "Final Network",
+          subtitle: "A full-system route through every known terrain."
+        }
+      }
+    },
+    pl: {
+      controlSystem: "SYSTEM STEROWANIA ROBOTEM",
+      mission: "Misja",
+      help: "Pomoc",
+      energy: "Energia",
+      runs: "Uruchomienia",
+      best: "Najlepiej",
+      levels: "Poziomy",
+      reset: "Resetuj",
+      program: "Program",
+      shadow: "Podgląd",
+      undo: "Cofnij",
+      clear: "Wyczyść",
+      execute: "Uruchom",
+      energyTarget: "Cel energii",
+      runTarget: "Cel uruchomień",
+      facing: "Kierunek",
+      empty: "Pusto",
+      beacons: "nadajniki",
+      loadLevel: "Wczytaj poziom",
+      remove: "Usuń",
+      addCommand: "Dodaj komendę",
+      closeHelp: "Zamknij pomoc",
+      language: "Język",
+      boardLabel: "Plansza gry",
+      canvasLabel: "Izometryczna plansza logiczna",
+      mapLabel: "Mapa z góry",
+      controlsLabel: "Panel komend",
+      helpTitle: "Przewodnik operatora robota",
+      helpObjectiveTitle: "Uruchom nadajnik",
+      helpObjectiveText: "Zaprogramuj trasę, która doprowadzi robota do każdego nadajnika.",
+      helpProgramTitle: "Zbuduj program",
+      helpProgramText: "Dodaj skręty i ruchy naprzód, a następnie uruchom całą sekwencję.",
+      helpEnergyTitle: "Planuj przed startem",
+      helpEnergyText: "Każde uruchomienie ma koszt startowy. Dłuższy poprawny program oszczędza energię.",
+      helpTerrainTitle: "Czytaj teren",
+      helpTerrainText: "Piasek kosztuje więcej, lód przesuwa robota dalej, a ładowarki odnawiają energię.",
+      commands: {
+        forward: "Naprzód",
+        "turn-left": "Skręt w lewo",
+        "turn-right": "Skręt w prawo"
+      },
+      commandLabels: {
+        forward: "Naprzód",
+        "turn-left": "Lewo",
+        "turn-right": "Prawo"
+      },
+      directions: { north: "PŁN", east: "WSCH", south: "PŁD", west: "ZACH" },
+      messages: {
+        ready: "Gotowy",
+        executing: "Wykonywanie",
+        completed: "Sieć nadajników uruchomiona: {value}",
+        blocked: "Blokada przy komendzie {value}",
+        depleted: "Brak energii",
+        ended: "Program zakończony"
+      },
+      levelData: {
+        "wake-beacon": {
+          name: "Uruchom nadajnik",
+          subtitle: "Prosta droga do pierwszego sygnału."
+        },
+        "right-angle": {
+          name: "Kąt prosty",
+          subtitle: "Jeden zakręt, jedna czysta trasa."
+        },
+        "soft-shortcut": {
+          name: "Miękki skrót",
+          subtitle: "Piasek jest przewidywalny, ale zużywa energię."
+        },
+        "ice-slide": {
+          name: "Ślizg po lodzie",
+          subtitle: "Jedno pole może przesunąć robota dalej, niż oczekujesz."
+        },
+        "outer-maze": {
+          name: "Zewnętrzny labirynt",
+          subtitle: "Ściana wymusza uważne planowanie trasy."
+        },
+        "long-corner": {
+          name: "Długi zakręt",
+          subtitle: "Ten sam skręt z innego kierunku."
+        },
+        "two-beacons": {
+          name: "Dwa nadajniki",
+          subtitle: "Jedna trasa może zebrać więcej niż jeden sygnał."
+        },
+        "charge-crossing": {
+          name: "Przez ładowarkę",
+          subtitle: "Stacja ładowania umożliwia wykonanie ciasnego planu."
+        },
+        "ice-rail": {
+          name: "Lodowy tor",
+          subtitle: "Krótka komenda może pokonać długi odcinek."
+        },
+        "signal-run": {
+          name: "Bieg po sygnał",
+          subtitle: "Spokojna trasa obrzeżem, omijająca trudny teren."
+        },
+        "zigzag-relay": {
+          name: "Przekaźnikowy zygzak",
+          subtitle: "Cztery sygnały wyznaczają wąską trasę pełną zakrętów."
+        },
+        "sand-divide": {
+          name: "Piaskowy podział",
+          subtitle: "Długa sztafeta, w której liczy się każde trudne pole."
+        },
+        "ice-junction": {
+          name: "Lodowy węzeł",
+          subtitle: "Połącz trzy ślizgi i zatrzymaj się na właściwych polach."
+        },
+        "charge-relay": {
+          name: "Sztafeta ładowania",
+          subtitle: "Trasa jest dłuższa, niż wytrzyma pojedyncza bateria."
+        },
+        "final-network": {
+          name: "Pełna sieć",
+          subtitle: "Trasa przez wszystkie poznane rodzaje terenu."
+        }
+      }
+    }
   };
 
   var els = {
@@ -66,7 +291,13 @@
     executeProgram: document.getElementById("execute-program"),
     energyTarget: document.getElementById("energy-target"),
     runTarget: document.getElementById("run-target"),
-    facingValue: document.getElementById("facing-value")
+    facingValue: document.getElementById("facing-value"),
+    helpButton: document.getElementById("help-button"),
+    helpDialog: document.getElementById("help-dialog"),
+    closeHelp: document.getElementById("close-help"),
+    languageSwitch: document.querySelector(".language-switch"),
+    boardPanel: document.querySelector(".board-panel"),
+    controlPanel: document.querySelector(".control-panel")
   };
 
   var ctx = els.canvas.getContext("2d");
@@ -82,9 +313,20 @@
     highlightIndex: null,
     animating: false,
     animation: null,
-    message: "Ready",
+    language: loadLanguage(),
+    messageKey: "ready",
+    messageValue: null,
     progress: loadProgress()
   };
+
+  function loadLanguage() {
+    try {
+      var saved = localStorage.getItem(languageStorageKey);
+      return saved === "pl" ? "pl" : "en";
+    } catch (error) {
+      return "en";
+    }
+  }
 
   function loadProgress() {
     try {
@@ -98,12 +340,63 @@
     localStorage.setItem(storageKey, JSON.stringify(state.progress));
   }
 
+  function copy() {
+    return translations[state.language];
+  }
+
+  function uppercase(value) {
+    return String(value).toLocaleUpperCase(state.language === "pl" ? "pl-PL" : "en-US");
+  }
+
+  function text(key) {
+    return uppercase(copy()[key] || translations.en[key] || key);
+  }
+
+  function setMessage(key, value) {
+    state.messageKey = key;
+    state.messageValue = value == null ? null : String(value);
+  }
+
+  function messageText() {
+    var template = copy().messages[state.messageKey] || state.messageKey;
+    return uppercase(template.replace("{value}", state.messageValue || ""));
+  }
+
+  function localizedLevel(level) {
+    var levelCopy = copy().levelData[level.id] || {
+      name: level.name,
+      subtitle: level.subtitle
+    };
+    return {
+      name: uppercase(levelCopy.name),
+      subtitle: uppercase(levelCopy.subtitle)
+    };
+  }
+
   function bestStarsFor(level) {
     return state.progress[level.id] || 0;
   }
 
   function starText(stars) {
-    return "*".repeat(stars) + "-".repeat(3 - stars);
+    return "★".repeat(stars) + "☆".repeat(3 - stars);
+  }
+
+  function renderRunMessage() {
+    var template = copy().messages[state.messageKey] || state.messageKey;
+    if (state.messageKey !== "completed" || template.indexOf("{value}") === -1) {
+      els.runMessage.textContent = messageText();
+      return;
+    }
+
+    var parts = template.split("{value}");
+    var stars = document.createElement("span");
+    stars.className = "message-stars";
+    stars.textContent = state.messageValue || "";
+    els.runMessage.textContent = uppercase(parts[0]);
+    els.runMessage.appendChild(stars);
+    if (parts[1]) {
+      els.runMessage.appendChild(document.createTextNode(uppercase(parts[1])));
+    }
   }
 
   function syncDisplayPose() {
@@ -123,7 +416,7 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
-    state.message = "Ready";
+    setMessage("ready");
     syncDisplayPose();
     renderAll();
   }
@@ -134,7 +427,7 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
-    state.message = "Ready";
+    setMessage("ready");
     if (!keepProgram) {
       state.commands = [];
     }
@@ -146,7 +439,7 @@
     if (state.animating) return;
     state.commands.push(command);
     state.highlightIndex = null;
-    state.message = "Ready";
+    setMessage("ready");
     renderAll();
   }
 
@@ -172,7 +465,7 @@
     };
     state.animating = true;
     state.highlightIndex = null;
-    state.message = "Executing";
+    setMessage("executing");
     renderUi();
     window.requestAnimationFrame(tickAnimation);
   }
@@ -281,13 +574,13 @@
       var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
       state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
       saveProgress();
-      state.message = "Beacon network restored: " + starText(stars);
+      setMessage("completed", starText(stars));
     } else if (result.stoppedReason === "collision") {
-      state.message = "Blocked at command " + (state.highlightIndex + 1);
+      setMessage("blocked", state.highlightIndex + 1);
     } else if (result.stoppedReason === "out-of-energy") {
-      state.message = "Energy depleted";
+      setMessage("depleted");
     } else {
-      state.message = "Program ended";
+      setMessage("ended");
     }
     renderAll();
   }
@@ -314,12 +607,14 @@
   }
 
   function metrics(width, height, level) {
+    var boardSpan = level.width + level.height;
+    var isoRatio = 0.54;
     var tileW = Math.min(
-      (width - 72) * 2 / (level.width + level.height),
-      (height - 108) * 2 / (level.width + level.height)
+      (width - 56) * 2 / boardSpan,
+      (height - 84) * 2 / (boardSpan * isoRatio)
     );
-    tileW = Math.max(28, Math.min(72, tileW));
-    var tileH = tileW * 0.54;
+    tileW = Math.max(32, Math.min(140, tileW));
+    var tileH = tileW * isoRatio;
     return {
       tileW: tileW,
       tileH: tileH,
@@ -501,10 +796,10 @@
 
   function tilePath(x, y, layout, lift) {
     var z = lift || 0;
-    var top = project({ x: x + 0.5, y: y }, layout);
-    var right = project({ x: x + 1, y: y + 0.5 }, layout);
-    var bottom = project({ x: x + 0.5, y: y + 1 }, layout);
-    var left = project({ x: x, y: y + 0.5 }, layout);
+    var top = project({ x: x, y: y }, layout);
+    var right = project({ x: x + 1, y: y }, layout);
+    var bottom = project({ x: x + 1, y: y + 1 }, layout);
+    var left = project({ x: x, y: y + 1 }, layout);
     return [
       { x: top.x, y: top.y - z },
       { x: right.x, y: right.y - z },
@@ -573,8 +868,16 @@
   }
 
   function drawTile(x, y, terrain, layout) {
-    var colors =
-      terrain === "floor" ? floorPalettes[(x + y * 2) % floorPalettes.length] : terrainColors[terrain];
+    var isInterest =
+      terrain === "charger" ||
+      state.level.goals.some(function (goal) {
+        return goal.x === x && goal.y === y;
+      });
+    var colors = isInterest
+      ? interestPalette
+      : terrain === "floor"
+        ? floorPalettes[(x + y * 2) % floorPalettes.length]
+        : terrainColors[terrain];
     var points = tilePath(x, y, layout, 0);
     drawDiamond(points, colors.edge, "rgba(77, 119, 126, 0.46)");
     var face = insetPoints(points, 0.055);
@@ -707,23 +1010,26 @@
 
   function drawWall(x, y, layout) {
     var colors = wallPalettes[(x * 2 + y) % wallPalettes.length];
-    var lift = Math.max(8, Math.min(14, layout.tileW * 0.19));
+    var lift = Math.max(8, Math.min(26, layout.tileW * 0.19));
     var top = tilePath(x, y, layout, lift);
     var base = tilePath(x, y, layout, 0);
     var rightFace = [base[1], base[2], top[2], top[1]];
     var leftFace = [base[2], base[3], top[3], top[2]];
-    drawPolygon(rightFace, colors.right, colors.edge, 1);
-    drawPolygon(leftFace, colors.left, colors.edge, 1);
-    drawDiamond(top, surfaceGradient(top, colors), colors.edge);
-    drawDiamond(
+    var outlineColor = "rgba(31, 38, 39, 0.58)";
+    var outlineWidth = Math.max(1.1, layout.tileW * 0.016);
+    drawPolygon(rightFace, colors.right, outlineColor, outlineWidth);
+    drawPolygon(leftFace, colors.left, outlineColor, outlineWidth);
+    drawPolygon(top, surfaceGradient(top, colors), outlineColor, outlineWidth);
+    drawPolygon(
       insetPoints(top, 0.13),
       "rgba(255, 255, 255, 0.15)",
-      "rgba(255, 255, 255, 0.38)"
+      "rgba(31, 38, 39, 0.34)",
+      Math.max(0.8, layout.tileW * 0.01)
     );
 
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.38)";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(31, 38, 39, 0.38)";
+    ctx.lineWidth = Math.max(0.8, layout.tileW * 0.009);
     ctx.beginPath();
     ctx.moveTo(lerp(base[1].x, base[2].x, 0.16), lerp(base[1].y, base[2].y, 0.16));
     ctx.lineTo(lerp(top[1].x, top[2].x, 0.16), lerp(top[1].y, top[2].y, 0.16));
@@ -789,11 +1095,6 @@
       ctx.restore();
     }
 
-    var ghost = preview.finalState;
-    if (!core.isComplete(state.level, state.robot)) {
-      drawGhostRobot({ x: ghost.x, y: ghost.y, direction: ghost.direction }, layout);
-    }
-
     if (collisionPoint) {
       ctx.save();
       ctx.strokeStyle = "rgba(232, 111, 161, 0.9)";
@@ -815,9 +1116,10 @@
   function drawGoal(goal, index, layout) {
     var center = cellCenter(goal.x, goal.y, layout);
     var collected = (state.robot.collected & goalMask(index)) !== 0;
-    var signal = collected ? "#58c9a3" : "#ea8bb6";
-    var signalBright = collected ? "#e8fff4" : "#ffe8f3";
-    var scale = Math.max(0.72, Math.min(1.05, layout.tileW / 66));
+    var baseAccent = collected ? "#58c9a3" : "#5aaec4";
+    var signal = "#f4b83f";
+    var signalBright = "#fff7b2";
+    var scale = Math.max(0.84, Math.min(2.05, layout.tileW / 60));
 
     ctx.save();
     ctx.translate(center.x, center.y);
@@ -825,68 +1127,86 @@
 
     ctx.fillStyle = "rgba(31, 37, 40, 0.2)";
     ctx.beginPath();
-    ctx.ellipse(0, 5, 17, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 6, 19, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
     drawPolygon(
       [
         { x: 0, y: -4 },
-        { x: 15, y: 2 },
-        { x: 0, y: 9 },
-        { x: -15, y: 2 }
+        { x: 17, y: 3 },
+        { x: 0, y: 11 },
+        { x: -17, y: 3 }
       ],
-      "#729aaa",
-      "#4f7887",
-      1.4
+      "#547b88",
+      "#345b68",
+      1.6
     );
     drawPolygon(
       [
-        { x: 0, y: -6 },
-        { x: 12, y: -1 },
-        { x: 0, y: 5 },
-        { x: -12, y: -1 }
+        { x: 0, y: -7 },
+        { x: 14, y: -1 },
+        { x: 0, y: 6 },
+        { x: -14, y: -1 }
       ],
-      "#b8dfea",
-      "#6f9eac",
-      1.2
+      baseAccent,
+      "#426f7b",
+      1.4
     );
 
-    ctx.fillStyle = "#79aaa9";
-    ctx.strokeStyle = "#4f7f83";
-    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "#7aaeb4";
+    ctx.strokeStyle = "#3f6974";
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(-5, -2);
-    ctx.lineTo(-3.5, -26);
-    ctx.lineTo(3.5, -26);
-    ctx.lineTo(5, -2);
+    ctx.moveTo(-6, -2);
+    ctx.lineTo(-4.5, -27);
+    ctx.lineTo(4.5, -27);
+    ctx.lineTo(6, -2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = signal;
-    ctx.fillRect(-4.2, -17, 8.4, 3);
-    ctx.fillStyle = "#527d84";
-    ctx.fillRect(-3.1, -11, 6.2, 2);
+    ctx.fillStyle = baseAccent;
+    ctx.fillRect(-5, -18, 10, 4);
+    ctx.fillStyle = "#406a75";
+    ctx.fillRect(-3.8, -11, 7.6, 2.5);
+
+    ctx.fillStyle = "#486d78";
+    ctx.strokeStyle = "#315560";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-9, -27);
+    ctx.lineTo(-6, -36);
+    ctx.lineTo(6, -36);
+    ctx.lineTo(9, -27);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 
     ctx.save();
     ctx.shadowColor = signal;
-    ctx.shadowBlur = collected ? 16 : 12;
+    ctx.shadowBlur = 20;
     ctx.fillStyle = signal;
     ctx.beginPath();
-    ctx.arc(0, -29, 7, 0, Math.PI * 2);
+    ctx.arc(0, -32, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = signalBright;
     ctx.beginPath();
-    ctx.arc(-1.5, -31, 3, 0, Math.PI * 2);
+    ctx.arc(-2, -34, 4.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle = collected ? "rgba(88, 201, 163, 0.55)" : "rgba(234, 139, 182, 0.56)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "rgba(244, 184, 63, 0.72)";
+    ctx.lineWidth = 1.7;
     ctx.beginPath();
-    ctx.arc(0, -29, 13, -Math.PI * 0.72, -Math.PI * 0.28);
-    ctx.arc(0, -29, 18, -Math.PI * 0.68, -Math.PI * 0.32);
+    ctx.moveTo(-15, -32);
+    ctx.lineTo(-11, -32);
+    ctx.moveTo(11, -32);
+    ctx.lineTo(15, -32);
+    ctx.moveTo(0, -47);
+    ctx.lineTo(0, -43);
+    ctx.arc(0, -32, 15, -Math.PI * 0.72, -Math.PI * 0.28);
+    ctx.arc(0, -32, 20, -Math.PI * 0.67, -Math.PI * 0.33);
     ctx.stroke();
     ctx.restore();
   }
@@ -1028,7 +1348,7 @@
     var shoulder = robotPoint(basis, 0, side * 12, 29);
     var elbow = robotPoint(basis, 1, side * 17, 23);
     var hand = robotPoint(basis, 7, side * 18, 18);
-    ctx.strokeStyle = "#4f7e87";
+    ctx.strokeStyle = "#9b5c43";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 6;
@@ -1037,13 +1357,13 @@
     ctx.lineTo(elbow.x, elbow.y);
     ctx.lineTo(hand.x, hand.y);
     ctx.stroke();
-    ctx.strokeStyle = "#a9d9d1";
+    ctx.strokeStyle = "#f2b06a";
     ctx.lineWidth = 3;
     ctx.stroke();
 
     [shoulder, elbow].forEach(function (joint) {
-      ctx.fillStyle = "#ed8db7";
-      ctx.strokeStyle = "#5f8590";
+      ctx.fillStyle = "#e95858";
+      ctx.strokeStyle = "#8f4646";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.arc(joint.x, joint.y, 3.4, 0, Math.PI * 2);
@@ -1051,7 +1371,7 @@
       ctx.stroke();
     });
 
-    ctx.strokeStyle = "#547d87";
+    ctx.strokeStyle = "#9b5c43";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(hand.x, hand.y);
@@ -1101,7 +1421,7 @@
 
   function drawRobot(pose, layout) {
     var basis = robotBasis(pose, layout);
-    var scale = Math.max(0.7, Math.min(1.06, layout.tileW / 64));
+    var scale = Math.max(0.7, Math.min(1.9, layout.tileW / 64));
 
     ctx.save();
     ctx.translate(basis.center.x, basis.center.y);
@@ -1124,11 +1444,11 @@
       basis,
       { forward: 0, side: 0, halfForward: 13, halfSide: 15, bottom: 10, top: 18 },
       {
-        top: "#dff5f7",
-        front: "#a9ddd7",
-        back: "#91cbc5",
-        side: "#82bdb9",
-        stroke: "#56858b"
+        top: "#ffe0b2",
+        front: "#f2b46e",
+        back: "#eaa25c",
+        side: "#dc8e4d",
+        stroke: "#9c6445"
       }
     );
 
@@ -1144,20 +1464,20 @@
       basis,
       { forward: -1, side: 0, halfForward: 9, halfSide: 11, bottom: 18, top: 35 },
       {
-        top: "#f7e4ee",
-        front: "#e9b9d0",
-        back: "#d7a8c0",
-        side: "#c99ab4",
-        stroke: "#9c718c"
+        top: "#ffd39b",
+        front: "#f2a75e",
+        back: "#e6934b",
+        side: "#d9833f",
+        stroke: "#9b5d3c"
       }
     );
 
     var chestLight = robotPoint(basis, 8.4, 0, 26);
     if (basis.uy > 0) {
       ctx.save();
-      ctx.shadowColor = "#58c9a3";
+      ctx.shadowColor = "#e95858";
       ctx.shadowBlur = 6;
-      ctx.fillStyle = "#a8f0d2";
+      ctx.fillStyle = "#ff7770";
       ctx.beginPath();
       ctx.arc(chestLight.x, chestLight.y, 2.4, 0, Math.PI * 2);
       ctx.fill();
@@ -1179,11 +1499,11 @@
       basis,
       { forward: 0, side: 0, halfForward: 7, halfSide: 10, bottom: 39, top: 54 },
       {
-        top: "#edf8ff",
-        front: "#b9dff0",
-        back: "#a4cce0",
-        side: "#91bfd4",
-        stroke: "#668fa5"
+        top: "#fff0d7",
+        front: "#f7c180",
+        back: "#eeb06d",
+        side: "#dd9958",
+        stroke: "#9b6644"
       }
     );
     drawRobotFace(basis);
@@ -1191,61 +1511,23 @@
     var arrowTip = robotPoint(basis, 5.4, 0, 54.5);
     var arrowLeft = robotPoint(basis, -2.2, -4.2, 54.5);
     var arrowRight = robotPoint(basis, -2.2, 4.2, 54.5);
-    drawPolygon([arrowTip, arrowLeft, arrowRight], "#ed8db7", "#9d6681", 1);
+    drawPolygon([arrowTip, arrowLeft, arrowRight], "#e95858", "#8e4242", 1);
 
     var antennaBase = robotPoint(basis, -1.8, -2.5, 54);
-    ctx.strokeStyle = "#557f8a";
+    ctx.strokeStyle = "#934747";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(antennaBase.x, antennaBase.y);
     ctx.lineTo(antennaBase.x - 1, antennaBase.y - 10);
     ctx.stroke();
     ctx.save();
-    ctx.shadowColor = "#ed7fab";
+    ctx.shadowColor = "#ef5350";
     ctx.shadowBlur = 7;
-    ctx.fillStyle = "#f29cc0";
+    ctx.fillStyle = "#ff625d";
     ctx.beginPath();
     ctx.arc(antennaBase.x - 1, antennaBase.y - 11.5, 2.8, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    ctx.restore();
-  }
-
-  function drawGhostRobot(pose, layout) {
-    var basis = robotBasis(pose, layout);
-    var scale = Math.max(0.7, Math.min(1.06, layout.tileW / 64));
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.translate(basis.center.x, basis.center.y);
-    ctx.scale(scale, scale);
-    ctx.shadowColor = "#40b8a6";
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = "#40b8a6";
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 20, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    drawRobotPrism(
-      basis,
-      { forward: 0, side: 0, halfForward: 12, halfSide: 14, bottom: 8, top: 18 },
-      {
-        top: "#d8ffe8",
-        front: "#40b8a6",
-        back: "#319989",
-        side: "#217c75",
-        stroke: "#dcffe8"
-      }
-    );
-    drawRobotPrism(
-      basis,
-      { forward: 0, side: 0, halfForward: 7, halfSide: 10, bottom: 34, top: 51 },
-      {
-        top: "#effff4",
-        front: "#70d8c5",
-        back: "#40b8a6",
-        side: "#319989",
-        stroke: "#dcffe8"
-      }
-    );
     ctx.restore();
   }
 
@@ -1279,7 +1561,7 @@
     var size = ensureCanvasSize(els.miniMap, mapCtx);
     var level = state.level;
     mapCtx.clearRect(0, 0, size.width, size.height);
-    mapCtx.fillStyle = "rgba(255, 250, 240, 0.9)";
+    mapCtx.fillStyle = "rgba(246, 247, 250, 0.94)";
     mapCtx.fillRect(0, 0, size.width, size.height);
 
     var pad = 10;
@@ -1296,7 +1578,7 @@
 
     level.goals.forEach(function (goal, index) {
       var collected = (state.robot.collected & goalMask(index)) !== 0;
-      mapCtx.fillStyle = collected ? "#40b8a6" : "#d9a64b";
+      mapCtx.fillStyle = collected ? "#58c9a3" : "#f4b83f";
       mapCtx.beginPath();
       mapCtx.arc(offsetX + (goal.x + 0.5) * cell, offsetY + (goal.y + 0.5) * cell, cell * 0.28, 0, Math.PI * 2);
       mapCtx.fill();
@@ -1305,7 +1587,7 @@
     var robotX = offsetX + (state.displayPose.x + 0.5) * cell;
     var robotY = offsetY + (state.displayPose.y + 0.5) * cell;
     var delta = core.DIR_DELTA[state.displayPose.direction];
-    mapCtx.fillStyle = "#30343b";
+    mapCtx.fillStyle = "#c96f38";
     mapCtx.beginPath();
     mapCtx.moveTo(robotX + delta.x * cell * 0.42, robotY + delta.y * cell * 0.42);
     mapCtx.lineTo(robotX - delta.y * cell * 0.3 - delta.x * cell * 0.25, robotY + delta.x * cell * 0.3 - delta.y * cell * 0.25);
@@ -1321,18 +1603,21 @@
 
   function renderUi() {
     var level = state.level;
-    els.levelName.textContent = String(state.levelIndex + 1).padStart(2, "0") + " " + level.name;
-    els.levelSubtitle.textContent = level.subtitle;
+    var levelCopy = localizedLevel(level);
+    els.levelName.textContent =
+      String(state.levelIndex + 1).padStart(2, "0") + " " + levelCopy.name;
+    els.levelSubtitle.textContent = levelCopy.subtitle;
     els.energyValue.textContent =
       formatEnergy(state.robot.energyRemaining) + " / " + formatEnergy(level.energyMax);
     els.runCount.textContent = String(state.runCount);
     els.bestStars.textContent = starText(bestStarsFor(level));
-    els.runMessage.textContent = state.message;
+    renderRunMessage();
     els.objectiveStatus.textContent =
-      collectedCount(level, state.robot) + " / " + level.goals.length + " beacons";
+      collectedCount(level, state.robot) + " / " + level.goals.length + " " + text("beacons");
     els.energyTarget.textContent = formatEnergy(level.parEnergy);
     els.runTarget.textContent = String(level.parRuns);
-    els.facingValue.textContent = core.DIR_LABEL[state.robot.direction];
+    els.facingValue.textContent =
+      uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
     els.previewToggle.checked = state.preview;
     els.executeProgram.disabled =
       state.animating || state.commands.length === 0 || core.isComplete(level, state.robot);
@@ -1347,6 +1632,7 @@
   function renderLevels() {
     els.levelList.innerHTML = "";
     core.LEVELS.forEach(function (level, index) {
+      var levelCopy = localizedLevel(level);
       var button = document.createElement("button");
       button.className = "level-button";
       if (index === state.levelIndex) {
@@ -1354,7 +1640,10 @@
       }
       button.type = "button";
       button.dataset.levelIndex = String(index);
-      button.setAttribute("aria-label", "Load level " + (index + 1) + ": " + level.name);
+      button.setAttribute(
+        "aria-label",
+        text("loadLevel") + " " + (index + 1) + ": " + levelCopy.name
+      );
       button.innerHTML =
         "<span>" +
         String(index + 1) +
@@ -1371,7 +1660,7 @@
     if (state.commands.length === 0) {
       var empty = document.createElement("div");
       empty.className = "queue-empty";
-      empty.textContent = "Empty";
+      empty.textContent = text("empty");
       els.commandQueue.appendChild(empty);
       return;
     }
@@ -1384,8 +1673,11 @@
       chip.type = "button";
       chip.dataset.commandIndex = String(index);
       chip.textContent = core.commandToken(command);
-      chip.title = "Remove " + commandNames[command];
-      chip.setAttribute("aria-label", "Remove command " + (index + 1) + ": " + commandNames[command]);
+      chip.title = text("remove") + ": " + uppercase(copy().commands[command]);
+      chip.setAttribute(
+        "aria-label",
+        text("remove") + " " + (index + 1) + ": " + uppercase(copy().commands[command])
+      );
       chip.disabled = state.animating;
       els.commandQueue.appendChild(chip);
     });
@@ -1404,6 +1696,47 @@
       return String(Math.round(value));
     }
     return value.toFixed(2).replace(/0$/, "");
+  }
+
+  function applyLanguage(language, shouldRender) {
+    state.language = translations[language] ? language : "en";
+    document.documentElement.lang = state.language;
+    try {
+      localStorage.setItem(languageStorageKey, state.language);
+    } catch (error) {
+      // Language still works for the current session when storage is unavailable.
+    }
+
+    document.querySelectorAll("[data-i18n]").forEach(function (element) {
+      element.textContent = text(element.dataset.i18n);
+    });
+    document.querySelectorAll("[data-language]").forEach(function (button) {
+      button.setAttribute(
+        "aria-pressed",
+        button.dataset.language === state.language ? "true" : "false"
+      );
+    });
+
+    els.languageSwitch.setAttribute("aria-label", text("language"));
+    els.closeHelp.setAttribute("aria-label", text("closeHelp"));
+    els.boardPanel.setAttribute("aria-label", text("boardLabel"));
+    els.canvas.setAttribute("aria-label", text("canvasLabel"));
+    els.miniMap.setAttribute("aria-label", text("mapLabel"));
+    els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
+
+    document.querySelectorAll("[data-command]").forEach(function (button) {
+      var commandName = uppercase(copy().commands[button.dataset.command]);
+      var commandLabel = uppercase(
+        copy().commandLabels[button.dataset.command] || copy().commands[button.dataset.command]
+      );
+      button.querySelector("span").textContent = commandLabel;
+      button.title = commandName;
+      button.setAttribute("aria-label", text("addCommand") + ": " + commandName);
+    });
+
+    if (state.robot && shouldRender !== false) {
+      renderAll();
+    }
   }
 
   els.levelList.addEventListener("click", function (event) {
@@ -1451,7 +1784,36 @@
     drawAll();
   });
 
+  els.languageSwitch.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-language]");
+    if (!button) return;
+    applyLanguage(button.dataset.language, true);
+  });
+
+  els.helpButton.addEventListener("click", function () {
+    if (typeof els.helpDialog.showModal === "function") {
+      els.helpDialog.showModal();
+    } else {
+      els.helpDialog.setAttribute("open", "");
+    }
+  });
+
+  els.closeHelp.addEventListener("click", function () {
+    if (typeof els.helpDialog.close === "function") {
+      els.helpDialog.close();
+    } else {
+      els.helpDialog.removeAttribute("open");
+    }
+  });
+
+  els.helpDialog.addEventListener("click", function (event) {
+    if (event.target === els.helpDialog) {
+      els.helpDialog.close();
+    }
+  });
+
   window.addEventListener("keydown", function (event) {
+    if (els.helpDialog.open) return;
     if (event.target && ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].indexOf(event.target.tagName) !== -1) {
       return;
     }
@@ -1479,5 +1841,6 @@
 
   window.addEventListener("resize", drawAll);
 
+  applyLanguage(state.language, false);
   loadLevel(0);
 })();

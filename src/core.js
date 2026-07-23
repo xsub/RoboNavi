@@ -280,6 +280,172 @@
         "#........#",
         "##########"
       ]
+    },
+    {
+      id: "zigzag-relay",
+      name: "Zigzag Relay",
+      subtitle: "Four signals trace a narrow switching route.",
+      width: 11,
+      height: 11,
+      energyMax: 18,
+      parEnergy: 16.25,
+      parRuns: 1,
+      start: { x: 1, y: 9, direction: "north" },
+      goals: [
+        { x: 1, y: 5 },
+        { x: 5, y: 5 },
+        { x: 5, y: 2 },
+        { x: 9, y: 2 }
+      ],
+      solution: "FFFFRFFFFLFFFRFFFF",
+      grid: [
+        "###########",
+        "#.........#",
+        "#..#......#",
+        "#..#..##..#",
+        "#..##.....#",
+        "#.........#",
+        "#.###..#..#",
+        "#...#..#..#",
+        "#.###.....#",
+        "#.........#",
+        "###########"
+      ]
+    },
+    {
+      id: "sand-divide",
+      name: "Sand Divide",
+      subtitle: "A long relay where every rough tile matters.",
+      width: 12,
+      height: 12,
+      energyMax: 24,
+      parEnergy: 22.25,
+      parRuns: 1,
+      start: { x: 1, y: 10, direction: "east" },
+      goals: [
+        { x: 5, y: 10 },
+        { x: 5, y: 6 },
+        { x: 10, y: 6 },
+        { x: 10, y: 1 }
+      ],
+      solution: "FFFFLFFFFRFFFFFLFFFFF",
+      grid: [
+        "############",
+        "#..........#",
+        "#..##......#",
+        "#.....##...#",
+        "#.##.......#",
+        "#..#...##..#",
+        "#.......s..#",
+        "#..##......#",
+        "#....s..#..#",
+        "#..#.......#",
+        "#..s..##...#",
+        "############"
+      ]
+    },
+    {
+      id: "ice-junction",
+      name: "Ice Junction",
+      subtitle: "Chain three slides and stop on the right cells.",
+      width: 12,
+      height: 12,
+      energyMax: 21,
+      parEnergy: 19.25,
+      parRuns: 1,
+      start: { x: 1, y: 10, direction: "north" },
+      goals: [
+        { x: 1, y: 4 },
+        { x: 5, y: 4 },
+        { x: 5, y: 1 },
+        { x: 10, y: 1 }
+      ],
+      solution: "FFRFLFRFFFFF",
+      grid: [
+        "############",
+        "#..........#",
+        "#..#.i.....#",
+        "#....i.##..#",
+        "#.iii...#..#",
+        "#i..##.....#",
+        "#i.....##..#",
+        "#i.##......#",
+        "#i......#..#",
+        "#....#.....#",
+        "#..........#",
+        "############"
+      ]
+    },
+    {
+      id: "charge-relay",
+      name: "Charge Relay",
+      subtitle: "The route is longer than one battery can survive.",
+      width: 13,
+      height: 13,
+      energyMax: 12,
+      parEnergy: 20.25,
+      parRuns: 1,
+      chargerPower: 9,
+      start: { x: 1, y: 11, direction: "north" },
+      goals: [
+        { x: 1, y: 6 },
+        { x: 6, y: 6 },
+        { x: 6, y: 2 },
+        { x: 11, y: 2 }
+      ],
+      solution: "FFFFFRFFFFFLFFFFRFFFFF",
+      grid: [
+        "#############",
+        "#...........#",
+        "#..##.......#",
+        "#....#......#",
+        "#.##.....#..#",
+        "#......##...#",
+        "#...c.......#",
+        "#...##......#",
+        "#......###..#",
+        "#.##........#",
+        "#.....##....#",
+        "#...........#",
+        "#############"
+      ]
+    },
+    {
+      id: "final-network",
+      name: "Final Network",
+      subtitle: "A full-system route through every known terrain.",
+      width: 14,
+      height: 14,
+      energyMax: 20,
+      parEnergy: 36,
+      parRuns: 1,
+      chargerPower: 14,
+      start: { x: 1, y: 12, direction: "east" },
+      goals: [
+        { x: 6, y: 8 },
+        { x: 2, y: 8 },
+        { x: 2, y: 3 },
+        { x: 8, y: 3 },
+        { x: 8, y: 7 },
+        { x: 12, y: 7 }
+      ],
+      solution: "FFFFFLFFFFLFFFFRFFRFFFFFFRFFFFLFFFF",
+      grid: [
+        "##############",
+        "#............#",
+        "#..###.......#",
+        "#....s..c....#",
+        "#.i....#.#...#",
+        "#.i.##.......#",
+        "#.i......#...#",
+        "#....#.......#",
+        "#......#.....#",
+        "#..##........#",
+        "#.....c......#",
+        "#........##..#",
+        "#..s...##....#",
+        "##############"
+      ]
     }
   ];
 

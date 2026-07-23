@@ -22,6 +22,6 @@ Then visit `http://localhost:4173`.
 - `Enter`: execute
 - `Backspace`: undo
 
-The built-in MVP includes ten hand-authored levels, energy scoring, one or more
+The built-in MVP includes fifteen hand-authored levels, energy scoring, one or more
 beacons per level, sand, ice, charger tiles, a shadow preview, local progress,
 and a top-down mini-map.

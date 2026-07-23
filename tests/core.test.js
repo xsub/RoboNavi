@@ -1,6 +1,8 @@
 const assert = require("assert");
 const core = require("../src/core");
 
+assert.strictEqual(core.LEVELS.length, 15, "the campaign should contain 15 levels");
+
 core.LEVELS.forEach((level) => {
   const result = core.simulate(level, core.parseProgram(level.solution));
   assert.strictEqual(
@@ -11,6 +13,30 @@ core.LEVELS.forEach((level) => {
   assert(
     result.finalState.energySpent <= level.parEnergy + 0.00001,
     `${level.id} reference solution should meet the energy target`
+  );
+});
+
+core.LEVELS.slice(10).forEach((level) => {
+  let passable = 0;
+  let junctions = 0;
+
+  for (let y = 1; y < level.height - 1; y += 1) {
+    for (let x = 1; x < level.width - 1; x += 1) {
+      if (!core.canEnter(level, x, y)) continue;
+      passable += 1;
+      const exits = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1]
+      ].filter(([dx, dy]) => core.canEnter(level, x + dx, y + dy)).length;
+      if (exits >= 3) junctions += 1;
+    }
+  }
+
+  assert(
+    junctions >= passable * 0.25,
+    `${level.id} should be an open arena with route choices, not a single corridor`
   );
 });
 
