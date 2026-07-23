@@ -20,6 +20,7 @@ the whole program.
 - Floor, walls, sand, ice, charging stations, and signal beacons
 - Optional route preview without a ghost robot
 - Energy and execution targets with three-star scoring
+- Full-screen confetti celebration after the final beacon
 - English and Polish interface
 - Desktop and mobile layouts
 - Local progress saved in the browser

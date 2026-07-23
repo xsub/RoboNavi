@@ -56,6 +56,7 @@
       generatorFailed: "Generation failed. Try different options.",
       generatedLevel: "Generated map",
       generatedSubtitle: "Dijkstra: {routes} routes | A*: {commands} commands",
+      congratulations: "Congratulations!",
       program: "Program",
       shadow: "Shadow",
       undo: "Undo",
@@ -209,6 +210,7 @@
       generatorFailed: "Generowanie nie powiodło się. Zmień opcje.",
       generatedLevel: "Plansza losowa",
       generatedSubtitle: "Dijkstra: {routes} tras | A*: {commands} komend",
+      congratulations: "Gratulacje!",
       program: "Program",
       shadow: "Podgląd",
       undo: "Cofnij",
@@ -374,6 +376,9 @@
     generatorSolutions: document.getElementById("generator-solutions"),
     generatorDensity: document.getElementById("generator-density"),
     generatorStatus: document.getElementById("generator-status"),
+    celebration: document.getElementById("celebration"),
+    confettiCanvas: document.getElementById("confetti-canvas"),
+    celebrationMessage: document.getElementById("celebration-message"),
     languageSwitch: document.querySelector(".language-switch"),
     boardPanel: document.querySelector(".board-panel"),
     controlPanel: document.querySelector(".control-panel")
@@ -381,6 +386,10 @@
 
   var ctx = els.canvas.getContext("2d");
   var mapCtx = els.miniMap.getContext("2d");
+  var confettiCtx = els.confettiCanvas.getContext("2d");
+  var celebrationFrame = null;
+  var celebrationTimer = null;
+  var confettiParticles = [];
   var state = {
     levelIndex: 0,
     level: core.LEVELS[0],
@@ -502,6 +511,7 @@
   }
 
   function activateLevel(level, index) {
+    stopCelebration();
     state.levelIndex = index;
     state.level = level;
     state.robot = core.createInitialState(state.level);
@@ -524,6 +534,7 @@
   }
 
   function resetLevel(keepProgram) {
+    stopCelebration();
     state.robot = core.createInitialState(state.level);
     state.runCount = 0;
     state.highlightIndex = null;
@@ -698,6 +709,9 @@
       setMessage("ended");
     }
     renderAll();
+    if (result.completed) {
+      startCelebration();
+    }
   }
 
   function easeInOut(value) {
@@ -706,6 +720,140 @@
 
   function lerp(start, end, amount) {
     return start + (end - start) * amount;
+  }
+
+  function stopCelebration() {
+    if (celebrationFrame !== null) {
+      window.cancelAnimationFrame(celebrationFrame);
+      celebrationFrame = null;
+    }
+    if (celebrationTimer !== null) {
+      window.clearTimeout(celebrationTimer);
+      celebrationTimer = null;
+    }
+    confettiParticles = [];
+    els.celebration.classList.remove("is-active");
+    els.celebration.hidden = true;
+    confettiCtx.clearRect(
+      0,
+      0,
+      els.confettiCanvas.width,
+      els.confettiCanvas.height
+    );
+  }
+
+  function resizeConfettiCanvas() {
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    els.confettiCanvas.width = Math.round(width * ratio);
+    els.confettiCanvas.height = Math.round(height * ratio);
+    els.confettiCanvas.style.width = width + "px";
+    els.confettiCanvas.style.height = height + "px";
+    confettiCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return { width: width, height: height };
+  }
+
+  function createConfettiParticle(index, size, colors) {
+    var launcher = index % 3;
+    var originX = [size.width * 0.08, size.width * 0.5, size.width * 0.92][launcher];
+    var angle;
+    if (launcher === 0) {
+      angle = -1.34 + Math.random() * 0.62;
+    } else if (launcher === 1) {
+      angle = -2.22 + Math.random() * 1.3;
+    } else {
+      angle = -2.42 + Math.random() * 0.62;
+    }
+    var speed = 560 + Math.random() * 390;
+
+    return {
+      x: originX + (Math.random() - 0.5) * 34,
+      y: size.height + 16 + Math.random() * 24,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      width: 5 + Math.random() * 7,
+      height: 8 + Math.random() * 11,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 12,
+      color: colors[index % colors.length],
+      delay: Math.random() * 0.36
+    };
+  }
+
+  function startCelebration() {
+    stopCelebration();
+    els.celebrationMessage.textContent = text("congratulations");
+    els.celebration.hidden = false;
+    void els.celebration.offsetWidth;
+    els.celebration.classList.add("is-active");
+
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      celebrationTimer = window.setTimeout(stopCelebration, 2200);
+      return;
+    }
+
+    var size = resizeConfettiCanvas();
+    var colors = [
+      "#58d3a9",
+      "#7bc8ee",
+      "#ef8ab8",
+      "#ffd166",
+      "#ff6f61",
+      "#c8ef91",
+      "#a996df"
+    ];
+    confettiParticles = [];
+    for (var index = 0; index < 210; index += 1) {
+      confettiParticles.push(createConfettiParticle(index, size, colors));
+    }
+
+    var startedAt = null;
+    var previousAt = null;
+    function animateCelebration(timestamp) {
+      if (startedAt === null) {
+        startedAt = timestamp;
+        previousAt = timestamp;
+      }
+      var elapsed = (timestamp - startedAt) / 1000;
+      var delta = Math.min(0.034, (timestamp - previousAt) / 1000);
+      previousAt = timestamp;
+      confettiCtx.clearRect(0, 0, size.width, size.height);
+
+      confettiParticles.forEach(function (particle) {
+        if (elapsed < particle.delay) return;
+        particle.vx *= Math.pow(0.985, delta * 60);
+        particle.vy += 680 * delta;
+        particle.x += particle.vx * delta;
+        particle.y += particle.vy * delta;
+        particle.rotation += particle.rotationSpeed * delta;
+
+        var alpha = elapsed > 2.8 ? Math.max(0, 1 - (elapsed - 2.8) / 0.8) : 1;
+        confettiCtx.save();
+        confettiCtx.globalAlpha = alpha;
+        confettiCtx.translate(particle.x, particle.y);
+        confettiCtx.rotate(particle.rotation);
+        confettiCtx.fillStyle = particle.color;
+        confettiCtx.fillRect(
+          -particle.width / 2,
+          -particle.height / 2,
+          particle.width,
+          particle.height
+        );
+        confettiCtx.restore();
+      });
+
+      if (elapsed < 3.6) {
+        celebrationFrame = window.requestAnimationFrame(animateCelebration);
+      } else {
+        stopCelebration();
+      }
+    }
+
+    celebrationFrame = window.requestAnimationFrame(animateCelebration);
   }
 
   function directionAngle(direction) {
@@ -1885,6 +2033,7 @@
     els.canvas.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute("aria-label", text("mapLabel"));
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
+    els.celebrationMessage.textContent = text("congratulations");
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
