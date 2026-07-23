@@ -5,30 +5,30 @@
   var generator = window.RoboNaviGenerator;
   var storageKey = "robonavi-progress-v1";
   var terrainColors = {
-    floor: { top: "#b9dfea", edge: "#7facbd", detail: "#eefbff", low: "#9fcbd9" },
-    sand: { top: "#f1d78f", edge: "#d1ae62", detail: "#fff3c5", low: "#dfc276" },
-    ice: { top: "#a7dded", edge: "#72b8ce", detail: "#effcff", low: "#8bcedf" },
-    charger: { top: "#ecc5d9", edge: "#b67f9f", detail: "#fff2f8", low: "#d8abc3" },
-    wall: { top: "#bde5d0", edge: "#78aa8e", detail: "#f0fff7", low: "#9fcdb4" }
+    floor: { top: "#bdd8e2", edge: "#789aa7", detail: "#f4fbfd", low: "#9ebfc9" },
+    sand: { top: "#d9bd77", edge: "#a7884b", detail: "#fff0bd", low: "#bfa05f" },
+    ice: { top: "#a9d5df", edge: "#6f9eab", detail: "#f4feff", low: "#89bbc7" },
+    charger: { top: "#dfb5cb", edge: "#9f7189", detail: "#fff1f8", low: "#c28ea9" },
+    wall: { top: "#b6cbb2", edge: "#667f72", detail: "#f2f8ef", low: "#8fa792" }
   };
   var floorPalettes = [
-    { top: "#b9dfe9", edge: "#86b8c5", detail: "#eefbff", low: "#a2cfd9" },
-    { top: "#c8e7f0", edge: "#91bdca", detail: "#f4fcff", low: "#afd5df" }
+    { top: "#bdd8e2", edge: "#789aa7", detail: "#f4fbfd", low: "#9ebfc9" },
+    { top: "#c5dfe7", edge: "#82a2ad", detail: "#f8fdfe", low: "#a7c6cf" }
   ];
   var interestPalette = {
-    top: "#ecc5d9",
-    edge: "#b67f9f",
-    detail: "#fff2f8",
-    low: "#d8abc3"
+    top: "#dfb5cb",
+    edge: "#9f7189",
+    detail: "#fff1f8",
+    low: "#c28ea9"
   };
   var wallPalettes = [
     {
-      top: "#bde5d0",
-      detail: "#f0fff7",
-      low: "#9fcdb4",
-      edge: "#78aa8e",
-      right: "#78aa8f",
-      left: "#91bca4"
+      top: "#b6cbb2",
+      detail: "#f2f8ef",
+      low: "#8fa792",
+      edge: "#667f72",
+      right: "#789283",
+      left: "#8fa995"
     }
   ];
   var languageStorageKey = "robonavi-language-v1";
@@ -1177,6 +1177,11 @@
     );
     ctx.restore();
 
+    var rightGradient = ctx.createLinearGradient(right.x, right.y, front.x, front.y + depth);
+    rightGradient.addColorStop(0, "#9cbec1");
+    rightGradient.addColorStop(0.16, "#769da3");
+    rightGradient.addColorStop(0.82, "#688e95");
+    rightGradient.addColorStop(1, "#a7c9c8");
     drawPolygon(
       [
         right,
@@ -1184,10 +1189,15 @@
         { x: front.x, y: front.y + depth },
         { x: right.x, y: right.y + depth }
       ],
-      "#7daeb6",
-      "#5c8c96",
+      rightGradient,
+      "#56777e",
       1.2
     );
+    var leftGradient = ctx.createLinearGradient(left.x, left.y, front.x, front.y + depth);
+    leftGradient.addColorStop(0, "#bdd6cf");
+    leftGradient.addColorStop(0.2, "#8fb5ae");
+    leftGradient.addColorStop(0.86, "#7ba29e");
+    leftGradient.addColorStop(1, "#c6ded6");
     drawPolygon(
       [
         front,
@@ -1195,11 +1205,17 @@
         { x: left.x, y: left.y + depth },
         { x: front.x, y: front.y + depth }
       ],
-      "#94c5bd",
-      "#6c9e98",
+      leftGradient,
+      "#668984",
       1.2
     );
-    drawPolygon([back, right, front, left], "#cae9df", "#83b8b2", 1.4);
+    var topGradient = ctx.createLinearGradient(back.x, back.y, front.x, front.y);
+    topGradient.addColorStop(0, "#eef7f1");
+    topGradient.addColorStop(0.15, "#c9ded5");
+    topGradient.addColorStop(0.58, "#a9c7bf");
+    topGradient.addColorStop(0.88, "#91b4ae");
+    topGradient.addColorStop(1, "#d9e9e2");
+    drawPolygon([back, right, front, left], topGradient, "#769b96", 1.4);
 
     ctx.save();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
@@ -1275,8 +1291,26 @@
       points[2].y
     );
     gradient.addColorStop(0, colors.detail);
-    gradient.addColorStop(0.2, colors.top);
+    gradient.addColorStop(0.08, colors.top);
+    gradient.addColorStop(0.42, colors.top);
+    gradient.addColorStop(0.55, colors.detail);
+    gradient.addColorStop(0.61, colors.top);
     gradient.addColorStop(1, colors.low);
+    return gradient;
+  }
+
+  function sideGradient(points, bright, dark) {
+    var gradient = ctx.createLinearGradient(
+      points[0].x,
+      points[0].y,
+      points[2].x,
+      points[2].y
+    );
+    gradient.addColorStop(0, bright);
+    gradient.addColorStop(0.18, bright);
+    gradient.addColorStop(0.22, dark);
+    gradient.addColorStop(0.82, dark);
+    gradient.addColorStop(1, bright);
     return gradient;
   }
 
@@ -1297,9 +1331,11 @@
         ? floorPalettes[(x + y * 2) % floorPalettes.length]
         : terrainColors[terrain];
     var points = tilePath(x, y, layout, 0);
-    drawDiamond(points, colors.edge, "rgba(77, 119, 126, 0.46)");
+    drawDiamond(points, colors.edge, "rgba(57, 78, 84, 0.42)");
     var face = insetPoints(points, 0.055);
-    drawDiamond(face, surfaceGradient(face, colors), "rgba(255, 255, 255, 0.2)");
+    drawDiamond(face, surfaceGradient(face, colors), "rgba(255, 255, 255, 0.48)");
+    var innerFace = insetPoints(face, 0.075);
+    drawDiamond(innerFace, "rgba(255, 255, 255, 0.025)", "rgba(66, 91, 98, 0.13)");
 
     var center = cellCenter(x, y, layout);
     if (terrain === "floor") {
@@ -1318,16 +1354,21 @@
 
   function drawFloorDetails(x, y, center, layout) {
     ctx.save();
-    ctx.strokeStyle = "rgba(73, 115, 124, 0.17)";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(61, 91, 99, 0.13)";
+    ctx.lineWidth = Math.max(0.7, layout.tileW * 0.007);
     if ((x + y) % 3 === 0) {
       ctx.beginPath();
-      ctx.moveTo(center.x - layout.tileW * 0.18, center.y);
-      ctx.lineTo(center.x, center.y + layout.tileH * 0.18);
-      ctx.lineTo(center.x + layout.tileW * 0.18, center.y);
+      ctx.moveTo(center.x - layout.tileW * 0.13, center.y + layout.tileH * 0.02);
+      ctx.lineTo(center.x, center.y + layout.tileH * 0.14);
+      ctx.lineTo(center.x + layout.tileW * 0.13, center.y + layout.tileH * 0.02);
       ctx.stroke();
     }
-    ctx.fillStyle = "rgba(72, 114, 122, 0.2)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+    ctx.beginPath();
+    ctx.moveTo(center.x - layout.tileW * 0.3, center.y - layout.tileH * 0.08);
+    ctx.lineTo(center.x + layout.tileW * 0.18, center.y - layout.tileH * 0.32);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(65, 91, 98, 0.18)";
     [-1, 1].forEach(function (side) {
       ctx.beginPath();
       ctx.arc(
@@ -1433,20 +1474,30 @@
     var base = tilePath(x, y, layout, 0);
     var rightFace = [base[1], base[2], top[2], top[1]];
     var leftFace = [base[2], base[3], top[3], top[2]];
-    var outlineColor = "rgba(31, 38, 39, 0.58)";
-    var outlineWidth = Math.max(1.1, layout.tileW * 0.016);
-    drawPolygon(rightFace, colors.right, outlineColor, outlineWidth);
-    drawPolygon(leftFace, colors.left, outlineColor, outlineWidth);
+    var outlineColor = "rgba(34, 43, 42, 0.48)";
+    var outlineWidth = Math.max(1, layout.tileW * 0.014);
+    drawPolygon(
+      rightFace,
+      sideGradient(rightFace, colors.right, colors.edge),
+      outlineColor,
+      outlineWidth
+    );
+    drawPolygon(
+      leftFace,
+      sideGradient(leftFace, colors.left, colors.low),
+      outlineColor,
+      outlineWidth
+    );
     drawPolygon(top, surfaceGradient(top, colors), outlineColor, outlineWidth);
     drawPolygon(
       insetPoints(top, 0.13),
-      "rgba(255, 255, 255, 0.15)",
-      "rgba(31, 38, 39, 0.34)",
+      "rgba(255, 255, 255, 0.08)",
+      "rgba(49, 62, 59, 0.22)",
       Math.max(0.8, layout.tileW * 0.01)
     );
 
     ctx.save();
-    ctx.strokeStyle = "rgba(31, 38, 39, 0.38)";
+    ctx.strokeStyle = "rgba(36, 47, 45, 0.3)";
     ctx.lineWidth = Math.max(0.8, layout.tileW * 0.009);
     ctx.beginPath();
     ctx.moveTo(lerp(base[1].x, base[2].x, 0.16), lerp(base[1].y, base[2].y, 0.16));
@@ -1455,7 +1506,9 @@
     ctx.lineTo(lerp(top[3].x, top[2].x, 0.16), lerp(top[3].y, top[2].y, 0.16));
     ctx.stroke();
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.68)";
+    ctx.fillStyle = "rgba(244, 250, 244, 0.78)";
+    ctx.strokeStyle = "rgba(48, 65, 60, 0.32)";
+    ctx.lineWidth = 0.7;
     [0.18, 0.82].forEach(function (amount) {
       var boltRight = {
         x: lerp(top[1].x, top[2].x, amount),
@@ -1469,6 +1522,7 @@
       ctx.arc(boltRight.x, boltRight.y, 1.2, 0, Math.PI * 2);
       ctx.arc(boltLeft.x, boltLeft.y, 1.2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     });
 
     if ((x + y) % 3 === 0) {
