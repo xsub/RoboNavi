@@ -560,7 +560,7 @@ strong {
 
 .command-pad {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -593,7 +593,7 @@ strong {
 
 .action-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.35fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -999,7 +999,7 @@ h1 {
 }
 
 .command-button span {
-  width: min(100%, 96px);
+  width: 100%;
   height: 50px;
   border: 4px solid #45484b;
   border-radius: 7px;
