@@ -1216,6 +1216,65 @@ kbd {
   font-weight: 850;
 }
 
+@media (min-width: 921px) and (max-height: 820px) {
+  .control-panel {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .panel-section {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .level-list {
+    gap: 4px;
+  }
+
+  .level-button {
+    min-height: 30px;
+    font-size: 0.76rem;
+  }
+
+  .level-button small {
+    font-size: 0.58rem;
+  }
+
+  .control-panel > .panel-section:nth-child(2) {
+    grid-template-rows: auto minmax(52px, 1fr) auto auto;
+  }
+
+  .command-queue {
+    min-height: 52px;
+    padding: 5px;
+  }
+
+  .command-pad,
+  .action-row {
+    gap: 6px;
+  }
+
+  .command-button {
+    min-height: 48px;
+  }
+
+  .command-button span {
+    height: 38px;
+    border-width: 3px;
+    font-size: 0.62rem;
+  }
+
+  .quiet-button,
+  .execute-button {
+    min-height: 34px;
+    font-size: 0.7rem;
+  }
+
+  .stats-panel > div {
+    padding: 4px;
+  }
+}
+
 @media (max-width: 920px) {
   body {
     overflow: auto;
@@ -1457,7 +1516,7 @@ kbd {
   }
 
   .level-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .command-queue {

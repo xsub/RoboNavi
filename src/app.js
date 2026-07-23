@@ -148,6 +148,26 @@
         "final-network": {
           name: "Final Network",
           subtitle: "A full-system route through every known terrain."
+        },
+        "orbit-sweep": {
+          name: "Orbit Sweep",
+          subtitle: "Six signals form a wide route around obstacle islands."
+        },
+        "charge-chain": {
+          name: "Charge Chain",
+          subtitle: "Three stations keep a long seven-signal route alive."
+        },
+        "ice-weave": {
+          name: "Ice Weave",
+          subtitle: "Link three ice rails without losing the route."
+        },
+        "sand-matrix": {
+          name: "Sand Matrix",
+          subtitle: "Choose carefully across a field of costly shortcuts."
+        },
+        "grand-tour": {
+          name: "Grand Tour",
+          subtitle: "Eight beacons, three chargers, ice, and sand in one final system test."
         }
       }
     },
@@ -267,6 +287,26 @@
         "final-network": {
           name: "Pełna sieć",
           subtitle: "Trasa przez wszystkie poznane rodzaje terenu."
+        },
+        "orbit-sweep": {
+          name: "Okrążenie sygnałów",
+          subtitle: "Sześć sygnałów prowadzi szeroką trasą wokół wysp przeszkód."
+        },
+        "charge-chain": {
+          name: "Łańcuch ładowania",
+          subtitle: "Trzy stacje podtrzymują długą trasę przez siedem sygnałów."
+        },
+        "ice-weave": {
+          name: "Lodowy splot",
+          subtitle: "Połącz trzy lodowe tory i nie zgub właściwej trasy."
+        },
+        "sand-matrix": {
+          name: "Piaskowa matryca",
+          subtitle: "Wybieraj uważnie między kosztownymi skrótami."
+        },
+        "grand-tour": {
+          name: "Wielka trasa",
+          subtitle: "Osiem nadajników, trzy ładowarki, lód i piasek w teście końcowym."
         }
       }
     }

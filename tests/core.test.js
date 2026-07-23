@@ -1,7 +1,7 @@
 const assert = require("assert");
 const core = require("../src/core");
 
-assert.strictEqual(core.LEVELS.length, 15, "the campaign should contain 15 levels");
+assert.strictEqual(core.LEVELS.length, 20, "the campaign should contain 20 levels");
 
 core.LEVELS.forEach((level) => {
   const result = core.simulate(level, core.parseProgram(level.solution));
