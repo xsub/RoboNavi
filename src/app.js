@@ -34,7 +34,7 @@
   var languageStorageKey = "robonavi-language-v1";
   var translations = {
     en: {
-      controlSystem: "ROBOT CONTROL SYSTEM",
+      controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Mission",
       help: "Help",
       energy: "Energy",
@@ -196,7 +196,7 @@
       }
     },
     pl: {
-      controlSystem: "SYSTEM STEROWANIA ROBOTEM",
+      controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Misja",
       help: "Pomoc",
       energy: "Energia",
