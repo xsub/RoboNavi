@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-speedmodes1">
+    <link rel="stylesheet" href="styles.css?v=20260725-mission-params1">
   </head>
   <body>
     <div class="app-shell">
@@ -42,6 +42,57 @@
             <p id="level-subtitle" class="subtitle"></p>
           </div>
         </div>
+
+        <section class="mission-parameters" aria-labelledby="mission-parameters-title">
+          <h2 id="mission-parameters-title" data-i18n="missionParameters">
+            Mission parameters
+          </h2>
+          <div class="mission-parameters-grid">
+            <label class="lighting-control">
+              <span data-i18n="light">Light</span>
+              <input id="light-level" type="range" min="0" max="200" step="5" value="45">
+              <output id="light-value" for="light-level">45%</output>
+            </label>
+            <label class="signal-control">
+              <span data-i18n="sparks">Sparks</span>
+              <input id="spark-count" type="range" min="0" max="15" step="1" value="5">
+              <output id="spark-count-value" for="spark-count">5</output>
+            </label>
+            <div id="engine-mode" class="engine-mode-control" role="group">
+              <span data-i18n="engine">Engine</span>
+              <span class="engine-mode-buttons">
+                <button type="button" data-engine-mode="slow">Slow</button>
+                <button type="button" data-engine-mode="med">Med</button>
+                <button type="button" data-engine-mode="hi">Hi</button>
+              </span>
+            </div>
+            <label class="floor-color-control">
+              <span data-i18n="floorColor">Floor</span>
+              <input id="floor-hue" type="range" min="0" max="360" step="1" value="196">
+              <output id="floor-color-swatch" for="floor-hue" aria-hidden="true"></output>
+            </label>
+            <label class="background-color-control">
+              <span data-i18n="backgroundColor">Background</span>
+              <input id="background-hue" type="range" min="0" max="360" step="1" value="195">
+              <output id="background-color-swatch" for="background-hue" aria-hidden="true"></output>
+            </label>
+            <label class="robot-color-control">
+              <span data-i18n="robotColor">Robot</span>
+              <input id="robot-hue" type="range" min="0" max="360" step="1" value="30">
+              <output id="robot-color-swatch" for="robot-hue" aria-hidden="true"></output>
+            </label>
+            <div class="mission-toggles">
+              <label class="toggle free-drive-toggle">
+                <input id="free-drive-toggle" type="checkbox">
+                <span data-i18n="freeDrive">Free drive</span>
+              </label>
+              <label class="toggle">
+                <input id="preview-toggle" type="checkbox">
+                <span data-i18n="shadow">Shadow</span>
+              </label>
+            </div>
+          </div>
+        </section>
 
         <div class="topbar-side">
           <div class="utility-row">
@@ -149,51 +200,6 @@
           <section class="panel-section program-section">
             <div class="section-head">
               <h2 data-i18n="program">Program</h2>
-              <div class="program-options">
-                <label class="lighting-control">
-                  <span data-i18n="light">Light</span>
-                  <input id="light-level" type="range" min="0" max="200" step="5" value="45">
-                  <output id="light-value" for="light-level">45%</output>
-                </label>
-                <div id="engine-mode" class="engine-mode-control" role="group">
-                  <span data-i18n="engine">Engine</span>
-                  <span class="engine-mode-buttons">
-                    <button type="button" data-engine-mode="slow">Slow</button>
-                    <button type="button" data-engine-mode="med">Med</button>
-                    <button type="button" data-engine-mode="hi">Hi</button>
-                  </span>
-                </div>
-                <label class="signal-control">
-                  <span data-i18n="sparks">Sparks</span>
-                  <input id="spark-count" type="range" min="0" max="15" step="1" value="5">
-                  <output id="spark-count-value" for="spark-count">5</output>
-                </label>
-                <label class="floor-color-control">
-                  <span data-i18n="floorColor">Floor</span>
-                  <input id="floor-hue" type="range" min="0" max="360" step="1" value="196">
-                  <output id="floor-color-swatch" for="floor-hue" aria-hidden="true"></output>
-                </label>
-                <label class="background-color-control">
-                  <span data-i18n="backgroundColor">Background</span>
-                  <input id="background-hue" type="range" min="0" max="360" step="1" value="195">
-                  <output id="background-color-swatch" for="background-hue" aria-hidden="true"></output>
-                </label>
-                <label class="robot-color-control">
-                  <span data-i18n="robotColor">Robot</span>
-                  <input id="robot-hue" type="range" min="0" max="360" step="1" value="30">
-                  <output id="robot-color-swatch" for="robot-hue" aria-hidden="true"></output>
-                </label>
-                <div class="program-toggles">
-                  <label class="toggle free-drive-toggle">
-                    <input id="free-drive-toggle" type="checkbox">
-                    <span data-i18n="freeDrive">Free drive</span>
-                  </label>
-                  <label class="toggle">
-                    <input id="preview-toggle" type="checkbox">
-                    <span data-i18n="shadow">Shadow</span>
-                  </label>
-                </div>
-              </div>
             </div>
             <div id="command-queue" class="command-queue" aria-live="polite"></div>
             <div class="command-pad">
@@ -359,7 +365,7 @@
     <script src="src/core.js?v=20260724-speedmodes1"></script>
     <script src="src/generator.js?v=20260724-water1"></script>
     <script src="src/audio.js?v=20260724-water1"></script>
-    <script src="src/app.js?v=20260724-speedmodes1"></script>
+    <script src="src/app.js?v=20260725-mission-params1"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260724-water1"></script>
   </body>
 </html>
