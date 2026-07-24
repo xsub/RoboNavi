@@ -10,7 +10,7 @@
   var noiseBuffer = null;
   var speech = window.speechSynthesis || null;
   var enabled = loadEnabled();
-  var voiceSampleVersion = "20260725-voice1";
+  var voiceSampleVersion = "20260725-voice4";
   var voiceSampleGainMultiplier = 3;
   var voiceSampleBase = "assets/audio/robot-voice/";
   var voiceSampleDefinitions = {
@@ -32,7 +32,7 @@
     },
     "fault-snort": { file: "fault-snort.m4a", gain: 0.58, rate: 0.94, detune: -110 },
     "robot-phrase": { file: "robot-phrase.m4a", gain: 0.58, rate: 1.08, detune: 90 },
-    "scan-warble": { file: "scan-warble.m4a", gain: 0.54, rate: 1.08, detune: 105 },
+    "scan-warble": { file: "scan-warble.m4a", gain: 0.54, rate: 1, detune: 45 },
     "disappointed-whimper": {
       file: "disappointed-whimper.m4a",
       gain: 0.58,

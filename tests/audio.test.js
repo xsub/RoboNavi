@@ -31,6 +31,17 @@ library.clips.forEach((clip) => {
   );
 });
 
+const scanWarble = library.clips.find((clip) => clip.id === "scan-warble");
+assert.deepStrictEqual(
+  scanWarble.sourceRange,
+  [27.7, 29.22],
+  "scan warble should use the tightened source range"
+);
+assert(
+  scanWarble.mood.includes("modulated-pseudo-speech"),
+  "scan warble should retain its modulated pseudo-speech role"
+);
+
 [
   "disappointed-whimper",
   "success-cackle",

@@ -53,8 +53,8 @@
     {
       "id": "scan-warble",
       "file": "scan-warble.m4a",
-      "sourceRange": [27.62, 29.31],
-      "mood": ["scan", "curious", "warble"]
+      "sourceRange": [27.7, 29.22],
+      "mood": ["scan", "curious", "modulated-pseudo-speech"]
     },
     {
       "id": "disappointed-whimper",
