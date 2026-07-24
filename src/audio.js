@@ -11,6 +11,7 @@
   var speech = window.speechSynthesis || null;
   var enabled = loadEnabled();
   var voiceSampleVersion = "20260725-voice1";
+  var voiceSampleGainMultiplier = 3;
   var voiceSampleBase = "assets/audio/robot-voice/";
   var voiceSampleDefinitions = {
     "idle-melody": { file: "idle-melody.m4a", gain: 0.68, rate: 1.04, detune: 45 },
@@ -241,7 +242,8 @@
         : definition.detune || 0) +
       (Math.random() * 30 - 15);
     var peak =
-      (Number(options.gain) || definition.gain || 0.58);
+      (Number(options.gain) || definition.gain || 0.58) *
+      voiceSampleGainMultiplier;
     var duration = buffer.duration / rate;
     var end = now + duration;
 

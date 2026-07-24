@@ -56,5 +56,9 @@ assert(
   audioSource.includes("if (isPolish && !selectedVoice)"),
   "Polish attention speech should not fall back to an English voice"
 );
+assert(
+  audioSource.includes("voiceSampleGainMultiplier = 3"),
+  "sampled robot voices should use the requested 3x gain"
+);
 
 console.log(`Validated ${library.clips.length} robot voice samples.`);
