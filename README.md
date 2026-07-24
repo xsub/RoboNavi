@@ -32,6 +32,8 @@ the whole program.
 - A 60-second beacon-network countdown after the first battery is installed
 - Procedural Web Audio for the motor, wheels, turns, wall collisions, batteries,
   induction charging, robot whistles, failures, and success
+- A compact ten-clip sampled robot voice library for idle chatter,
+  acknowledgements, curiosity, failures, depleted energy, and celebrations
 - Localized synthesized execution messages in English and Polish
 - English and Polish interface
 - Desktop and compact iPhone landscape layouts
@@ -77,7 +79,8 @@ npm test
 
 The test suite validates syntax, all campaign reference solutions, terrain
 behavior, Dijkstra route counting, A* programs, generated levels, and energy
-reserves. GitHub Actions runs it on every push to `main` and on every pull
+reserves. It also checks the sampled robot voice manifest, assets, and event
+mappings. GitHub Actions runs it on every push to `main` and on every pull
 request.
 
 ## Procedural Generator
