@@ -128,15 +128,29 @@ function physicalMaterial(options) {
 }
 
 function createMaterials() {
-  const floorTextureA = makeMetalTexture("#a9cedb", "#86adba", "#e7f6fa", 17);
-  const floorTextureB = makeMetalTexture("#b5d5df", "#90b5c0", "#edf8fb", 29);
+  const floorTextureA = makeMetalTexture("#b9c3c6", "#929fa3", "#d2dadd", 17);
+  const floorTextureB = makeMetalTexture("#c2cbcd", "#9ca8ab", "#dbe1e3", 29);
   const wallTexture = makeMetalTexture("#a7bea4", "#7e9782", "#e6f0e2", 43);
   const orangeTexture = makeMetalTexture("#ffb84d", "#ed6d1e", "#ffe27a", 71);
 
   return {
     floor: [
-      physicalMaterial({ map: floorTextureA, metalness: 0.28, roughness: 0.36 }),
-      physicalMaterial({ map: floorTextureB, metalness: 0.25, roughness: 0.39 })
+      physicalMaterial({
+        color: COLORS.floor[0],
+        map: floorTextureA,
+        metalness: 0.1,
+        roughness: 0.76,
+        clearcoat: 0.04,
+        clearcoatRoughness: 0.8
+      }),
+      physicalMaterial({
+        color: COLORS.floor[1],
+        map: floorTextureB,
+        metalness: 0.08,
+        roughness: 0.8,
+        clearcoat: 0.03,
+        clearcoatRoughness: 0.84
+      })
     ],
     floorEdge: physicalMaterial({
       color: COLORS.floorEdge,
@@ -736,9 +750,11 @@ class RoboNaviThreeView {
     this.failed = false;
     this.compact = window.innerHeight < 560 || window.innerWidth < 640;
     this.cameraQuarterTurns = 0;
+    this.cameraSnapKey = -1;
     this.cameraAngle = Math.PI / 4;
     this.cameraLift = 0;
     this.cameraOrbit = null;
+    this.floorHue = -1;
     this.materials = createMaterials();
     this.geometries = createGeometries();
 
@@ -1346,11 +1362,20 @@ class RoboNaviThreeView {
   update(snapshot) {
     this.snapshot = snapshot;
     const requestedTurns = Number(snapshot.cameraQuarterTurns) || 0;
-    if (requestedTurns !== this.cameraQuarterTurns) {
+    const requestedSnapKey = Number(snapshot.cameraSnapKey) || 0;
+    if (requestedSnapKey !== this.cameraSnapKey) {
+      this.cameraSnapKey = requestedSnapKey;
+      this.cameraQuarterTurns = requestedTurns;
+      this.cameraAngle = Math.PI / 4 + requestedTurns * (Math.PI / 2);
+      this.cameraLift = 0;
+      this.cameraOrbit = null;
+      this.fitCamera(snapshot.level, this.cameraAngle, 0);
+    } else if (requestedTurns !== this.cameraQuarterTurns) {
       this.cameraQuarterTurns = requestedTurns;
       this.startCameraOrbit(requestedTurns);
     }
     this.updateLighting(snapshot.globalLight);
+    this.updateFloorHue(snapshot.floorHue);
     const signature = this.levelSignature(snapshot.level);
     if (signature !== this.levelKey) {
       this.levelKey = signature;
@@ -1363,12 +1388,24 @@ class RoboNaviThreeView {
 
   updateLighting(value) {
     const amount = Math.max(0, Math.min(200, Number(value) || 0)) / 100;
-    this.hemisphereLight.intensity = 0.05 + amount * 1.16;
-    this.keyLight.intensity = 0.08 + amount * 2.22;
-    this.fillLight.intensity = 0.02 + amount * 0.92;
-    this.rimLight.intensity = 0.02 + amount * 0.48;
-    this.scene.environmentIntensity = 0.04 + amount * 0.86;
-    this.renderer.toneMappingExposure = 0.5 + amount * 0.8;
+    const balancedAmount =
+      amount <= 1 ? amount : 1 + (amount - 1) * 0.35;
+    this.hemisphereLight.intensity = 0.08 + balancedAmount * 0.95;
+    this.keyLight.intensity = 0.18 + balancedAmount * 1.75;
+    this.fillLight.intensity = 0.05 + balancedAmount * 0.65;
+    this.rimLight.intensity = 0.03 + balancedAmount * 0.4;
+    this.scene.environmentIntensity = 0.08 + balancedAmount * 0.55;
+    this.renderer.toneMappingExposure = 0.72 + balancedAmount * 0.62;
+  }
+
+  updateFloorHue(value) {
+    const hue = THREE.MathUtils.clamp(Number(value) || 0, 0, 360);
+    if (hue === this.floorHue) return;
+    this.floorHue = hue;
+    const normalized = hue / 360;
+    this.materials.floor[0].color.setHSL(normalized, 0.5, 0.57);
+    this.materials.floor[1].color.setHSL(normalized, 0.44, 0.62);
+    this.materials.floorEdge.color.setHSL(normalized, 0.3, 0.42);
   }
 
   disable() {
@@ -1488,16 +1525,25 @@ class RoboNaviThreeView {
     const time = timeMs * 0.001;
     const motion = reducedMotion.matches ? 0 : 1;
     const robotData = this.robot.userData;
-    robotData.model.position.y = Math.sin(time * 2.1) * 0.009 * motion;
     robotData.head.rotation.y = Math.sin(time * 1.45) * 0.045 * motion;
 
     const activeStep = this.snapshot ? this.snapshot.activeStep : null;
     const actionProgress = activeStep ? activeStep.progress : 0;
     const actionWave = Math.sin(actionProgress * Math.PI);
+    const driveAction = activeStep && activeStep.type === "move";
+    const drivePulse = Math.sin(actionProgress * Math.PI * 2);
     const batteryAction = activeStep && activeStep.command === "battery";
     const inductAction = activeStep && activeStep.command === "induct";
+    robotData.model.rotation.x = driveAction ? -actionWave * 0.018 * motion : 0;
+    robotData.model.position.y =
+      Math.sin(time * 2.1) * 0.009 * motion +
+      (driveAction ? Math.abs(drivePulse) * 0.004 * motion : 0);
     robotData.armPivots.forEach((arm, index) => {
-      arm.rotation.x = batteryAction ? -actionWave * 0.9 : 0;
+      arm.rotation.x = batteryAction
+        ? -actionWave * 0.9
+        : driveAction
+          ? drivePulse * (index === 0 ? 0.055 : -0.055) * motion
+          : 0;
       arm.rotation.y = batteryAction ? (index === 0 ? -1 : 1) * actionWave * 0.24 : 0;
     });
     robotData.chestMaterial.emissive.set(
@@ -1574,7 +1620,7 @@ if (stage && bridge && core) {
     const view = new RoboNaviThreeView(stage);
     bridge.attach(view);
   } catch (error) {
-    stage.dataset.renderer = "fallback";
-    console.warn("RoboNavi is using the Canvas renderer.", error);
+    stage.dataset.renderer = "failed";
+    console.error("RoboNavi Three.js renderer failed to initialize.", error);
   }
 }

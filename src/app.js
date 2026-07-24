@@ -6,6 +6,7 @@
   var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
+  var floorHueStorageKey = "robonavi-floor-hue-v1";
   var terrainColors = {
     floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
@@ -66,6 +67,7 @@
       program: "Program",
       light: "Light",
       globalLight: "Global light",
+      floorColor: "Floor color",
       shadow: "Shadow",
       undo: "Undo",
       clear: "Clear",
@@ -236,6 +238,7 @@
       program: "Program",
       light: "Światło",
       globalLight: "Światło globalne",
+      floorColor: "Kolor podłogi",
       shadow: "Podgląd",
       undo: "Cofnij",
       clear: "Wyczyść",
@@ -378,7 +381,7 @@
   };
 
   var els = {
-    canvas: document.getElementById("game-canvas"),
+    stage: document.getElementById("three-stage"),
     miniMap: document.getElementById("mini-map"),
     cameraControls: document.getElementById("camera-controls"),
     cameraRotateLeft: document.getElementById("camera-rotate-left"),
@@ -395,6 +398,8 @@
     resetLevel: document.getElementById("reset-level"),
     lightLevel: document.getElementById("light-level"),
     lightValue: document.getElementById("light-value"),
+    floorHue: document.getElementById("floor-hue"),
+    floorColorSwatch: document.getElementById("floor-color-swatch"),
     previewToggle: document.getElementById("preview-toggle"),
     commandQueue: document.getElementById("command-queue"),
     undoCommand: document.getElementById("undo-command"),
@@ -426,7 +431,6 @@
     controlPanel: document.querySelector(".control-panel")
   };
 
-  var ctx = els.canvas.getContext("2d");
   var mapCtx = els.miniMap.getContext("2d");
   var confettiCtx = els.confettiCanvas.getContext("2d");
   var celebrationFrame = null;
@@ -442,7 +446,9 @@
     commands: [],
     preview: false,
     globalLight: loadGlobalLight(),
+    floorHue: loadFloorHue(),
     cameraQuarterTurns: 0,
+    cameraSnapKey: 0,
     runCount: 0,
     highlightIndex: null,
     animating: false,
@@ -484,6 +490,31 @@
     } catch (error) {
       // The live control still works when storage is unavailable.
     }
+  }
+
+  function clampFloorHue(value) {
+    return Math.max(0, Math.min(360, Number(value) || 0));
+  }
+
+  function loadFloorHue() {
+    try {
+      var saved = localStorage.getItem(floorHueStorageKey);
+      return saved === null ? 196 : clampFloorHue(saved);
+    } catch (error) {
+      return 196;
+    }
+  }
+
+  function saveFloorHue() {
+    try {
+      localStorage.setItem(floorHueStorageKey, String(state.floorHue));
+    } catch (error) {
+      // The live floor color control still works without storage.
+    }
+  }
+
+  function floorHueColor(value) {
+    return "hsl(" + Math.round(clampFloorHue(value)) + " 48% 74%)";
   }
 
   function loadProgress() {
@@ -591,7 +622,17 @@
     };
   }
 
+  function initialCameraTurns(direction) {
+    return {
+      north: -1,
+      east: 0,
+      south: 1,
+      west: 2
+    }[direction] || 0;
+  }
+
   function activateLevel(level, index) {
+    if (sound) sound.stopAll();
     stopCelebration();
     resetBatteryTimer();
     state.levelIndex = index;
@@ -602,6 +643,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
+    state.cameraSnapKey += 1;
     setMessage("ready");
     syncDisplayPose();
     renderAll();
@@ -616,6 +659,7 @@
   }
 
   function resetLevel(keepProgram) {
+    if (sound) sound.stopAll();
     stopCelebration();
     resetBatteryTimer();
     state.robot = core.createInitialState(state.level);
@@ -623,6 +667,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
+    state.cameraSnapKey += 1;
     setMessage("ready");
     if (!keepProgram) {
       state.commands = [];
@@ -674,6 +720,7 @@
     ) {
       return;
     }
+    if (sound) sound.speakExecution(state.language);
     state.runCount += 1;
     var result = core.simulate(state.level, state.commands, state.robot);
     state.animation = {
@@ -703,7 +750,7 @@
             event: event,
             from: from,
             to: { x: point.x, y: point.y },
-            duration: 230,
+            duration: 400,
             endsCommand: isLast
           });
           from = { x: point.x, y: point.y };
@@ -746,7 +793,68 @@
         });
       }
     });
+    steps.forEach(function (step, index) {
+      if (step.type !== "move") return;
+      step.continuesFromMove = connectedMoveSteps(steps[index - 1], step);
+      step.continuesToMove = connectedMoveSteps(step, steps[index + 1]);
+    });
     return steps;
+  }
+
+  function connectedMoveSteps(first, second) {
+    return Boolean(
+      first &&
+      second &&
+      first.type === "move" &&
+      second.type === "move" &&
+      first.to.x === second.from.x &&
+      first.to.y === second.from.y &&
+      first.event.from.direction === second.event.from.direction
+    );
+  }
+
+  function smoothMoveProgress(progress, continuesFromMove, continuesToMove) {
+    var squared = progress * progress;
+    var cubed = squared * progress;
+    var incomingSpeed = continuesFromMove ? 1 : 0;
+    var outgoingSpeed = continuesToMove ? 1 : 0;
+    return (
+      (cubed - 2 * squared + progress) * incomingSpeed +
+      (-2 * cubed + 3 * squared) +
+      (cubed - squared) * outgoingSpeed
+    );
+  }
+
+  function isDriveStep(step) {
+    return Boolean(
+      step &&
+      (step.type === "move" || step.type === "turn" || step.type === "bump")
+    );
+  }
+
+  function startAnimationStepSound(step) {
+    if (!sound || !step) return;
+    if (isDriveStep(step)) {
+      sound.startDrive(step.type);
+      return;
+    }
+    if (
+      step.event.command === "battery" &&
+      step.event.collected &&
+      step.event.collected.length > 0
+    ) {
+      sound.playBatteryInstall();
+    } else if (
+      step.event.command === "induct" &&
+      !step.event.invalidReason
+    ) {
+      sound.playInduct(step.event.inductAmount);
+    }
+  }
+
+  function finishAnimationStepSound(step, nextStep) {
+    if (!sound || !isDriveStep(step) || isDriveStep(nextStep)) return;
+    sound.stopDrive();
   }
 
   function tickAnimation(timestamp) {
@@ -756,6 +864,7 @@
     if (!animation.step) {
       animation.step = animation.steps[animation.index];
       animation.startedAt = timestamp;
+      startAnimationStepSound(animation.step);
     }
 
     if (!animation.step) {
@@ -770,8 +879,13 @@
     state.highlightIndex = step.commandIndex;
 
     if (step.type === "move") {
-      state.displayPose.x = lerp(step.from.x, step.to.x, eased);
-      state.displayPose.y = lerp(step.from.y, step.to.y, eased);
+      var moveProgress = smoothMoveProgress(
+        progress,
+        step.continuesFromMove,
+        step.continuesToMove
+      );
+      state.displayPose.x = lerp(step.from.x, step.to.x, moveProgress);
+      state.displayPose.y = lerp(step.from.y, step.to.y, moveProgress);
       state.displayPose.direction = step.event.from.direction;
       state.displayPose.angle = directionAngle(step.event.from.direction);
     } else if (step.type === "bump") {
@@ -801,9 +915,17 @@
         handleExecutionEvent(step.event);
         renderUi();
       }
+      finishAnimationStepSound(
+        step,
+        animation.steps[animation.index + 1]
+      );
       animation.index += 1;
-      animation.step = null;
+      animation.step = animation.steps[animation.index] || null;
+      animation.startedAt += step.duration;
       animation.stepProgress = 0;
+      if (animation.step) {
+        startAnimationStepSound(animation.step);
+      }
     }
 
     window.requestAnimationFrame(tickAnimation);
@@ -811,6 +933,7 @@
 
   function finishAnimation(result) {
     if (state.gameOver) return;
+    if (sound) sound.stopDrive();
     state.robot = core.cloneState(result.finalState);
     syncDisplayPose();
     state.animating = false;
@@ -818,8 +941,17 @@
     state.highlightIndex =
       result.events.length > 0 ? result.events[result.events.length - 1].commandIndex : null;
 
+    if (
+      !result.completed &&
+      result.stoppedReason !== "out-of-energy" &&
+      sound
+    ) {
+      sound.playFailure(state.language);
+    }
+
     if (result.completed) {
       stopBatteryCountdown();
+      if (sound) sound.playSuccess(state.language);
       var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
       state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
       saveProgress();
@@ -827,6 +959,7 @@
     } else if (result.stoppedReason === "collision") {
       setMessage("blocked", state.highlightIndex + 1);
     } else if (result.stoppedReason === "out-of-energy") {
+      if (sound) sound.playDepleted(state.language);
       setMessage("depleted");
     } else if (result.stoppedReason === "invalid-action") {
       var lastEvent = result.events[result.events.length - 1];
@@ -899,6 +1032,7 @@
   }
 
   function triggerBatteryGameOver() {
+    if (sound) sound.stopAll();
     stopBatteryInterval();
     stopCelebration();
     state.batterySecondsRemaining = 0;
@@ -908,6 +1042,7 @@
     state.highlightIndex = null;
     syncDisplayPose();
     setMessage("batteryDied");
+    if (sound) sound.playFailure(state.language);
     renderAll();
   }
 
@@ -917,6 +1052,10 @@
 
   function lerp(start, end, amount) {
     return start + (end - start) * amount;
+  }
+
+  function goalMask(index) {
+    return 1 << index;
   }
 
   function stopCelebration() {
@@ -1075,53 +1214,20 @@
     return { width: rect.width, height: rect.height };
   }
 
-  function metrics(width, height, level) {
-    var boardSpan = level.width + level.height;
-    var isoRatio = 0.54;
-    var tileW = Math.min(
-      (width - 56) * 2 / boardSpan,
-      (height - 84) * 2 / (boardSpan * isoRatio)
-    );
-    tileW = Math.max(20, Math.min(140, tileW));
-    var tileH = tileW * isoRatio;
-    return {
-      tileW: tileW,
-      tileH: tileH,
-      originX: width / 2,
-      originY: Math.max(26, (height - ((level.width + level.height) * tileH) / 2) / 2)
-    };
-  }
-
-  function project(point, layout) {
-    return {
-      x: (point.x - point.y) * layout.tileW / 2 + layout.originX,
-      y: (point.x + point.y) * layout.tileH / 2 + layout.originY
-    };
-  }
-
-  function cellCenter(x, y, layout) {
-    return project({ x: x + 0.5, y: y + 0.5 }, layout);
-  }
-
   function drawAll() {
-    if (!threeRenderer) {
-      drawBoard();
-    }
     drawMiniMap();
-    if (threeRenderer) {
-      try {
-        threeRenderer.update(createThreeRenderSnapshot());
-      } catch (error) {
-        if (typeof threeRenderer.disable === "function") {
-          threeRenderer.disable();
-        }
-        threeRenderer = null;
-        els.canvas.parentElement.classList.remove("three-ready");
-        els.cameraRotateLeft.disabled = true;
-        els.cameraRotateRight.disabled = true;
-        drawBoard();
-        console.warn("RoboNavi switched back to the Canvas renderer.", error);
+    if (!threeRenderer) return;
+    try {
+      threeRenderer.update(createThreeRenderSnapshot());
+    } catch (error) {
+      if (typeof threeRenderer.disable === "function") {
+        threeRenderer.disable();
       }
+      threeRenderer = null;
+      els.stage.dataset.renderer = "failed";
+      els.cameraRotateLeft.disabled = true;
+      els.cameraRotateRight.disabled = true;
+      console.error("RoboNavi Three.js renderer stopped.", error);
     }
   }
 
@@ -1164,7 +1270,9 @@
         ? {
             type: state.animation.step.type,
             command: state.animation.step.event.command,
-            progress: state.animation.stepProgress || 0
+            progress: state.animation.stepProgress || 0,
+            continuesFromMove: Boolean(state.animation.step.continuesFromMove),
+            continuesToMove: Boolean(state.animation.step.continuesToMove)
           }
         : null;
     return {
@@ -1179,1118 +1287,13 @@
       path: createThreeRenderPath(),
       activeStep: activeStep,
       globalLight: state.globalLight,
+      floorHue: state.floorHue,
       cameraQuarterTurns: state.cameraQuarterTurns,
+      cameraSnapKey: state.cameraSnapKey,
       batterySecondsRemaining: state.batterySecondsRemaining,
       gameOver: state.gameOver,
       complete: core.isComplete(state.level, state.robot)
     };
-  }
-
-  function drawBoard() {
-    var size = ensureCanvasSize(els.canvas, ctx);
-    var layout = metrics(size.width, size.height, state.level);
-    ctx.clearRect(0, 0, size.width, size.height);
-    drawBackdrop(size.width, size.height);
-    drawPlatformBase(layout);
-
-    var cells = [];
-    for (var y = 0; y < state.level.height; y += 1) {
-      for (var x = 0; x < state.level.width; x += 1) {
-        cells.push({ x: x, y: y, depth: x + y });
-      }
-    }
-    cells.sort(function (a, b) {
-      return a.depth - b.depth || a.x - b.x;
-    });
-    cells.forEach(function (cell) {
-      var terrain = core.terrainAt(state.level, cell.x, cell.y);
-      drawTile(cell.x, cell.y, terrain, layout);
-    });
-
-    if (state.animating && state.animation) {
-      drawExecutionPath(layout);
-    } else if (state.preview && state.commands.length > 0) {
-      drawPreview(layout);
-    }
-
-    var actors = [];
-    core.wallSegments(state.level).forEach(function (wall) {
-      var centerX = wall.axis === "horizontal" ? wall.x + 0.5 : wall.x;
-      var centerY = wall.axis === "horizontal" ? wall.y : wall.y + 0.5;
-      actors.push({
-        depth: centerX + centerY + 0.55,
-        draw: function () {
-          drawWallSegment(wall, layout);
-        }
-      });
-    });
-    state.level.goals.forEach(function (goal, index) {
-      actors.push({
-        depth: goal.x + goal.y + 0.7,
-        draw: function () {
-          drawGoal(goal, index, layout);
-        }
-      });
-    });
-    actors.push({
-      depth: state.displayPose.x + state.displayPose.y + 0.78,
-      draw: function () {
-        drawRobot(state.displayPose, layout);
-      }
-    });
-    actors.sort(function (a, b) {
-      return a.depth - b.depth;
-    });
-    actors.forEach(function (actor) {
-      actor.draw();
-    });
-    if (state.batterySecondsRemaining !== null) {
-      state.level.goals.forEach(function (goal, index) {
-        drawBeaconCountdown(
-          cellCenter(goal.x, goal.y, layout),
-          (state.robot.collected & goalMask(index)) !== 0,
-          layout
-        );
-      });
-    }
-
-    drawCanvasLightOverlay(size.width, size.height);
-    drawCanvasFinish(size.width, size.height);
-  }
-
-  function drawBackdrop(width, height) {
-    var gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, "#020506");
-    gradient.addColorStop(0.52, "#050a0b");
-    gradient.addColorStop(1, "#000000");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.save();
-    ctx.strokeStyle = "rgba(88, 192, 190, 0.08)";
-    ctx.lineWidth = 1;
-    for (var i = -height; i < width + height; i += 72) {
-      ctx.beginPath();
-      ctx.moveTo(i, height);
-      ctx.lineTo(i + height * 0.55, height * 0.45);
-      ctx.stroke();
-    }
-    for (var row = 0; row < 6; row += 1) {
-      var lineY = height - 28 - row * 52;
-      ctx.beginPath();
-      ctx.moveTo(0, lineY);
-      ctx.lineTo(width, lineY);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = "rgba(89, 202, 195, 0.2)";
-    for (var bolt = 0; bolt < 8; bolt += 1) {
-      var boltX = 24 + bolt * Math.max(58, (width - 48) / 7);
-      ctx.beginPath();
-      ctx.arc(boltX, height - 22, 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawCanvasLightOverlay(width, height) {
-    var darkness = (1 - state.globalLight / 100) * 0.42;
-    if (darkness <= 0) return;
-    ctx.save();
-    ctx.fillStyle = "rgba(0, 0, 0, " + darkness.toFixed(3) + ")";
-    ctx.fillRect(0, 0, width, height);
-    ctx.restore();
-  }
-
-  function drawPlatformBase(layout) {
-    var level = state.level;
-    var back = project({ x: 0, y: 0 }, layout);
-    var right = project({ x: level.width, y: 0 }, layout);
-    var front = project({ x: level.width, y: level.height }, layout);
-    var left = project({ x: 0, y: level.height }, layout);
-    var depth = Math.max(10, layout.tileW * 0.18);
-
-    ctx.save();
-    ctx.shadowColor = "rgba(67, 106, 116, 0.24)";
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 14;
-    drawPolygon(
-      [
-        { x: back.x, y: back.y + 8 },
-        { x: right.x + 8, y: right.y + 12 },
-        { x: front.x, y: front.y + depth + 14 },
-        { x: left.x - 8, y: left.y + 12 }
-      ],
-      "rgba(72, 119, 128, 0.16)"
-    );
-    ctx.restore();
-
-    var rightGradient = ctx.createLinearGradient(right.x, right.y, front.x, front.y + depth);
-    rightGradient.addColorStop(0, "#9cbec1");
-    rightGradient.addColorStop(0.16, "#769da3");
-    rightGradient.addColorStop(0.82, "#688e95");
-    rightGradient.addColorStop(1, "#a7c9c8");
-    drawPolygon(
-      [
-        right,
-        front,
-        { x: front.x, y: front.y + depth },
-        { x: right.x, y: right.y + depth }
-      ],
-      rightGradient,
-      "#56777e",
-      1.2
-    );
-    var leftGradient = ctx.createLinearGradient(left.x, left.y, front.x, front.y + depth);
-    leftGradient.addColorStop(0, "#bdd6cf");
-    leftGradient.addColorStop(0.2, "#8fb5ae");
-    leftGradient.addColorStop(0.86, "#7ba29e");
-    leftGradient.addColorStop(1, "#c6ded6");
-    drawPolygon(
-      [
-        front,
-        left,
-        { x: left.x, y: left.y + depth },
-        { x: front.x, y: front.y + depth }
-      ],
-      leftGradient,
-      "#668984",
-      1.2
-    );
-    var topGradient = ctx.createLinearGradient(back.x, back.y, front.x, front.y);
-    topGradient.addColorStop(0, "#eef7f1");
-    topGradient.addColorStop(0.15, "#c9ded5");
-    topGradient.addColorStop(0.58, "#a9c7bf");
-    topGradient.addColorStop(0.88, "#91b4ae");
-    topGradient.addColorStop(1, "#d9e9e2");
-    drawPolygon([back, right, front, left], topGradient, "#769b96", 1.4);
-
-    ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(left.x, left.y + 1);
-    ctx.lineTo(front.x, front.y + 1);
-    ctx.lineTo(right.x, right.y + 1);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function tilePath(x, y, layout, lift) {
-    var z = lift || 0;
-    var top = project({ x: x, y: y }, layout);
-    var right = project({ x: x + 1, y: y }, layout);
-    var bottom = project({ x: x + 1, y: y + 1 }, layout);
-    var left = project({ x: x, y: y + 1 }, layout);
-    return [
-      { x: top.x, y: top.y - z },
-      { x: right.x, y: right.y - z },
-      { x: bottom.x, y: bottom.y - z },
-      { x: left.x, y: left.y - z }
-    ];
-  }
-
-  function drawDiamond(points, fill, stroke) {
-    drawPolygon(points, fill, stroke, 1);
-  }
-
-  function drawPolygon(points, fill, stroke, lineWidth) {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (var i = 1; i < points.length; i += 1) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-    ctx.closePath();
-    if (fill) {
-      ctx.fillStyle = fill;
-      ctx.fill();
-    }
-    if (stroke) {
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = lineWidth || 1;
-      ctx.stroke();
-    }
-  }
-
-  function insetPoints(points, amount) {
-    var center = points.reduce(
-      function (sum, point) {
-        sum.x += point.x;
-        sum.y += point.y;
-        return sum;
-      },
-      { x: 0, y: 0 }
-    );
-    center.x /= points.length;
-    center.y /= points.length;
-    return points.map(function (point) {
-      return {
-        x: lerp(point.x, center.x, amount),
-        y: lerp(point.y, center.y, amount)
-      };
-    });
-  }
-
-  function surfaceGradient(points, colors) {
-    var gradient = ctx.createLinearGradient(
-      points[0].x,
-      points[0].y,
-      points[2].x,
-      points[2].y
-    );
-    gradient.addColorStop(0, colors.detail);
-    gradient.addColorStop(0.08, colors.top);
-    gradient.addColorStop(0.42, colors.top);
-    gradient.addColorStop(0.55, colors.detail);
-    gradient.addColorStop(0.61, colors.top);
-    gradient.addColorStop(1, colors.low);
-    return gradient;
-  }
-
-  function sideGradient(points, bright, dark) {
-    var gradient = ctx.createLinearGradient(
-      points[0].x,
-      points[0].y,
-      points[2].x,
-      points[2].y
-    );
-    gradient.addColorStop(0, bright);
-    gradient.addColorStop(0.18, bright);
-    gradient.addColorStop(0.22, dark);
-    gradient.addColorStop(0.82, dark);
-    gradient.addColorStop(1, bright);
-    return gradient;
-  }
-
-  function seededNoise(x, y, salt) {
-    var value = Math.sin((x + 1) * 12.9898 + (y + 1) * 78.233 + salt * 37.719);
-    return value - Math.floor(value);
-  }
-
-  function drawTile(x, y, terrain, layout) {
-    var isInterest =
-      terrain === "charger" ||
-      state.level.goals.some(function (goal) {
-        return goal.x === x && goal.y === y;
-      });
-    var colors = isInterest
-      ? interestPalette
-      : terrain === "floor"
-        ? floorPalettes[(x + y * 2) % floorPalettes.length]
-        : terrainColors[terrain];
-    var points = tilePath(x, y, layout, 0);
-    drawDiamond(points, colors.edge, "rgba(57, 78, 84, 0.22)");
-    var face = insetPoints(points, 0.026);
-    drawDiamond(face, surfaceGradient(face, colors), null);
-
-    ctx.save();
-    ctx.lineWidth = Math.max(0.65, layout.tileW * 0.007);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.26)";
-    ctx.beginPath();
-    ctx.moveTo(face[3].x, face[3].y);
-    ctx.lineTo(face[0].x, face[0].y);
-    ctx.lineTo(face[1].x, face[1].y);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(43, 64, 70, 0.2)";
-    ctx.beginPath();
-    ctx.moveTo(face[1].x, face[1].y);
-    ctx.lineTo(face[2].x, face[2].y);
-    ctx.lineTo(face[3].x, face[3].y);
-    ctx.stroke();
-    ctx.restore();
-
-    var center = cellCenter(x, y, layout);
-    if (terrain === "floor") {
-      drawFloorDetails(x, y, center, layout);
-    }
-    if (terrain === "sand") {
-      drawSandDetails(x, y, center, layout);
-    }
-    if (terrain === "ice") {
-      drawIceDetails(x, y, center, face, layout);
-    }
-    if (terrain === "charger") {
-      drawChargerDetails(center, layout);
-    }
-  }
-
-  function drawFloorDetails(x, y, center, layout) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(61, 91, 99, 0.13)";
-    ctx.lineWidth = Math.max(0.7, layout.tileW * 0.007);
-    if ((x + y) % 3 === 0) {
-      ctx.beginPath();
-      ctx.moveTo(center.x - layout.tileW * 0.13, center.y + layout.tileH * 0.02);
-      ctx.lineTo(center.x, center.y + layout.tileH * 0.14);
-      ctx.lineTo(center.x + layout.tileW * 0.13, center.y + layout.tileH * 0.02);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-    ctx.beginPath();
-    ctx.moveTo(center.x - layout.tileW * 0.3, center.y - layout.tileH * 0.08);
-    ctx.lineTo(center.x + layout.tileW * 0.18, center.y - layout.tileH * 0.32);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(65, 91, 98, 0.18)";
-    [-1, 1].forEach(function (side) {
-      ctx.beginPath();
-      ctx.arc(
-        center.x + side * layout.tileW * 0.25,
-        center.y,
-        Math.max(0.8, layout.tileW * 0.014),
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  function drawSandDetails(x, y, center, layout) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(103, 76, 33, 0.3)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(center.x - layout.tileW * 0.24, center.y - layout.tileH * 0.06);
-    ctx.quadraticCurveTo(
-      center.x - layout.tileW * 0.04,
-      center.y - layout.tileH * 0.2,
-      center.x + layout.tileW * 0.21,
-      center.y - layout.tileH * 0.02
-    );
-    ctx.moveTo(center.x - layout.tileW * 0.12, center.y + layout.tileH * 0.14);
-    ctx.quadraticCurveTo(
-      center.x + layout.tileW * 0.04,
-      center.y + layout.tileH * 0.02,
-      center.x + layout.tileW * 0.22,
-      center.y + layout.tileH * 0.12
-    );
-    ctx.stroke();
-    ctx.fillStyle = "rgba(92, 66, 27, 0.34)";
-    for (var i = 0; i < 7; i += 1) {
-      var px = (seededNoise(x, y, i) - 0.5) * layout.tileW * 0.46;
-      var py = (seededNoise(x, y, i + 9) - 0.5) * layout.tileH * 0.48;
-      ctx.beginPath();
-      ctx.arc(center.x + px, center.y + py, 0.75 + (i % 2) * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawIceDetails(x, y, center, face, layout) {
-    ctx.save();
-    drawPolygon(
-      insetPoints(face, 0.18),
-      "rgba(216, 246, 247, 0.12)",
-      "rgba(230, 255, 255, 0.35)"
-    );
-    ctx.strokeStyle = "rgba(239, 255, 255, 0.7)";
-    ctx.lineWidth = Math.max(1.2, layout.tileW * 0.025);
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(center.x - layout.tileW * 0.28, center.y + layout.tileH * 0.03);
-    ctx.lineTo(center.x - layout.tileW * 0.04, center.y - layout.tileH * 0.18);
-    ctx.lineTo(center.x + layout.tileW * 0.18, center.y - layout.tileH * 0.08);
-    ctx.moveTo(center.x - layout.tileW * 0.02, center.y + layout.tileH * 0.18);
-    ctx.lineTo(center.x + layout.tileW * 0.25, center.y - layout.tileH * 0.02);
-    if ((x + y) % 2 === 0) {
-      ctx.moveTo(center.x - layout.tileW * 0.09, center.y - layout.tileH * 0.08);
-      ctx.lineTo(center.x + layout.tileW * 0.08, center.y + layout.tileH * 0.1);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawChargerDetails(center, layout) {
-    var radiusX = layout.tileW * 0.25;
-    var radiusY = layout.tileH * 0.28;
-    ctx.save();
-    ctx.shadowColor = "rgba(64, 184, 166, 0.55)";
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = "rgba(23, 76, 67, 0.34)";
-    ctx.beginPath();
-    ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#d8ffe8";
-    ctx.lineWidth = Math.max(1.5, layout.tileW * 0.035);
-    ctx.beginPath();
-    ctx.ellipse(center.x, center.y, radiusX * 0.75, radiusY * 0.75, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = "#effff4";
-    ctx.beginPath();
-    ctx.moveTo(center.x + 1, center.y - radiusY * 0.72);
-    ctx.lineTo(center.x - radiusX * 0.22, center.y + 1);
-    ctx.lineTo(center.x + radiusX * 0.02, center.y + 1);
-    ctx.lineTo(center.x - 1, center.y + radiusY * 0.72);
-    ctx.lineTo(center.x + radiusX * 0.25, center.y - 1);
-    ctx.lineTo(center.x, center.y - 1);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawWallSegment(wall, layout) {
-    var colors =
-      wallPalettes[
-        (wall.x * 2 + wall.y + (wall.axis === "vertical" ? 1 : 0)) %
-          wallPalettes.length
-      ];
-    var lift = Math.max(4, Math.min(26, layout.tileW * 0.19));
-    var start = project({ x: wall.x, y: wall.y }, layout);
-    var end =
-      wall.axis === "horizontal"
-        ? project({ x: wall.x + 1, y: wall.y }, layout)
-        : project({ x: wall.x, y: wall.y + 1 }, layout);
-    var topStart = { x: start.x, y: start.y - lift };
-    var topEnd = { x: end.x, y: end.y - lift };
-    var face = [start, end, topEnd, topStart];
-    var outlineColor = "rgba(28, 43, 40, 0.62)";
-    var outlineWidth = Math.max(1, layout.tileW * 0.014);
-    var faceGradient = ctx.createLinearGradient(
-      topStart.x,
-      topStart.y,
-      start.x,
-      start.y
-    );
-    faceGradient.addColorStop(0, "rgba(218, 237, 216, 0.64)");
-    faceGradient.addColorStop(0.2, "rgba(166, 204, 173, 0.54)");
-    faceGradient.addColorStop(1, "rgba(95, 133, 109, 0.48)");
-    drawPolygon(face, faceGradient, outlineColor, outlineWidth);
-
-    ctx.save();
-    ctx.strokeStyle = "rgba(239, 250, 237, 0.75)";
-    ctx.lineWidth = Math.max(0.9, layout.tileW * 0.011);
-    ctx.beginPath();
-    ctx.moveTo(topStart.x, topStart.y);
-    ctx.lineTo(topEnd.x, topEnd.y);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(244, 250, 244, 0.78)";
-    ctx.strokeStyle = "rgba(48, 65, 60, 0.32)";
-    ctx.lineWidth = 0.7;
-    [0.18, 0.82].forEach(function (amount) {
-      var bolt = {
-        x: lerp(start.x, end.x, amount),
-        y: lerp(start.y, end.y, amount) - lift * 0.48
-      };
-      ctx.beginPath();
-      ctx.arc(bolt.x, bolt.y, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-
-    if (
-      (wall.x + wall.y + (wall.axis === "vertical" ? 1 : 0)) % 3 ===
-      0
-    ) {
-      ctx.strokeStyle = "#ed86b3";
-      ctx.lineWidth = Math.max(1.5, layout.tileW * 0.035);
-      ctx.beginPath();
-      ctx.moveTo(lerp(start.x, end.x, 0.5), lerp(start.y, end.y, 0.5));
-      ctx.lineTo(lerp(topStart.x, topEnd.x, 0.5), lerp(topStart.y, topEnd.y, 0.5));
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawPreview(layout) {
-    var preview = core.simulate(state.level, state.commands, state.robot);
-    drawPathOverlay(
-      layout,
-      preview.events,
-      state.robot,
-      "rgba(80, 183, 202, 0.8)",
-      "rgba(80, 183, 202, 0.34)"
-    );
-  }
-
-  function drawExecutionPath(layout) {
-    var events = state.animation.result.events;
-    var start = events.length > 0 ? events[0].from : state.robot;
-    drawPathOverlay(
-      layout,
-      events,
-      start,
-      "rgba(88, 211, 169, 0.96)",
-      "rgba(88, 211, 169, 0.58)"
-    );
-  }
-
-  function drawPathOverlay(layout, events, start, strokeColor, glowColor) {
-    var points = [cellCenter(start.x, start.y, layout)];
-    var collisionPoint = null;
-    events.forEach(function (event) {
-      event.path.forEach(function (point) {
-        points.push(cellCenter(point.x, point.y, layout));
-      });
-      if (event.blockedAt) {
-        collisionPoint = cellCenter(event.blockedAt.x, event.blockedAt.y, layout);
-      }
-    });
-
-    if (points.length > 1) {
-      ctx.save();
-      ctx.strokeStyle = strokeColor;
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 7;
-      ctx.lineWidth = 4;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y - 10);
-      for (var i = 1; i < points.length; i += 1) {
-        ctx.lineTo(points[i].x, points[i].y - 10);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (collisionPoint) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(232, 111, 161, 0.9)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(collisionPoint.x - 10, collisionPoint.y - 16);
-      ctx.lineTo(collisionPoint.x + 10, collisionPoint.y + 4);
-      ctx.moveTo(collisionPoint.x + 10, collisionPoint.y - 16);
-      ctx.lineTo(collisionPoint.x - 10, collisionPoint.y + 4);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  function goalMask(index) {
-    return 1 << index;
-  }
-
-  function drawGoal(goal, index, layout) {
-    var center = cellCenter(goal.x, goal.y, layout);
-    var collected = (state.robot.collected & goalMask(index)) !== 0;
-    var failed = state.gameOver && !collected;
-    var padColors = ["#cc91d9", "#d7b66c", "#8ecbb4", "#aaa0d9"];
-    var baseAccent = padColors[index % padColors.length];
-    var signal = failed ? "#ef6477" : "#b85cff";
-    var signalBright = failed ? "#ffd5dc" : "#f2d5ff";
-    var scale = Math.max(0.42, Math.min(2.05, layout.tileW / 60));
-
-    ctx.save();
-    ctx.translate(center.x, center.y);
-    ctx.scale(scale, scale);
-
-    if (collected) {
-      var beamGradient = ctx.createLinearGradient(0, 4, 0, -118);
-      beamGradient.addColorStop(0, "rgba(184, 92, 255, 0.62)");
-      beamGradient.addColorStop(0.58, "rgba(184, 92, 255, 0.2)");
-      beamGradient.addColorStop(1, "rgba(184, 92, 255, 0)");
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      ctx.fillStyle = beamGradient;
-      ctx.beginPath();
-      ctx.moveTo(-8, 2);
-      ctx.lineTo(-30, -118);
-      ctx.lineTo(30, -118);
-      ctx.lineTo(8, 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.44)";
-    ctx.beginPath();
-    ctx.ellipse(0, 5, 20, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#263038";
-    ctx.strokeStyle = "#66727a";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 18, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = baseAccent;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 14, 6, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    var hatchOffset = collected ? 14 : 7;
-    [
-      [-hatchOffset, -1, -1],
-      [hatchOffset, -1, 1],
-      [0, -5 - hatchOffset * 0.18, 0],
-      [0, 4 + hatchOffset * 0.18, 0]
-    ].forEach(function (panel, panelIndex) {
-      ctx.save();
-      ctx.translate(panel[0], panel[1]);
-      ctx.rotate(panelIndex < 2 ? panel[2] * 0.14 : 0);
-      ctx.fillStyle = baseAccent;
-      ctx.strokeStyle = "#343d43";
-      ctx.lineWidth = 1;
-      ctx.fillRect(-5, -2, 10, 4);
-      ctx.strokeRect(-5, -2, 10, 4);
-      ctx.restore();
-    });
-
-    ctx.save();
-    ctx.shadowColor = signal;
-    ctx.shadowBlur = collected ? 24 : 10;
-    ctx.fillStyle = signal;
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 7, 3.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = signalBright;
-    ctx.beginPath();
-    ctx.ellipse(-1.5, 0, 3.2, 1.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    if (collected) {
-      ctx.strokeStyle = "rgba(216, 157, 255, 0.72)";
-      ctx.lineWidth = 1.4;
-      [22, 43, 68].forEach(function (height, ringIndex) {
-        ctx.beginPath();
-        ctx.ellipse(0, -height, 10 + ringIndex * 5, 3 + ringIndex, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      });
-    }
-    ctx.restore();
-  }
-
-  function drawBeaconCountdown(center, collected, layout) {
-    var seconds = state.batterySecondsRemaining;
-    var urgent = seconds <= 10;
-    var width = Math.max(36, Math.min(48, layout.tileW * 0.72));
-    var height = Math.max(17, Math.min(22, layout.tileW * 0.32));
-    var x = center.x - width / 2;
-    var y = center.y - Math.max(42, layout.tileW * 0.84);
-
-    ctx.save();
-    ctx.shadowColor = urgent ? "rgba(239, 92, 92, 0.62)" : "rgba(88, 211, 169, 0.48)";
-    ctx.shadowBlur = urgent ? 12 : 8;
-    ctx.fillStyle = "rgba(27, 34, 30, 0.94)";
-    ctx.fillRect(x, y, width, height);
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = urgent ? "#ff6f61" : collected ? "#58d3a9" : "#ffd166";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, width, height);
-    ctx.fillStyle = urgent ? "#ffb0a8" : "#e5f7c6";
-    ctx.font =
-      "800 " +
-      Math.max(10, Math.min(13, layout.tileW * 0.2)) +
-      "px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(seconds) + "S", center.x, y + height / 2 + 0.5);
-    ctx.restore();
-  }
-
-  function robotBasis(pose, layout) {
-    var center = cellCenter(pose.x, pose.y, layout);
-    var angle = typeof pose.angle === "number" ? pose.angle : directionAngle(pose.direction);
-    var delta = {
-      x: Math.cos(angle),
-      y: Math.sin(angle)
-    };
-    var rightDelta = {
-      x: Math.cos(angle + Math.PI / 2),
-      y: Math.sin(angle + Math.PI / 2)
-    };
-    var nose = cellCenter(pose.x + delta.x * 0.42, pose.y + delta.y * 0.42, layout);
-    var sidePoint = cellCenter(
-      pose.x + rightDelta.x * 0.42,
-      pose.y + rightDelta.y * 0.42,
-      layout
-    );
-    var dx = nose.x - center.x;
-    var dy = nose.y - center.y;
-    var sideDx = sidePoint.x - center.x;
-    var sideDy = sidePoint.y - center.y;
-    var length = Math.max(1, Math.hypot(dx, dy));
-    var sideLength = Math.max(1, Math.hypot(sideDx, sideDy));
-    return {
-      center: center,
-      ux: dx / length,
-      uy: dy / length,
-      px: sideDx / sideLength,
-      py: sideDy / sideLength
-    };
-  }
-
-  function robotPoint(basis, forward, side, height) {
-    return {
-      x: basis.ux * forward + basis.px * side,
-      y: basis.uy * forward + basis.py * side - height
-    };
-  }
-
-  function drawRobotPrism(basis, spec, palette) {
-    var frontSign = basis.uy >= 0 ? 1 : -1;
-    var sideSign = basis.py >= 0 ? 1 : -1;
-    var front = spec.forward + frontSign * spec.halfForward;
-    var side = spec.side + sideSign * spec.halfSide;
-    var oppositeSide = spec.side - sideSign * spec.halfSide;
-    var oppositeFront = spec.forward - frontSign * spec.halfForward;
-
-    var forwardFace = [
-      robotPoint(basis, front, oppositeSide, spec.bottom),
-      robotPoint(basis, front, side, spec.bottom),
-      robotPoint(basis, front, side, spec.top),
-      robotPoint(basis, front, oppositeSide, spec.top)
-    ];
-    var sideFace = [
-      robotPoint(basis, oppositeFront, side, spec.bottom),
-      robotPoint(basis, front, side, spec.bottom),
-      robotPoint(basis, front, side, spec.top),
-      robotPoint(basis, oppositeFront, side, spec.top)
-    ];
-    drawPolygon(
-      forwardFace,
-      frontSign > 0 ? palette.front : palette.back,
-      palette.stroke,
-      1.2
-    );
-    drawPolygon(sideFace, palette.side, palette.stroke, 1.2);
-    drawPolygon(
-      [
-        robotPoint(
-          basis,
-          spec.forward - spec.halfForward,
-          spec.side - spec.halfSide,
-          spec.top
-        ),
-        robotPoint(
-          basis,
-          spec.forward + spec.halfForward,
-          spec.side - spec.halfSide,
-          spec.top
-        ),
-        robotPoint(
-          basis,
-          spec.forward + spec.halfForward,
-          spec.side + spec.halfSide,
-          spec.top
-        ),
-        robotPoint(
-          basis,
-          spec.forward - spec.halfForward,
-          spec.side + spec.halfSide,
-          spec.top
-        )
-      ],
-      palette.top,
-      palette.stroke,
-      1.2
-    );
-  }
-
-  function drawRobotEllipse(
-    basis,
-    forward,
-    side,
-    height,
-    radiusX,
-    radiusY,
-    topColor,
-    bottomColor,
-    strokeColor
-  ) {
-    var center = robotPoint(basis, forward, side, height);
-    var gradient = ctx.createLinearGradient(
-      center.x,
-      center.y - radiusY,
-      center.x,
-      center.y + radiusY
-    );
-    gradient.addColorStop(0, topColor);
-    gradient.addColorStop(1, bottomColor);
-    ctx.fillStyle = gradient;
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 1.25;
-    ctx.beginPath();
-    ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    return center;
-  }
-
-  function drawRobotTrack(basis, side) {
-    drawRobotPrism(
-      basis,
-      {
-        forward: -1,
-        side: side,
-        halfForward: 11.5,
-        halfSide: 5,
-        bottom: 2,
-        top: 13
-      },
-      {
-        top: "#4b4d4e",
-        front: "#353738",
-        back: "#3e4041",
-        side: "#242728",
-        stroke: "#17191a"
-      }
-    );
-
-    var outsideSign = side > 0 ? 1 : -1;
-    if (Math.sign(basis.py) === outsideSign) {
-      [-6, 1, 7].forEach(function (forward, index) {
-        var wheel = robotPoint(basis, forward, side + outsideSign * 5.1, 7);
-        ctx.fillStyle = index === 1 ? "#818789" : "#aeb4b5";
-        ctx.strokeStyle = "#25292a";
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.arc(wheel.x, wheel.y, index === 1 ? 3 : 3.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#464b4d";
-        ctx.beginPath();
-        ctx.arc(wheel.x, wheel.y, index === 1 ? 1.25 : 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      ctx.strokeStyle = "rgba(216, 221, 218, 0.34)";
-      ctx.lineWidth = 0.8;
-      for (var tread = -9; tread <= 9; tread += 3) {
-        var treadTop = robotPoint(
-          basis,
-          tread,
-          side + outsideSign * 5.15,
-          11.5
-        );
-        var treadBottom = robotPoint(
-          basis,
-          tread,
-          side + outsideSign * 5.15,
-          2.8
-        );
-        ctx.beginPath();
-        ctx.moveTo(treadTop.x, treadTop.y);
-        ctx.lineTo(treadBottom.x, treadBottom.y);
-        ctx.stroke();
-      }
-    }
-  }
-
-  function drawRobotArm(basis, side) {
-    var shoulder = robotPoint(basis, 0, side * 12, 29);
-    var elbow = robotPoint(basis, 1, side * 17, 23);
-    var hand = robotPoint(basis, 7, side * 18, 18);
-    ctx.strokeStyle = "#8a350f";
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(shoulder.x, shoulder.y);
-    ctx.lineTo(elbow.x, elbow.y);
-    ctx.lineTo(hand.x, hand.y);
-    ctx.stroke();
-    ctx.strokeStyle = "#f49a2e";
-    ctx.lineWidth = 4.3;
-    ctx.stroke();
-
-    [shoulder, elbow].forEach(function (joint) {
-      ctx.fillStyle = "#ffb43f";
-      ctx.strokeStyle = "#8a340f";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(joint.x, joint.y, 3.7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-
-    ctx.fillStyle = "#a8adae";
-    ctx.beginPath();
-    ctx.arc(hand.x, hand.y, 2.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#8a340f";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(hand.x, hand.y);
-    ctx.lineTo(hand.x + basis.ux * 4 + basis.px * side * 2.5, hand.y + basis.uy * 4 + basis.py * side * 2.5);
-    ctx.moveTo(hand.x, hand.y);
-    ctx.lineTo(hand.x + basis.ux * 4 - basis.px * side * 2.5, hand.y + basis.uy * 4 - basis.py * side * 2.5);
-    ctx.stroke();
-  }
-
-  function drawRobotFace(basis) {
-    var actualFrontVisible = basis.uy > 0;
-    var faceForward = actualFrontVisible ? 10.5 : -10.5;
-    var face = [
-      robotPoint(basis, faceForward, -8.5, 41),
-      robotPoint(basis, faceForward, 8.5, 41),
-      robotPoint(basis, faceForward, 8.5, 51),
-      robotPoint(basis, faceForward, -8.5, 51)
-    ];
-
-    if (actualFrontVisible) {
-      drawPolygon(face, "#17272c", "#0d171a", 1.35);
-      [-4.1, 4.1].forEach(function (side) {
-        var eye = robotPoint(basis, 10.85, side, 47);
-        ctx.save();
-        ctx.shadowColor = "#70f5f2";
-        ctx.shadowBlur = 7;
-        ctx.fillStyle = "#9dffff";
-        ctx.beginPath();
-        ctx.ellipse(eye.x, eye.y, 2, 2.75, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
-
-      var mouth = robotPoint(basis, 10.9, 0, 43.7);
-      ctx.save();
-      ctx.strokeStyle = "#8ffcf2";
-      ctx.shadowColor = "#70f5f2";
-      ctx.shadowBlur = 5;
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.arc(mouth.x, mouth.y - 1, 2.2, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      var rearPort = robotPoint(basis, -10.8, 0, 46.5);
-      ctx.fillStyle = "#e46a1f";
-      ctx.strokeStyle = "#8a340f";
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.arc(rearPort.x, rearPort.y, 4.4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#ffd066";
-      ctx.beginPath();
-      ctx.arc(rearPort.x, rearPort.y, 2.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawRobot(pose, layout) {
-    var basis = robotBasis(pose, layout);
-    var scale = Math.max(0.45, Math.min(1.9, layout.tileW / 64));
-
-    ctx.save();
-    ctx.translate(basis.center.x, basis.center.y);
-    ctx.scale(scale, scale);
-
-    ctx.fillStyle = "rgba(43, 54, 56, 0.22)";
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 22, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    [-16, 16]
-      .sort(function (a, b) {
-        return robotPoint(basis, 0, a, 0).y - robotPoint(basis, 0, b, 0).y;
-      })
-      .forEach(function (side) {
-        drawRobotTrack(basis, side);
-      });
-
-    drawRobotPrism(
-      basis,
-      { forward: 0, side: 0, halfForward: 13, halfSide: 15, bottom: 10, top: 18 },
-      {
-        top: "#ffd15c",
-        front: "#f59a2f",
-        back: "#e87520",
-        side: "#cc5316",
-        stroke: "#8a350f"
-      }
-    );
-
-    [-1, 1]
-      .sort(function (a, b) {
-        return robotPoint(basis, 0, a * 17, 0).y - robotPoint(basis, 0, b * 17, 0).y;
-      })
-      .forEach(function (side) {
-        drawRobotArm(basis, side);
-      });
-
-    drawRobotEllipse(
-      basis,
-      -1,
-      0,
-      28,
-      14.5,
-      15.5,
-      "#ffc34f",
-      "#e66a1f",
-      "#8a340f"
-    );
-
-    var chestLight = robotPoint(basis, 10.5, 0, 28);
-    if (basis.uy > 0) {
-      ctx.fillStyle = "#b9bdbd";
-      ctx.strokeStyle = "#6f7272";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(chestLight.x, chestLight.y, 2.7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    drawRobotEllipse(
-      basis,
-      0,
-      0,
-      37,
-      6,
-      3.2,
-      "#d5d8d7",
-      "#777d7e",
-      "#4c5152"
-    );
-    drawRobotEllipse(
-      basis,
-      0,
-      0,
-      47,
-      17,
-      17.5,
-      "#ffd05a",
-      "#e96f20",
-      "#8a340f"
-    );
-
-    var visibleSide = basis.py >= 0 ? 1 : -1;
-    var sidePort = robotPoint(basis, 0, visibleSide * 15, 47);
-    ctx.fillStyle = "#f38b27";
-    ctx.strokeStyle = "#8a340f";
-    ctx.lineWidth = 1.15;
-    ctx.beginPath();
-    ctx.arc(sidePort.x, sidePort.y, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    drawRobotFace(basis);
-    ctx.restore();
-  }
-
-  function drawCanvasFinish(width, height) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(16, 28);
-    ctx.lineTo(16, 16);
-    ctx.lineTo(28, 16);
-    ctx.moveTo(width - 28, 16);
-    ctx.lineTo(width - 16, 16);
-    ctx.lineTo(width - 16, 28);
-    ctx.moveTo(16, height - 28);
-    ctx.lineTo(16, height - 16);
-    ctx.lineTo(28, height - 16);
-    ctx.moveTo(width - 28, height - 16);
-    ctx.lineTo(width - 16, height - 16);
-    ctx.lineTo(width - 16, height - 28);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(35, 41, 45, 0.025)";
-    for (var y = 1; y < height; y += 5) {
-      ctx.fillRect(0, y, width, 1);
-    }
-    ctx.restore();
   }
 
   function drawMiniMap() {
@@ -2307,7 +1310,8 @@
     for (var y = 0; y < level.height; y += 1) {
       for (var x = 0; x < level.width; x += 1) {
         var terrain = core.terrainAt(level, x, y);
-        mapCtx.fillStyle = terrainColors[terrain].top;
+        mapCtx.fillStyle =
+          terrain === "floor" ? floorHueColor(state.floorHue) : terrainColors[terrain].top;
         mapCtx.fillRect(offsetX + x * cell, offsetY + y * cell, Math.ceil(cell), Math.ceil(cell));
       }
     }
@@ -2383,6 +1387,9 @@
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
     els.lightLevel.value = String(state.globalLight);
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
+    els.floorHue.value = String(state.floorHue);
+    els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
+    els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
     els.previewToggle.checked = state.preview;
     els.executeProgram.disabled =
       state.animating ||
@@ -2513,7 +1520,7 @@
     els.closeHelp.setAttribute("aria-label", text("closeHelp"));
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
-    els.canvas.setAttribute("aria-label", text("canvasLabel"));
+    els.stage.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute("aria-label", text("mapLabel"));
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
     els.cameraControls.setAttribute("aria-label", text("camera"));
@@ -2525,6 +1532,7 @@
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
+    els.floorHue.setAttribute("aria-label", text("floorColor"));
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -2633,6 +1641,9 @@
 
   els.previewToggle.addEventListener("change", function () {
     state.preview = els.previewToggle.checked;
+    if (state.preview && sound) {
+      sound.playShadowEnabled(state.language);
+    }
     drawAll();
   });
 
@@ -2640,6 +1651,14 @@
     state.globalLight = clampGlobalLight(els.lightLevel.value);
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
     saveGlobalLight();
+    drawAll();
+  });
+
+  els.floorHue.addEventListener("input", function () {
+    state.floorHue = clampFloorHue(els.floorHue.value);
+    els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
+    els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
+    saveFloorHue();
     drawAll();
   });
 
@@ -2745,7 +1764,7 @@
   });
 
   var resizeFrame = null;
-  function scheduleCanvasRedraw() {
+  function scheduleBoardRedraw() {
     if (!state.robot || resizeFrame !== null) return;
     resizeFrame = window.requestAnimationFrame(function () {
       resizeFrame = null;
@@ -2753,8 +1772,8 @@
     });
   }
 
-  window.addEventListener("resize", scheduleCanvasRedraw);
-  window.addEventListener("load", scheduleCanvasRedraw);
+  window.addEventListener("resize", scheduleBoardRedraw);
+  window.addEventListener("load", scheduleBoardRedraw);
   document.addEventListener("pointerdown", function () {
     if (sound) sound.unlock();
   }, { capture: true, once: true });
@@ -2762,16 +1781,15 @@
     if (sound) sound.unlock();
   }, { capture: true, once: true });
   if (typeof window.ResizeObserver === "function") {
-    var canvasResizeObserver = new window.ResizeObserver(scheduleCanvasRedraw);
-    canvasResizeObserver.observe(els.canvas);
-    canvasResizeObserver.observe(els.miniMap);
+    var miniMapResizeObserver = new window.ResizeObserver(scheduleBoardRedraw);
+    miniMapResizeObserver.observe(els.miniMap);
   }
 
   window.RoboNaviRenderBridge = {
     attach: function (renderer) {
       if (!renderer || typeof renderer.update !== "function") return;
       threeRenderer = renderer;
-      els.canvas.parentElement.classList.add("three-ready");
+      els.stage.dataset.renderer = "three";
       els.cameraRotateLeft.disabled = false;
       els.cameraRotateRight.disabled = false;
       renderer.update(createThreeRenderSnapshot());
@@ -2779,10 +1797,9 @@
     detach: function (renderer) {
       if (renderer && threeRenderer !== renderer) return;
       threeRenderer = null;
-      els.canvas.parentElement.classList.remove("three-ready");
+      els.stage.dataset.renderer = "failed";
       els.cameraRotateLeft.disabled = true;
       els.cameraRotateRight.disabled = true;
-      drawBoard();
     },
     snapshot: createThreeRenderSnapshot
   };
