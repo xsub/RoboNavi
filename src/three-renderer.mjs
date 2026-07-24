@@ -501,7 +501,10 @@ function createRobot(materials) {
     0.014
   );
   trackHousingGeometry.rotateY(Math.PI / 2);
-  const trackLinkGeometry = new THREE.BoxGeometry(0.145, 0.052, 0.074);
+  const trackLinkGeometry = new THREE.BoxGeometry(0.088, 0.052, 0.074);
+  const trackHousingX = 0.29;
+  const wheelX = 0.345;
+  const trackX = 0.385;
   const trackMaterials = [
     materials.rubber,
     physicalMaterial({
@@ -535,7 +538,7 @@ function createRobot(materials) {
       true,
       true
     );
-    trackHousing.position.set(side * 0.36, 0.17, 0.02);
+    trackHousing.position.set(side * trackHousingX, 0.17, 0.02);
     model.add(trackHousing);
 
     [-0.22, 0, 0.22].forEach((z, wheelIndex) => {
@@ -545,7 +548,7 @@ function createRobot(materials) {
         true
       );
       wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(side * 0.438, 0.17, z + 0.02);
+      wheel.position.set(side * wheelX, 0.17, z + 0.02);
       wheel.scale.setScalar(wheelIndex === 1 ? 0.86 : 1);
       wheel.userData.trackSide = side;
       model.add(wheel);
@@ -561,16 +564,16 @@ function createRobot(materials) {
 
     const trackCurve = new THREE.CatmullRomCurve3(
       [
-        new THREE.Vector3(side * 0.49, 0.286, -0.2),
-        new THREE.Vector3(side * 0.49, 0.286, 0.24),
-        new THREE.Vector3(side * 0.49, 0.25, 0.3),
-        new THREE.Vector3(side * 0.49, 0.17, 0.335),
-        new THREE.Vector3(side * 0.49, 0.09, 0.3),
-        new THREE.Vector3(side * 0.49, 0.054, 0.24),
-        new THREE.Vector3(side * 0.49, 0.054, -0.2),
-        new THREE.Vector3(side * 0.49, 0.09, -0.26),
-        new THREE.Vector3(side * 0.49, 0.17, -0.295),
-        new THREE.Vector3(side * 0.49, 0.25, -0.26)
+        new THREE.Vector3(side * trackX, 0.286, -0.2),
+        new THREE.Vector3(side * trackX, 0.286, 0.24),
+        new THREE.Vector3(side * trackX, 0.25, 0.3),
+        new THREE.Vector3(side * trackX, 0.17, 0.335),
+        new THREE.Vector3(side * trackX, 0.09, 0.3),
+        new THREE.Vector3(side * trackX, 0.054, 0.24),
+        new THREE.Vector3(side * trackX, 0.054, -0.2),
+        new THREE.Vector3(side * trackX, 0.09, -0.26),
+        new THREE.Vector3(side * trackX, 0.17, -0.295),
+        new THREE.Vector3(side * trackX, 0.25, -0.26)
       ],
       true,
       "centripetal",
