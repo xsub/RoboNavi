@@ -60,6 +60,29 @@
     }
   }
 
+  function findSpeechVoice(language) {
+    if (!speech || typeof speech.getVoices !== "function") return null;
+    var languagePrefix =
+      String(language || "").toLowerCase().indexOf("pl") === 0 ? "pl" : "en";
+    var preferredNames =
+      languagePrefix === "pl"
+        ? ["zosia", "krzysztof", "ewa"]
+        : ["samantha", "daniel", "alex"];
+    var matchingVoices = speech.getVoices().filter(function (voice) {
+      return (
+        String(voice.lang || "").toLowerCase().indexOf(languagePrefix) === 0
+      );
+    });
+    if (matchingVoices.length === 0) return null;
+    var preferredVoice = matchingVoices.find(function (voice) {
+      var voiceName = String(voice.name || "").toLowerCase();
+      return preferredNames.some(function (preferredName) {
+        return voiceName.indexOf(preferredName) !== -1;
+      });
+    });
+    return preferredVoice || matchingVoices[0];
+  }
+
   function saveEnabled() {
     try {
       localStorage.setItem(storageKey, enabled ? "true" : "false");
@@ -1149,14 +1172,20 @@
     }
     if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
 
-    var isPolish = language === "pl";
+    var isPolish =
+      String(language || "").toLowerCase().indexOf("pl") === 0;
+    var selectedVoice = findSpeechVoice(isPolish ? "pl" : "en");
+    if (isPolish && !selectedVoice) {
+      return;
+    }
     var utterance = new window.SpeechSynthesisUtterance(
-      isPolish ? "Hej, ty!" : "Hey, you!"
+      isPolish ? "Hej ty." : "Hey, you!"
     );
     utterance.lang = isPolish ? "pl-PL" : "en-US";
-    utterance.rate = 0.82;
-    utterance.pitch = 1.08;
-    utterance.volume = 0.62;
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = isPolish ? 0.94 : 0.82;
+    utterance.pitch = isPolish ? 0.98 : 1.08;
+    utterance.volume = isPolish ? 0.68 : 0.62;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
     }, 620);

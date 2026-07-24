@@ -44,4 +44,17 @@ library.clips.forEach((clip) => {
   );
 });
 
+assert(
+  audioSource.includes('"zosia"'),
+  "Polish attention speech should prefer the native Zosia voice"
+);
+assert(
+  audioSource.includes('"Hej ty."'),
+  "Polish attention speech should use the tuned Polish phrase"
+);
+assert(
+  audioSource.includes("if (isPolish && !selectedVoice)"),
+  "Polish attention speech should not fall back to an English voice"
+);
+
 console.log(`Validated ${library.clips.length} robot voice samples.`);
