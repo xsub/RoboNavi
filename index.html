@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-map1">
+    <link rel="stylesheet" href="styles.css?v=20260724-speedmodes1">
   </head>
   <body>
     <div class="app-shell">
@@ -155,11 +155,14 @@
                   <input id="light-level" type="range" min="0" max="200" step="5" value="45">
                   <output id="light-value" for="light-level">45%</output>
                 </label>
-                <label class="engine-control">
+                <div id="engine-mode" class="engine-mode-control" role="group">
                   <span data-i18n="engine">Engine</span>
-                  <input id="engine-speed" type="range" min="60" max="160" step="5" value="100">
-                  <output id="engine-speed-value" for="engine-speed">100%</output>
-                </label>
+                  <span class="engine-mode-buttons">
+                    <button type="button" data-engine-mode="slow">Slow</button>
+                    <button type="button" data-engine-mode="med">Med</button>
+                    <button type="button" data-engine-mode="hi">Hi</button>
+                  </span>
+                </div>
                 <label class="signal-control">
                   <span data-i18n="sparks">Sparks</span>
                   <input id="spark-count" type="range" min="0" max="15" step="1" value="5">
@@ -353,10 +356,10 @@
       </form>
     </dialog>
 
-    <script src="src/core.js?v=20260724-water1"></script>
+    <script src="src/core.js?v=20260724-speedmodes1"></script>
     <script src="src/generator.js?v=20260724-water1"></script>
     <script src="src/audio.js?v=20260724-water1"></script>
-    <script src="src/app.js?v=20260724-water1"></script>
+    <script src="src/app.js?v=20260724-speedmodes1"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260724-water1"></script>
   </body>
 </html>

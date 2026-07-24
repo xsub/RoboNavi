@@ -904,9 +904,23 @@
     return (state.collected & allMask) === allMask;
   }
 
-  function enterCell(level, state, x, y, unlimitedEnergy) {
+  function movementCostMultiplier(options) {
+    var value = Number(options && options.movementCostMultiplier);
+    return isFinite(value) && value > 0 ? value : 1;
+  }
+
+  function enterCell(
+    level,
+    state,
+    x,
+    y,
+    unlimitedEnergy,
+    energyMultiplier
+  ) {
     var terrain = terrainAt(level, x, y);
-    var cost = unlimitedEnergy ? 0 : TERRAIN[terrain].cost;
+    var cost = unlimitedEnergy
+      ? 0
+      : roundEnergy(TERRAIN[terrain].cost * energyMultiplier);
     if (!spend(state, cost, unlimitedEnergy)) {
       return { entered: false, terrain: terrain, cost: cost, collected: [], recharged: 0 };
     }
@@ -921,7 +935,13 @@
     };
   }
 
-  function moveForward(level, state, commandIndex, unlimitedEnergy) {
+  function moveForward(
+    level,
+    state,
+    commandIndex,
+    unlimitedEnergy,
+    energyMultiplier
+  ) {
     var event = {
       commandIndex: commandIndex,
       command: "forward",
@@ -953,7 +973,14 @@
     }
 
     while (true) {
-      var entered = enterCell(level, state, nextX, nextY, unlimitedEnergy);
+      var entered = enterCell(
+        level,
+        state,
+        nextX,
+        nextY,
+        unlimitedEnergy,
+        energyMultiplier
+      );
       if (!entered.entered) {
         event.blockedAt = { x: nextX, y: nextY };
         event.status = "out-of-energy";
@@ -1088,7 +1115,7 @@
     return event;
   }
 
-  function minimumMovementEnergy(level, state) {
+  function minimumMovementEnergy(level, state, energyMultiplier) {
     var currentDirection = DIRECTIONS.indexOf(state.direction);
     var minimum = Infinity;
 
@@ -1101,7 +1128,9 @@
       var clockwiseTurns =
         (directionIndex - currentDirection + DIRECTIONS.length) % DIRECTIONS.length;
       var turns = Math.min(clockwiseTurns, DIRECTIONS.length - clockwiseTurns);
-      var terrainCost = TERRAIN[terrainAt(level, nextX, nextY)].cost;
+      var terrainCost = roundEnergy(
+        TERRAIN[terrainAt(level, nextX, nextY)].cost * energyMultiplier
+      );
       minimum = Math.min(
         minimum,
         COSTS.startup + turns * COSTS.turn + terrainCost
@@ -1116,6 +1145,7 @@
     var events = [];
     var normalized = commands.map(normalizeCommand);
     var unlimitedEnergy = Boolean(options && options.unlimitedEnergy);
+    var energyMultiplier = movementCostMultiplier(options);
 
     if (normalized.length > 0) {
       if (!spend(state, COSTS.startup, unlimitedEnergy)) {
@@ -1147,7 +1177,13 @@
       var type = commandType(command);
       var event;
       if (type === "forward") {
-        event = moveForward(level, state, index, unlimitedEnergy);
+        event = moveForward(
+          level,
+          state,
+          index,
+          unlimitedEnergy,
+          energyMultiplier
+        );
       } else if (type === "turn-left" || type === "turn-right") {
         event = turnRobot(level, state, type, index, unlimitedEnergy);
       } else if (type === "battery") {
@@ -1180,7 +1216,11 @@
     }
 
     var completed = isComplete(level, state);
-    var nextMovementCost = minimumMovementEnergy(level, state);
+    var nextMovementCost = minimumMovementEnergy(
+      level,
+      state,
+      energyMultiplier
+    );
     var canInduct =
       terrainAt(level, state.x, state.y) === "charger" &&
       state.energyRemaining + EPSILON >= 1;

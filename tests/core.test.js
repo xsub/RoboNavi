@@ -79,6 +79,25 @@ core.LEVELS.slice(10).forEach((level) => {
   assert.strictEqual(result.events[0].path[0].cost, 3);
   assert.strictEqual(result.finalState.energySpent, 3.5);
   assert.strictEqual(result.finalState.energyRemaining, 6.5);
+
+  const slow = core.simulate(
+    level,
+    core.parseProgram("F"),
+    undefined,
+    { movementCostMultiplier: 0.8 }
+  );
+  const high = core.simulate(
+    level,
+    core.parseProgram("F"),
+    undefined,
+    { movementCostMultiplier: 1.35 }
+  );
+  assert.strictEqual(slow.events[0].path[0].cost, 2.4);
+  assert.strictEqual(slow.finalState.energySpent, 2.9);
+  assert.strictEqual(high.events[0].path[0].cost, 4.05);
+  assert.strictEqual(high.finalState.energySpent, 4.55);
+  assert(slow.finalState.energySpent < result.finalState.energySpent);
+  assert(result.finalState.energySpent < high.finalState.energySpent);
 }
 
 {
@@ -252,7 +271,7 @@ core.LEVELS.slice(10).forEach((level) => {
     level,
     commands,
     undefined,
-    { unlimitedEnergy: true }
+    { unlimitedEnergy: true, movementCostMultiplier: 1.35 }
   );
 
   assert.strictEqual(limited.stoppedReason, "out-of-energy");

@@ -6,7 +6,8 @@
   var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
-  var engineSpeedStorageKey = "robonavi-engine-speed-v1";
+  var engineModeStorageKey = "robonavi-engine-mode-v1";
+  var legacyEngineSpeedStorageKey = "robonavi-engine-speed-v1";
   var sparkCountStorageKey = "robonavi-spark-count-v1";
   var floorHueStorageKey = "robonavi-floor-hue-v1";
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
@@ -15,6 +16,11 @@
   var repositoryUrl = "https://github.com/xsub/RoboNavi";
   var repositoryApiUrl = "https://api.github.com/repos/xsub/RoboNavi/commits/main";
   var fallbackProgramVersion = "834f799";
+  var engineModes = {
+    slow: { speed: 75, movementCostMultiplier: 0.8 },
+    med: { speed: 100, movementCostMultiplier: 1 },
+    hi: { speed: 140, movementCostMultiplier: 1.35 }
+  };
   var terrainColors = {
     floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
@@ -77,7 +83,10 @@
       light: "Light",
       globalLight: "Global light",
       engine: "Engine",
-      engineSpeed: "Engine tone and movement speed",
+      engineSpeed: "Engine speed and movement energy",
+      engineSlow: "Slow: 80% movement energy",
+      engineMed: "Medium: normal movement energy",
+      engineHi: "High: 135% movement energy",
       sparks: "Sparks",
       sparkCount: "Signals moving through the grid",
       floorColor: "Floor color",
@@ -261,7 +270,10 @@
       light: "Światło",
       globalLight: "Światło globalne",
       engine: "Silnik",
-      engineSpeed: "Brzmienie i prędkość silnika",
+      engineSpeed: "Prędkość silnika i energia ruchu",
+      engineSlow: "Wolno: 80% energii ruchu",
+      engineMed: "Średnio: zwykły koszt energii",
+      engineHi: "Szybko: 135% energii ruchu",
       sparks: "Iskry",
       sparkCount: "Sygnały poruszające się po gridzie",
       floorColor: "Kolor podłogi",
@@ -436,8 +448,7 @@
     resetLevel: document.getElementById("reset-level"),
     lightLevel: document.getElementById("light-level"),
     lightValue: document.getElementById("light-value"),
-    engineSpeed: document.getElementById("engine-speed"),
-    engineSpeedValue: document.getElementById("engine-speed-value"),
+    engineMode: document.getElementById("engine-mode"),
     sparkCount: document.getElementById("spark-count"),
     sparkCountValue: document.getElementById("spark-count-value"),
     floorHue: document.getElementById("floor-hue"),
@@ -526,7 +537,7 @@
     preview: false,
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
-    engineSpeed: loadEngineSpeed(),
+    engineMode: loadEngineMode(),
     sparkCount: loadSparkCount(),
     floorHue: loadFloorHue(),
     backgroundHue: loadBackgroundHue(),
@@ -577,25 +588,33 @@
     }
   }
 
-  function clampEngineSpeed(value) {
-    return Math.max(60, Math.min(160, Number(value) || 100));
+  function validEngineMode(value) {
+    return Object.prototype.hasOwnProperty.call(engineModes, value);
   }
 
-  function loadEngineSpeed() {
+  function loadEngineMode() {
     try {
-      var saved = localStorage.getItem(engineSpeedStorageKey);
-      return saved === null ? 100 : clampEngineSpeed(saved);
+      var saved = localStorage.getItem(engineModeStorageKey);
+      if (validEngineMode(saved)) return saved;
+      var legacySpeed = Number(localStorage.getItem(legacyEngineSpeedStorageKey));
+      if (legacySpeed && legacySpeed < 90) return "slow";
+      if (legacySpeed > 120) return "hi";
+      return "med";
     } catch (error) {
-      return 100;
+      return "med";
     }
   }
 
-  function saveEngineSpeed() {
+  function saveEngineMode() {
     try {
-      localStorage.setItem(engineSpeedStorageKey, String(state.engineSpeed));
+      localStorage.setItem(engineModeStorageKey, state.engineMode);
     } catch (error) {
       // The live engine control still works when storage is unavailable.
     }
+  }
+
+  function currentEngineMode() {
+    return engineModes[state.engineMode] || engineModes.med;
   }
 
   function clampSparkCount(value) {
@@ -728,7 +747,10 @@
   }
 
   function simulationOptions() {
-    return { unlimitedEnergy: state.freeDrive };
+    return {
+      unlimitedEnergy: state.freeDrive,
+      movementCostMultiplier: currentEngineMode().movementCostMultiplier
+    };
   }
 
   function floorHueColor(value) {
@@ -1053,7 +1075,7 @@
   }
 
   function scaledDriveDuration(duration) {
-    return Math.round(duration * (100 / state.engineSpeed));
+    return Math.round(duration * (100 / currentEngineMode().speed));
   }
 
   function movementDuration(terrain) {
@@ -1095,7 +1117,11 @@
   function startAnimationStepSound(step) {
     if (!sound || !step) return;
     if (isDriveStep(step)) {
-      sound.startDrive(step.type, state.engineSpeed, step.terrain || "floor");
+      sound.startDrive(
+        step.type,
+        currentEngineMode().speed,
+        step.terrain || "floor"
+      );
       if (step.type === "bump") {
         sound.playCollision();
       }
@@ -1711,8 +1737,12 @@
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
     els.lightLevel.value = String(state.globalLight);
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
-    els.engineSpeed.value = String(state.engineSpeed);
-    els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
+    els.engineMode.querySelectorAll("[data-engine-mode]").forEach(function (button) {
+      var isActive = button.dataset.engineMode === state.engineMode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      button.disabled = state.animating;
+    });
     els.sparkCount.value = String(state.sparkCount);
     els.sparkCountValue.textContent = String(state.sparkCount);
     els.floorHue.value = String(state.floorHue);
@@ -1899,7 +1929,17 @@
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
-    els.engineSpeed.setAttribute("aria-label", text("engineSpeed"));
+    els.engineMode.setAttribute("aria-label", text("engineSpeed"));
+    els.engineMode.querySelectorAll("[data-engine-mode]").forEach(function (button) {
+      var labelKey =
+        button.dataset.engineMode === "slow"
+          ? "engineSlow"
+          : button.dataset.engineMode === "hi"
+            ? "engineHi"
+            : "engineMed";
+      button.title = text(labelKey);
+      button.setAttribute("aria-label", text(labelKey));
+    });
     els.sparkCount.setAttribute("aria-label", text("sparkCount"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
@@ -2036,10 +2076,14 @@
     drawAll();
   });
 
-  els.engineSpeed.addEventListener("input", function () {
-    state.engineSpeed = clampEngineSpeed(els.engineSpeed.value);
-    els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
-    saveEngineSpeed();
+  els.engineMode.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-engine-mode]");
+    if (!button || state.animating || !validEngineMode(button.dataset.engineMode)) {
+      return;
+    }
+    state.engineMode = button.dataset.engineMode;
+    saveEngineMode();
+    renderAll();
   });
 
   els.sparkCount.addEventListener("input", function () {

@@ -672,7 +672,7 @@ strong {
 
 .program-options,
 .lighting-control,
-.engine-control,
+.engine-mode-control,
 .signal-control,
 .floor-color-control,
 .background-color-control,
@@ -705,12 +705,12 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .engine-control {
+.program-section .engine-mode-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
   grid-row: 3;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .program-section .signal-control {
@@ -746,7 +746,6 @@ strong {
 }
 
 .program-section .lighting-control input[type="range"],
-.program-section .engine-control input[type="range"],
 .program-section .signal-control input[type="range"] {
   width: 100%;
   min-width: 0;
@@ -776,7 +775,7 @@ strong {
 }
 
 .lighting-control,
-.engine-control,
+.engine-mode-control,
 .signal-control,
 .floor-color-control,
 .background-color-control,
@@ -786,6 +785,50 @@ strong {
   font-size: 0.68rem;
   font-weight: 750;
   white-space: nowrap;
+}
+
+.engine-mode-buttons {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.engine-mode-buttons button {
+  min-width: 0;
+  min-height: 22px;
+  padding: 2px 6px;
+  border: 2px solid #50575a;
+  border-radius: 4px;
+  background: linear-gradient(#d9dddc, #a9b0b0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 3px 0 #626869;
+  color: #2d3434;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.engine-mode-buttons button:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.engine-mode-buttons button.is-active {
+  border-color: #315b4b;
+  background: linear-gradient(#9acc87, #56805b);
+  box-shadow:
+    inset 0 1px 0 rgba(226, 255, 205, 0.72),
+    0 3px 0 #30473a,
+    0 0 8px rgba(154, 225, 132, 0.34);
+  color: #efffd2;
+}
+
+.engine-mode-buttons button:disabled {
+  cursor: default;
+  opacity: 0.68;
 }
 
 .floor-color-control input[type="range"],
@@ -870,7 +913,6 @@ strong {
 }
 
 .lighting-control input[type="range"],
-.engine-control input[type="range"],
 .signal-control input[type="range"] {
   width: 116px;
   height: 12px;
@@ -885,7 +927,6 @@ strong {
 }
 
 .lighting-control input[type="range"]::-webkit-slider-thumb,
-.engine-control input[type="range"]::-webkit-slider-thumb,
 .signal-control input[type="range"]::-webkit-slider-thumb {
   width: 12px;
   height: 18px;
@@ -897,7 +938,6 @@ strong {
 }
 
 .lighting-control input[type="range"]::-moz-range-thumb,
-.engine-control input[type="range"]::-moz-range-thumb,
 .signal-control input[type="range"]::-moz-range-thumb {
   width: 10px;
   height: 16px;
@@ -908,25 +948,12 @@ strong {
 }
 
 .lighting-control output,
-.engine-control output,
 .signal-control output {
   width: 3.8em;
   color: #744823;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 850;
   text-align: right;
-}
-
-.engine-control input[type="range"]::-webkit-slider-thumb {
-  border-color: #31565b;
-  background: #76d8d2;
-  box-shadow: 0 0 7px rgba(91, 224, 216, 0.48);
-}
-
-.engine-control input[type="range"]::-moz-range-thumb {
-  border-color: #31565b;
-  background: #76d8d2;
-  box-shadow: 0 0 7px rgba(91, 224, 216, 0.48);
 }
 
 .signal-control input[type="range"]::-webkit-slider-thumb {
@@ -2008,7 +2035,7 @@ kbd {
   }
 
   .lighting-control,
-  .engine-control,
+  .engine-mode-control,
   .signal-control,
   .floor-color-control,
   .background-color-control,
@@ -2022,6 +2049,17 @@ kbd {
   .robot-color-control input[type="range"] {
     height: 9px;
     border-width: 1px;
+  }
+
+  .engine-mode-buttons {
+    gap: 2px;
+  }
+
+  .engine-mode-buttons button {
+    min-height: 18px;
+    padding: 1px 3px;
+    border-width: 1px;
+    font-size: 0.48rem;
   }
 
   .floor-color-control input[type="range"]::-webkit-slider-thumb,
@@ -2665,7 +2703,7 @@ kbd {
     font-size: 0.44rem;
   }
 
-  .engine-control {
+  .engine-mode-control {
     gap: 3px;
     font-size: 0.44rem;
   }
@@ -2676,7 +2714,6 @@ kbd {
   }
 
   .lighting-control input[type="range"],
-  .engine-control input[type="range"],
   .signal-control input[type="range"] {
     width: 72px;
     height: 9px;
@@ -2684,7 +2721,6 @@ kbd {
   }
 
   .lighting-control input[type="range"]::-webkit-slider-thumb,
-  .engine-control input[type="range"]::-webkit-slider-thumb,
   .signal-control input[type="range"]::-webkit-slider-thumb {
     width: 8px;
     height: 13px;
@@ -2692,7 +2728,6 @@ kbd {
   }
 
   .lighting-control input[type="range"]::-moz-range-thumb,
-  .engine-control input[type="range"]::-moz-range-thumb,
   .signal-control input[type="range"]::-moz-range-thumb {
     width: 7px;
     height: 11px;
@@ -2700,10 +2735,20 @@ kbd {
   }
 
   .lighting-control output,
-  .engine-control output,
   .signal-control output {
     width: 3.4em;
     font-size: 0.44rem;
+  }
+
+  .engine-mode-buttons {
+    gap: 2px;
+  }
+
+  .engine-mode-buttons button {
+    min-height: 17px;
+    padding: 1px 2px;
+    border-width: 1px;
+    font-size: 0.42rem;
   }
 
   .toggle {
