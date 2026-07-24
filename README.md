@@ -22,6 +22,8 @@ the whole program.
   tank tracks, expressive blinking, a telescopic idle antenna, and purple
   floor-projector beacons
 - Mission-control cockpit with global-light and floor-color controls
+- Persistent spectrum controls for the floor, cockpit background, and robot paint
+- Animated electronic signal pulses travelling through the background grid
 - Quarter-turn camera rotation, zoom controls, wheel or touchpad zoom, and drag-to-pan navigation
 - Optional route preview without a ghost robot
 - Unlimited-energy Free Drive mode for relaxed practice

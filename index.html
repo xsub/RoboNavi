@@ -8,15 +8,25 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-camera1">
+    <link rel="stylesheet" href="styles.css?v=20260724-signals1">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-console">
           <div class="brand-logo" aria-label="RoboNavi">
-            <span class="logo-emblem" aria-hidden="true">
-              <img src="assets/robot-hero.png?v=20260723-2145" alt="">
+            <span class="logo-stack">
+              <span class="logo-emblem" aria-hidden="true">
+                <img src="assets/robot-hero.png?v=20260723-2145" alt="">
+              </span>
+              <a
+                id="program-version"
+                class="program-version"
+                href="https://github.com/xsub/RoboNavi/commit/834f799"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Program version V834F799; open commit on GitHub"
+              >V834F799</a>
             </span>
             <span class="logo-wordmark">
               <span><strong>ROBO</strong><b>NAVI</b></span>
@@ -143,6 +153,16 @@
                   <span data-i18n="floorColor">Floor</span>
                   <input id="floor-hue" type="range" min="0" max="360" step="1" value="196">
                   <output id="floor-color-swatch" for="floor-hue" aria-hidden="true"></output>
+                </label>
+                <label class="background-color-control">
+                  <span data-i18n="backgroundColor">Background</span>
+                  <input id="background-hue" type="range" min="0" max="360" step="1" value="195">
+                  <output id="background-color-swatch" for="background-hue" aria-hidden="true"></output>
+                </label>
+                <label class="robot-color-control">
+                  <span data-i18n="robotColor">Robot</span>
+                  <input id="robot-hue" type="range" min="0" max="360" step="1" value="30">
+                  <output id="robot-color-swatch" for="robot-hue" aria-hidden="true"></output>
                 </label>
                 <div class="program-toggles">
                   <label class="toggle free-drive-toggle">
@@ -320,7 +340,7 @@
     <script src="src/core.js?v=20260724-freedrive1"></script>
     <script src="src/generator.js?v=20260724-edgewalls1"></script>
     <script src="src/audio.js?v=20260724-collision1"></script>
-    <script src="src/app.js?v=20260724-antenna1"></script>
-    <script type="module" src="src/three-renderer.mjs?v=20260724-tracks1"></script>
+    <script src="src/app.js?v=20260724-signals1"></script>
+    <script type="module" src="src/three-renderer.mjs?v=20260724-signals1"></script>
   </body>
 </html>

@@ -109,6 +109,31 @@ function makeSandTexture() {
   return texture;
 }
 
+function makeSignalTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = 96;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(48, 48, 0, 48, 48, 46);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.12, "rgba(199, 255, 245, 1)");
+  gradient.addColorStop(0.36, "rgba(92, 242, 222, 0.9)");
+  gradient.addColorStop(1, "rgba(72, 210, 255, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 96, 96);
+  context.strokeStyle = "rgba(242, 255, 252, 0.95)";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(18, 48);
+  context.lineTo(78, 48);
+  context.moveTo(48, 18);
+  context.lineTo(48, 78);
+  context.stroke();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function physicalMaterial(options) {
   return new THREE.MeshPhysicalMaterial({
     color: options.color || "#ffffff",
@@ -131,7 +156,7 @@ function createMaterials() {
   const floorTextureA = makeMetalTexture("#b9c3c6", "#929fa3", "#d2dadd", 17);
   const floorTextureB = makeMetalTexture("#c2cbcd", "#9ca8ab", "#dbe1e3", 29);
   const wallTexture = makeMetalTexture("#a7bea4", "#7e9782", "#e6f0e2", 43);
-  const orangeTexture = makeMetalTexture("#ffb84d", "#ed6d1e", "#ffe27a", 71);
+  const orangeTexture = makeMetalTexture("#e5e8e7", "#aeb7b8", "#ffffff", 71);
 
   return {
     floor: [
@@ -253,6 +278,7 @@ function createMaterials() {
       clearcoat: 0
     }),
     orange: physicalMaterial({
+      color: COLORS.orange,
       map: orangeTexture,
       metalness: 0.44,
       roughness: 0.28,
@@ -788,6 +814,13 @@ function createRobot(materials) {
     trackLinks,
     positionTrackLink,
     wheelTravelBySide: { "-1": 0, "1": 0 },
+    robotColorMaterials: {
+      base: materials.orange,
+      light: materials.orangeLight,
+      dark: materials.orangeDark,
+      chest: chestMaterial,
+      trackAccent: trackMaterials[2]
+    },
     armPivots,
     eyes,
     head,
@@ -924,6 +957,11 @@ class RoboNaviThreeView {
     this.raycaster = new THREE.Raycaster();
     this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this.floorHue = -1;
+    this.backgroundHue = -1;
+    this.robotHue = -1;
+    this.signalCurve = null;
+    this.signalSprites = [];
+    this.signalLight = null;
     this.materials = createMaterials();
     this.geometries = createGeometries();
 
@@ -1013,13 +1051,92 @@ class RoboNaviThreeView {
     ground.position.y = -0.315;
     ground.receiveShadow = true;
     this.scene.add(ground);
+    this.ground = ground;
 
-    const grid = new THREE.GridHelper(70, 70, "#acd5dc", "#70a6b4");
+    const grid = new THREE.GridHelper(70, 70, "#e0f8fb", "#9ec8d1");
     grid.position.y = -0.305;
     grid.material.transparent = true;
     grid.material.opacity = 0.34;
     grid.material.depthWrite = false;
     this.scene.add(grid);
+    this.grid = grid;
+    this.createSignalPulse();
+  }
+
+  createSignalPulse() {
+    const texture = makeSignalTexture();
+    const colors = ["#efffff", "#8affdf", "#65ddef", "#74bfff", "#b68cff"];
+    this.signalSprites = colors.map((color, index) => {
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        color,
+        transparent: true,
+        opacity: 1 - index * 0.16,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false
+      });
+      const sprite = new THREE.Sprite(material);
+      const size = 0.24 - index * 0.027;
+      sprite.scale.set(size, size, 1);
+      sprite.renderOrder = 8;
+      this.scene.add(sprite);
+      return sprite;
+    });
+    this.signalLight = new THREE.PointLight("#8affdf", 0.9, 2.1, 2);
+    this.scene.add(this.signalLight);
+  }
+
+  updateSignalRoute(level) {
+    const halfX = level.width / 2 + 1.25;
+    const halfZ = level.height / 2 + 1.25;
+    const y = -0.27;
+    const points = [
+      new THREE.Vector3(-halfX, y, -halfZ),
+      new THREE.Vector3(0, y, -halfZ),
+      new THREE.Vector3(0, y, -halfZ - 1),
+      new THREE.Vector3(halfX, y, -halfZ - 1),
+      new THREE.Vector3(halfX, y, 0),
+      new THREE.Vector3(halfX + 1, y, 0),
+      new THREE.Vector3(halfX + 1, y, halfZ),
+      new THREE.Vector3(0, y, halfZ),
+      new THREE.Vector3(0, y, halfZ + 1),
+      new THREE.Vector3(-halfX, y, halfZ + 1),
+      new THREE.Vector3(-halfX, y, 0),
+      new THREE.Vector3(-halfX - 1, y, 0)
+    ];
+    const route = new THREE.CurvePath();
+    points.forEach((point, index) => {
+      route.add(
+        new THREE.LineCurve3(point, points[(index + 1) % points.length])
+      );
+    });
+    route.autoClose = true;
+    this.signalCurve = route;
+  }
+
+  animateSignal(time) {
+    if (!this.signalCurve) return;
+    const progress = THREE.MathUtils.euclideanModulo(
+      time * 0.047 + Math.sin(time * 0.37) * 0.012,
+      1
+    );
+    this.signalSprites.forEach((sprite, index) => {
+      const trailProgress = THREE.MathUtils.euclideanModulo(
+        progress - index * 0.0055,
+        1
+      );
+      sprite.position.copy(this.signalCurve.getPointAt(trailProgress));
+      sprite.position.y += index === 0 ? 0.018 : 0.009;
+      sprite.material.opacity =
+        (1 - index * 0.16) * (0.8 + Math.sin(time * 7.4 - index) * 0.2);
+      sprite.visible = !reducedMotion.matches || index === 0;
+    });
+    this.signalLight.position.copy(this.signalSprites[0].position);
+    this.signalLight.position.y += 0.11;
+    this.signalLight.intensity =
+      reducedMotion.matches ? 0.45 : 0.75 + Math.sin(time * 8.2) * 0.25;
   }
 
   levelSignature(level) {
@@ -1055,6 +1172,7 @@ class RoboNaviThreeView {
 
   buildBoard(level) {
     this.clearLevel();
+    this.updateSignalRoute(level);
     const floorGroups = {
       floor0: [],
       floor1: [],
@@ -1654,6 +1772,8 @@ class RoboNaviThreeView {
     }
     this.updateLighting(snapshot.globalLight);
     this.updateFloorHue(snapshot.floorHue);
+    this.updateBackgroundHue(snapshot.backgroundHue);
+    this.updateRobotHue(snapshot.robotHue);
     const signature = this.levelSignature(snapshot.level);
     if (signature !== this.levelKey) {
       this.levelKey = signature;
@@ -1684,6 +1804,33 @@ class RoboNaviThreeView {
     this.materials.floor[0].color.setHSL(normalized, 0.5, 0.57);
     this.materials.floor[1].color.setHSL(normalized, 0.44, 0.62);
     this.materials.floorEdge.color.setHSL(normalized, 0.3, 0.42);
+  }
+
+  updateBackgroundHue(value) {
+    const hue = THREE.MathUtils.clamp(Number(value) || 0, 0, 360);
+    if (hue === this.backgroundHue) return;
+    this.backgroundHue = hue;
+    const normalized = hue / 360;
+    this.scene.background.setHSL(normalized, 0.42, 0.24);
+    this.ground.material.color.setHSL(normalized, 0.38, 0.39);
+    this.grid.material.color.setHSL(normalized, 0.28, 0.78);
+  }
+
+  updateRobotHue(value) {
+    const hue = THREE.MathUtils.clamp(Number(value) || 0, 0, 360);
+    if (hue === this.robotHue) return;
+    this.robotHue = hue;
+    const normalized = hue / 360;
+    const colors = this.robot.userData.robotColorMaterials;
+    colors.base.color.setHSL(normalized, 0.88, 0.56);
+    colors.base.emissive.setHSL(normalized, 0.9, 0.22);
+    colors.light.color.setHSL(normalized, 0.82, 0.68);
+    colors.light.emissive.setHSL(normalized, 0.95, 0.26);
+    colors.dark.color.setHSL(normalized, 0.76, 0.42);
+    colors.dark.emissive.setHSL(normalized, 0.9, 0.16);
+    colors.chest.color.copy(colors.light.color);
+    colors.chest.emissive.copy(colors.light.emissive);
+    colors.trackAccent.color.setHSL(normalized, 0.68, 0.46);
   }
 
   disable() {
@@ -1824,6 +1971,7 @@ class RoboNaviThreeView {
     if (this.failed) return;
     this.updateCameraOrbit(timeMs);
     const time = timeMs * 0.001;
+    this.animateSignal(time);
     const motion = reducedMotion.matches ? 0 : 1;
     const robotData = this.robot.userData;
     robotData.head.rotation.y = Math.sin(time * 1.45) * 0.045 * motion;

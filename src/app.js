@@ -7,7 +7,12 @@
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
   var floorHueStorageKey = "robonavi-floor-hue-v1";
+  var backgroundHueStorageKey = "robonavi-background-hue-v1";
+  var robotHueStorageKey = "robonavi-robot-hue-v1";
   var freeDriveStorageKey = "robonavi-free-drive-v1";
+  var repositoryUrl = "https://github.com/xsub/RoboNavi";
+  var repositoryApiUrl = "https://api.github.com/repos/xsub/RoboNavi/commits/main";
+  var fallbackProgramVersion = "834f799";
   var terrainColors = {
     floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
@@ -69,6 +74,8 @@
       light: "Light",
       globalLight: "Global light",
       floorColor: "Floor color",
+      backgroundColor: "Background color",
+      robotColor: "Robot color",
       freeDrive: "Free drive",
       noLimit: "No limit",
       shadow: "Shadow",
@@ -245,6 +252,8 @@
       light: "Światło",
       globalLight: "Światło globalne",
       floorColor: "Kolor podłogi",
+      backgroundColor: "Kolor tła",
+      robotColor: "Kolor robota",
       freeDrive: "Swobodna jazda",
       noLimit: "No limit",
       shadow: "Podgląd",
@@ -399,6 +408,7 @@
     cameraRotateRight: document.getElementById("camera-rotate-right"),
     cameraZoomOut: document.getElementById("camera-zoom-out"),
     cameraZoomIn: document.getElementById("camera-zoom-in"),
+    programVersion: document.getElementById("program-version"),
     levelName: document.getElementById("level-name"),
     levelSubtitle: document.getElementById("level-subtitle"),
     energyValue: document.getElementById("energy-value"),
@@ -413,6 +423,10 @@
     lightValue: document.getElementById("light-value"),
     floorHue: document.getElementById("floor-hue"),
     floorColorSwatch: document.getElementById("floor-color-swatch"),
+    backgroundHue: document.getElementById("background-hue"),
+    backgroundColorSwatch: document.getElementById("background-color-swatch"),
+    robotHue: document.getElementById("robot-hue"),
+    robotColorSwatch: document.getElementById("robot-color-swatch"),
     freeDriveToggle: document.getElementById("free-drive-toggle"),
     previewToggle: document.getElementById("preview-toggle"),
     commandQueue: document.getElementById("command-queue"),
@@ -448,6 +462,38 @@
   var mapCtx = els.miniMap.getContext("2d");
   var confettiCtx = els.confettiCanvas.getContext("2d");
   var celebrationFrame = null;
+  var centerActiveLevel = true;
+
+  function setProgramVersion(sha) {
+    if (!els.programVersion || !/^[0-9a-f]{7,40}$/i.test(sha)) return;
+    var shortSha = sha.slice(0, 7).toUpperCase();
+    els.programVersion.textContent = "V" + shortSha;
+    els.programVersion.href = repositoryUrl + "/commit/" + sha;
+    els.programVersion.setAttribute(
+      "aria-label",
+      "Program version V" + shortSha + "; open commit on GitHub"
+    );
+  }
+
+  function loadProgramVersion() {
+    setProgramVersion(fallbackProgramVersion);
+    if (!window.fetch) return;
+    window.fetch(repositoryApiUrl, {
+      headers: { Accept: "application/vnd.github+json" }
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error("Version lookup failed");
+        return response.json();
+      })
+      .then(function (commit) {
+        if (commit && commit.sha) {
+          setProgramVersion(commit.sha);
+        }
+      })
+      .catch(function () {
+        setProgramVersion(fallbackProgramVersion);
+      });
+  }
   var celebrationTimer = null;
   var confettiParticles = [];
   var batteryTimerId = null;
@@ -462,6 +508,8 @@
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
     floorHue: loadFloorHue(),
+    backgroundHue: loadBackgroundHue(),
+    robotHue: loadRobotHue(),
     cameraQuarterTurns: 0,
     cameraSnapKey: 0,
     runCount: 0,
@@ -528,6 +576,40 @@
     }
   }
 
+  function loadBackgroundHue() {
+    try {
+      var saved = localStorage.getItem(backgroundHueStorageKey);
+      return saved === null ? 195 : clampFloorHue(saved);
+    } catch (error) {
+      return 195;
+    }
+  }
+
+  function saveBackgroundHue() {
+    try {
+      localStorage.setItem(backgroundHueStorageKey, String(state.backgroundHue));
+    } catch (error) {
+      // The live background color control still works without storage.
+    }
+  }
+
+  function loadRobotHue() {
+    try {
+      var saved = localStorage.getItem(robotHueStorageKey);
+      return saved === null ? 30 : clampFloorHue(saved);
+    } catch (error) {
+      return 30;
+    }
+  }
+
+  function saveRobotHue() {
+    try {
+      localStorage.setItem(robotHueStorageKey, String(state.robotHue));
+    } catch (error) {
+      // The live robot color control still works without storage.
+    }
+  }
+
   function loadFreeDrive() {
     try {
       return localStorage.getItem(freeDriveStorageKey) === "true";
@@ -550,6 +632,14 @@
 
   function floorHueColor(value) {
     return "hsl(" + Math.round(clampFloorHue(value)) + " 48% 74%)";
+  }
+
+  function backgroundHueColor(value) {
+    return "hsl(" + Math.round(clampFloorHue(value)) + " 42% 40%)";
+  }
+
+  function robotHueColor(value) {
+    return "hsl(" + Math.round(clampFloorHue(value)) + " 88% 58%)";
   }
 
   function loadProgress() {
@@ -680,6 +770,7 @@
     state.animation = null;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
+    centerActiveLevel = true;
     setMessage("ready");
     syncDisplayPose();
     renderAll();
@@ -1356,6 +1447,8 @@
       programRunning: state.animating,
       globalLight: state.globalLight,
       floorHue: state.floorHue,
+      backgroundHue: state.backgroundHue,
+      robotHue: state.robotHue,
       cameraQuarterTurns: state.cameraQuarterTurns,
       cameraSnapKey: state.cameraSnapKey,
       batterySecondsRemaining: state.batterySecondsRemaining,
@@ -1463,6 +1556,15 @@
     els.floorHue.value = String(state.floorHue);
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
+    els.backgroundHue.value = String(state.backgroundHue);
+    els.backgroundHue.style.setProperty(
+      "--background-hue-color",
+      backgroundHueColor(state.backgroundHue)
+    );
+    els.backgroundColorSwatch.style.background = backgroundHueColor(state.backgroundHue);
+    els.robotHue.value = String(state.robotHue);
+    els.robotHue.style.setProperty("--robot-hue-color", robotHueColor(state.robotHue));
+    els.robotColorSwatch.style.background = robotHueColor(state.robotHue);
     els.previewToggle.checked = state.preview;
     els.freeDriveToggle.checked = state.freeDrive;
     els.freeDriveToggle.disabled = state.animating;
@@ -1487,6 +1589,8 @@
   }
 
   function renderLevels() {
+    var previousScroll = els.levelList.scrollLeft;
+    var activeButton = null;
     els.levelList.innerHTML = "";
     core.LEVELS.forEach(function (level, index) {
       var levelCopy = localizedLevel(level);
@@ -1494,6 +1598,7 @@
       button.className = "level-button";
       if (index === state.levelIndex) {
         button.classList.add("is-active");
+        activeButton = button;
       }
       button.type = "button";
       button.dataset.levelIndex = String(index);
@@ -1509,6 +1614,24 @@
         "</small>";
       button.disabled = state.animating;
       els.levelList.appendChild(button);
+    });
+    if (!centerActiveLevel || !activeButton) {
+      els.levelList.scrollLeft = previousScroll;
+      return;
+    }
+    centerActiveLevel = false;
+    window.requestAnimationFrame(function () {
+      var listRect = els.levelList.getBoundingClientRect();
+      var buttonRect = activeButton.getBoundingClientRect();
+      var centeredLeft =
+        els.levelList.scrollLeft +
+        buttonRect.left -
+        listRect.left -
+        (listRect.width - buttonRect.width) / 2;
+      els.levelList.scrollTo({
+        left: Math.max(0, centeredLeft),
+        behavior: "smooth"
+      });
     });
   }
 
@@ -1612,6 +1735,8 @@
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
+    els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
+    els.robotHue.setAttribute("aria-label", text("robotColor"));
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -1749,6 +1874,25 @@
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
     saveFloorHue();
+    drawAll();
+  });
+
+  els.backgroundHue.addEventListener("input", function () {
+    state.backgroundHue = clampFloorHue(els.backgroundHue.value);
+    els.backgroundHue.style.setProperty(
+      "--background-hue-color",
+      backgroundHueColor(state.backgroundHue)
+    );
+    els.backgroundColorSwatch.style.background = backgroundHueColor(state.backgroundHue);
+    saveBackgroundHue();
+    drawAll();
+  });
+
+  els.robotHue.addEventListener("input", function () {
+    state.robotHue = clampFloorHue(els.robotHue.value);
+    els.robotHue.style.setProperty("--robot-hue-color", robotHueColor(state.robotHue));
+    els.robotColorSwatch.style.background = robotHueColor(state.robotHue);
+    saveRobotHue();
     drawAll();
   });
 
@@ -1910,6 +2054,7 @@
     snapshot: createThreeRenderSnapshot
   };
 
+  loadProgramVersion();
   applyLanguage(state.language, false);
   loadLevel(0);
 })();
