@@ -83,30 +83,122 @@ function makeMetalTexture(top, bottom, accent, seed) {
   return texture;
 }
 
-function makeSandTexture() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const context = canvas.getContext("2d");
-  context.fillStyle = COLORS.sand;
+function makeSandTextures() {
+  const colorCanvas = document.createElement("canvas");
+  const bumpCanvas = document.createElement("canvas");
+  colorCanvas.width = bumpCanvas.width = 128;
+  colorCanvas.height = bumpCanvas.height = 128;
+  const context = colorCanvas.getContext("2d");
+  const bump = bumpCanvas.getContext("2d");
+  const gradient = context.createLinearGradient(0, 0, 128, 128);
+  gradient.addColorStop(0, "#f2d894");
+  gradient.addColorStop(0.48, COLORS.sand);
+  gradient.addColorStop(1, "#c49f58");
+  context.fillStyle = gradient;
   context.fillRect(0, 0, 128, 128);
+  bump.fillStyle = "#777777";
+  bump.fillRect(0, 0, 128, 128);
+
   const random = seededRandom(811);
-  for (let grain = 0; grain < 900; grain += 1) {
-    const alpha = 0.04 + random() * 0.14;
+  context.lineCap = "round";
+  bump.lineCap = "round";
+  for (let ridge = 0; ridge < 8; ridge += 1) {
+    const y = 9 + ridge * 16 + random() * 5;
+    context.strokeStyle = ridge % 2 === 0
+      ? "rgba(255, 239, 178, 0.34)"
+      : "rgba(126, 88, 35, 0.2)";
+    context.lineWidth = 2.2 + random() * 2.2;
+    bump.strokeStyle = ridge % 2 === 0 ? "#a6a6a6" : "#505050";
+    bump.lineWidth = 3.2;
+    [context, bump].forEach((target) => {
+      target.beginPath();
+      target.moveTo(-8, y);
+      target.bezierCurveTo(24, y - 11, 46, y + 10, 74, y);
+      target.bezierCurveTo(96, y - 8, 116, y + 5, 136, y - 2);
+      target.stroke();
+    });
+  }
+
+  for (let grain = 0; grain < 1300; grain += 1) {
+    const alpha = 0.06 + random() * 0.2;
+    const x = random() * 128;
+    const y = random() * 128;
+    const radius = 0.28 + random() * 1.25;
     context.fillStyle = random() > 0.5
       ? `rgba(255, 244, 193, ${alpha})`
       : `rgba(103, 76, 33, ${alpha})`;
-    const radius = 0.3 + random() * 1.1;
     context.beginPath();
-    context.arc(random() * 128, random() * 128, radius, 0, Math.PI * 2);
+    context.arc(x, y, radius, 0, Math.PI * 2);
     context.fill();
+    bump.fillStyle = random() > 0.48 ? "#b5b5b5" : "#4d4d4d";
+    bump.beginPath();
+    bump.arc(x, y, radius * 0.72, 0, Math.PI * 2);
+    bump.fill();
   }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.anisotropy = 4;
-  return texture;
+
+  const color = new THREE.CanvasTexture(colorCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  const height = new THREE.CanvasTexture(bumpCanvas);
+  [color, height].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 4;
+  });
+  return { color, height };
+}
+
+function makeIceTextures() {
+  const colorCanvas = document.createElement("canvas");
+  const bumpCanvas = document.createElement("canvas");
+  colorCanvas.width = bumpCanvas.width = 128;
+  colorCanvas.height = bumpCanvas.height = 128;
+  const context = colorCanvas.getContext("2d");
+  const bump = bumpCanvas.getContext("2d");
+  const gradient = context.createLinearGradient(0, 0, 128, 128);
+  gradient.addColorStop(0, "#e7fdff");
+  gradient.addColorStop(0.34, "#9ce5ef");
+  gradient.addColorStop(0.7, "#6dc2d7");
+  gradient.addColorStop(1, "#d7f9ff");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  bump.fillStyle = "#808080";
+  bump.fillRect(0, 0, 128, 128);
+
+  const random = seededRandom(1771);
+  for (let streak = 0; streak < 48; streak += 1) {
+    const x = random() * 160 - 16;
+    const y = random() * 128;
+    const length = 18 + random() * 52;
+    context.strokeStyle = `rgba(242, 255, 255, ${0.08 + random() * 0.24})`;
+    context.lineWidth = 0.5 + random() * 1.8;
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + length, y - length * 0.38);
+    context.stroke();
+    bump.strokeStyle = random() > 0.5 ? "#9b9b9b" : "#686868";
+    bump.lineWidth = 0.6 + random() * 1.1;
+    bump.beginPath();
+    bump.moveTo(x, y);
+    bump.lineTo(x + length, y - length * 0.38);
+    bump.stroke();
+  }
+
+  const frost = context.createRadialGradient(64, 64, 34, 64, 64, 78);
+  frost.addColorStop(0, "rgba(255,255,255,0)");
+  frost.addColorStop(0.72, "rgba(235,255,255,0.12)");
+  frost.addColorStop(1, "rgba(245,255,255,0.58)");
+  context.fillStyle = frost;
+  context.fillRect(0, 0, 128, 128);
+
+  const color = new THREE.CanvasTexture(colorCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  const height = new THREE.CanvasTexture(bumpCanvas);
+  [color, height].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 4;
+  });
+  return { color, height };
 }
 
 function makeSignalTexture() {
@@ -146,6 +238,12 @@ function physicalMaterial(options) {
     opacity: options.opacity ?? 1,
     depthWrite: options.depthWrite ?? true,
     transmission: options.transmission || 0,
+    thickness: options.thickness || 0,
+    ior: options.ior || 1.5,
+    attenuationColor: options.attenuationColor || "#ffffff",
+    attenuationDistance: options.attenuationDistance ?? Infinity,
+    bumpMap: options.bumpMap || null,
+    bumpScale: options.bumpScale || 1,
     emissive: options.emissive || "#000000",
     emissiveIntensity: options.emissiveIntensity || 0,
     side: options.side || THREE.FrontSide
@@ -157,6 +255,8 @@ function createMaterials() {
   const floorTextureB = makeMetalTexture("#c2cbcd", "#9ca8ab", "#dbe1e3", 29);
   const wallTexture = makeMetalTexture("#a7bea4", "#7e9782", "#e6f0e2", 43);
   const orangeTexture = makeMetalTexture("#e5e8e7", "#aeb7b8", "#ffffff", 71);
+  const sandTextures = makeSandTextures();
+  const iceTextures = makeIceTextures();
 
   return {
     floor: [
@@ -215,9 +315,12 @@ function createMaterials() {
       roughness: 0.46
     }),
     sand: physicalMaterial({
-      map: makeSandTexture(),
+      color: "#f0cb76",
+      map: sandTextures.color,
+      bumpMap: sandTextures.height,
+      bumpScale: 0.055,
       metalness: 0.02,
-      roughness: 0.92,
+      roughness: 0.98,
       clearcoat: 0
     }),
     sandEdge: physicalMaterial({
@@ -227,13 +330,20 @@ function createMaterials() {
     }),
     ice: physicalMaterial({
       color: COLORS.ice,
+      map: iceTextures.color,
+      bumpMap: iceTextures.height,
+      bumpScale: 0.018,
       metalness: 0.06,
-      roughness: 0.09,
+      roughness: 0.12,
       clearcoat: 1,
-      clearcoatRoughness: 0.08,
+      clearcoatRoughness: 0.045,
       transparent: true,
-      opacity: 0.86,
-      transmission: 0.14
+      opacity: 0.8,
+      transmission: 0.32,
+      thickness: 0.2,
+      ior: 1.31,
+      attenuationColor: "#81dfee",
+      attenuationDistance: 1.8
     }),
     iceEdge: physicalMaterial({
       color: COLORS.iceEdge,
@@ -347,7 +457,15 @@ function createMaterials() {
     iceCrack: new THREE.LineBasicMaterial({
       color: "#efffff",
       transparent: true,
-      opacity: 0.92
+      opacity: 0.96
+    }),
+    iceGlow: new THREE.MeshBasicMaterial({
+      color: "#79e8ff",
+      transparent: true,
+      opacity: 0.14,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
     }),
     path: new THREE.MeshBasicMaterial({
       color: COLORS.path,
@@ -385,6 +503,11 @@ function createGeometries() {
     unitBox: new THREE.BoxGeometry(1, 1, 1),
     tileBase: new THREE.BoxGeometry(0.985, 0.1, 0.985),
     tileTop: new THREE.BoxGeometry(0.945, 0.03, 0.945),
+    iceSheen: (() => {
+      const geometry = new THREE.PlaneGeometry(0.84, 0.84);
+      geometry.rotateX(-Math.PI / 2);
+      return geometry;
+    })(),
     wallBody: new THREE.PlaneGeometry(0.94, 0.46),
     wallCap: new THREE.BoxGeometry(0.98, 0.045, 0.09),
     rivet: new THREE.SphereGeometry(0.024, 8, 6),
@@ -1397,6 +1520,15 @@ class RoboNaviThreeView {
     });
 
     this.addWallSegments(level, wallSegments);
+    addInstancedCells(
+      this.boardGroup,
+      this.geometries.iceSheen,
+      this.materials.iceGlow,
+      floorGroups.ice,
+      0.101,
+      false,
+      false
+    );
     this.addIceCracks(floorGroups.ice);
     floorGroups.charger.forEach((cell) => this.addCharger(cell));
     level.goals.forEach((goal, index) => this.addBeacon(level, goal, index));
