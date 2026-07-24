@@ -873,7 +873,8 @@
     );
   }
 
-  function spend(state, amount) {
+  function spend(state, amount, unlimitedEnergy) {
+    if (unlimitedEnergy) return true;
     if (state.energyRemaining + EPSILON < amount) {
       state.energySpent = roundEnergy(state.energySpent + state.energyRemaining);
       state.energyRemaining = 0;
@@ -901,10 +902,10 @@
     return (state.collected & allMask) === allMask;
   }
 
-  function enterCell(level, state, x, y) {
+  function enterCell(level, state, x, y, unlimitedEnergy) {
     var terrain = terrainAt(level, x, y);
-    var cost = TERRAIN[terrain].cost;
-    if (!spend(state, cost)) {
+    var cost = unlimitedEnergy ? 0 : TERRAIN[terrain].cost;
+    if (!spend(state, cost, unlimitedEnergy)) {
       return { entered: false, terrain: terrain, cost: cost, collected: [], recharged: 0 };
     }
     state.x = x;
@@ -918,7 +919,7 @@
     };
   }
 
-  function moveForward(level, state, commandIndex) {
+  function moveForward(level, state, commandIndex, unlimitedEnergy) {
     var event = {
       commandIndex: commandIndex,
       command: "forward",
@@ -940,15 +941,17 @@
     if (!canMove(level, state.x, state.y, nextX, nextY)) {
       event.blockedAt = { x: nextX, y: nextY };
       event.blockedWall = wallBetween(level, state.x, state.y, nextX, nextY);
-      event.cost = Math.min(COSTS.collision, state.energyRemaining);
-      spend(state, COSTS.collision);
+      event.cost = unlimitedEnergy
+        ? 0
+        : Math.min(COSTS.collision, state.energyRemaining);
+      spend(state, COSTS.collision, unlimitedEnergy);
       event.status = "collision";
       event.after = cloneState(state);
       return event;
     }
 
     while (true) {
-      var entered = enterCell(level, state, nextX, nextY);
+      var entered = enterCell(level, state, nextX, nextY, unlimitedEnergy);
       if (!entered.entered) {
         event.blockedAt = { x: nextX, y: nextY };
         event.status = "out-of-energy";
@@ -984,7 +987,7 @@
     return event;
   }
 
-  function turnRobot(level, state, command, commandIndex) {
+  function turnRobot(level, state, command, commandIndex, unlimitedEnergy) {
     var event = {
       commandIndex: commandIndex,
       command: command,
@@ -992,13 +995,13 @@
       before: cloneState(state),
       after: null,
       path: [],
-      cost: COSTS.turn,
+      cost: unlimitedEnergy ? 0 : COSTS.turn,
       collected: [],
       recharged: 0,
       blockedAt: null,
       status: "ok"
     };
-    if (!spend(state, COSTS.turn)) {
+    if (!spend(state, COSTS.turn, unlimitedEnergy)) {
       event.status = "out-of-energy";
       event.after = cloneState(state);
       return event;
@@ -1011,7 +1014,7 @@
     return event;
   }
 
-  function batteryAction(level, state, commandIndex) {
+  function batteryAction(level, state, commandIndex, unlimitedEnergy) {
     var event = {
       commandIndex: commandIndex,
       command: "battery",
@@ -1019,7 +1022,7 @@
       before: cloneState(state),
       after: null,
       path: [],
-      cost: COSTS.battery,
+      cost: unlimitedEnergy ? 0 : COSTS.battery,
       collected: [],
       recharged: 0,
       blockedAt: null,
@@ -1041,7 +1044,7 @@
     return amount * 2 + 1;
   }
 
-  function inductAction(level, state, command, commandIndex) {
+  function inductAction(level, state, command, commandIndex, unlimitedEnergy) {
     var amount = command.amount;
     var event = {
       commandIndex: commandIndex,
@@ -1052,7 +1055,7 @@
       before: cloneState(state),
       after: null,
       path: [],
-      cost: amount,
+      cost: unlimitedEnergy ? 0 : amount,
       collected: [],
       recharged: 0,
       blockedAt: null,
@@ -1066,17 +1069,19 @@
       event.after = cloneState(state);
       return event;
     }
-    if (!spend(state, amount)) {
+    if (!spend(state, amount, unlimitedEnergy)) {
       event.status = "out-of-energy";
       event.after = cloneState(state);
       return event;
     }
 
-    var beforeRecharge = state.energyRemaining;
-    state.energyRemaining = roundEnergy(
-      Math.min(level.energyMax, state.energyRemaining + event.inductOutput)
-    );
-    event.recharged = roundEnergy(state.energyRemaining - beforeRecharge);
+    if (!unlimitedEnergy) {
+      var beforeRecharge = state.energyRemaining;
+      state.energyRemaining = roundEnergy(
+        Math.min(level.energyMax, state.energyRemaining + event.inductOutput)
+      );
+      event.recharged = roundEnergy(state.energyRemaining - beforeRecharge);
+    }
     event.after = cloneState(state);
     return event;
   }
@@ -1104,13 +1109,14 @@
     return minimum;
   }
 
-  function simulate(level, commands, startState) {
+  function simulate(level, commands, startState, options) {
     var state = startState ? cloneState(startState) : createInitialState(level);
     var events = [];
     var normalized = commands.map(normalizeCommand);
+    var unlimitedEnergy = Boolean(options && options.unlimitedEnergy);
 
     if (normalized.length > 0) {
-      if (!spend(state, COSTS.startup)) {
+      if (!spend(state, COSTS.startup, unlimitedEnergy)) {
         return {
           finalState: cloneState(state),
           events: [
@@ -1139,13 +1145,13 @@
       var type = commandType(command);
       var event;
       if (type === "forward") {
-        event = moveForward(level, state, index);
+        event = moveForward(level, state, index, unlimitedEnergy);
       } else if (type === "turn-left" || type === "turn-right") {
-        event = turnRobot(level, state, type, index);
+        event = turnRobot(level, state, type, index, unlimitedEnergy);
       } else if (type === "battery") {
-        event = batteryAction(level, state, index);
+        event = batteryAction(level, state, index, unlimitedEnergy);
       } else {
-        event = inductAction(level, state, command, index);
+        event = inductAction(level, state, command, index, unlimitedEnergy);
       }
       events.push(event);
 
@@ -1177,6 +1183,7 @@
       terrainAt(level, state.x, state.y) === "charger" &&
       state.energyRemaining + EPSILON >= 1;
     var movementDepleted =
+      !unlimitedEnergy &&
       normalized.length > 0 &&
       nextMovementCost !== Infinity &&
       !canInduct &&

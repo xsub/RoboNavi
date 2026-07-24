@@ -7,6 +7,7 @@
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
   var floorHueStorageKey = "robonavi-floor-hue-v1";
+  var freeDriveStorageKey = "robonavi-free-drive-v1";
   var terrainColors = {
     floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
@@ -68,6 +69,8 @@
       light: "Light",
       globalLight: "Global light",
       floorColor: "Floor color",
+      freeDrive: "Free drive",
+      noLimit: "No limit",
       shadow: "Shadow",
       undo: "Undo",
       clear: "Clear",
@@ -95,7 +98,7 @@
       helpProgramTitle: "Build a program",
       helpProgramText: "Add commands, then execute the sequence. Z undoes, C clears, and X resets the level.",
       helpEnergyTitle: "Plan before running",
-      helpEnergyText: "Every run has a startup cost. Longer, correct programs save energy.",
+      helpEnergyText: "Every run has a startup cost. Enable Free drive to practice without energy costs.",
       helpTerrainTitle: "Read the terrain",
       helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge.",
       commands: {
@@ -117,6 +120,7 @@
         ready: "Ready",
         executing: "Executing",
         completed: "Beacon network restored: {value}",
+        freeDriveCompleted: "Free drive complete",
         blocked: "Blocked at command {value}",
         depleted: "Energy depleted",
         invalidBattery: "Battery requires a beacon",
@@ -239,6 +243,8 @@
       light: "Światło",
       globalLight: "Światło globalne",
       floorColor: "Kolor podłogi",
+      freeDrive: "Swobodna jazda",
+      noLimit: "No limit",
       shadow: "Podgląd",
       undo: "Cofnij",
       clear: "Wyczyść",
@@ -266,7 +272,7 @@
       helpProgramTitle: "Zbuduj program",
       helpProgramText: "Dodaj komendy i uruchom sekwencję. Z cofa, C czyści, a X resetuje poziom.",
       helpEnergyTitle: "Planuj przed startem",
-      helpEnergyText: "Każde uruchomienie ma koszt startowy. Dłuższy poprawny program oszczędza energię.",
+      helpEnergyText: "Każde uruchomienie ma koszt startowy. Włącz Swobodną jazdę, aby ćwiczyć bez kosztów energii.",
       helpTerrainTitle: "Czytaj teren",
       helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek.",
       commands: {
@@ -288,6 +294,7 @@
         ready: "Gotowy",
         executing: "Wykonywanie",
         completed: "Sieć nadajników uruchomiona: {value}",
+        freeDriveCompleted: "Swobodna jazda ukończona",
         blocked: "Blokada przy komendzie {value}",
         depleted: "Brak energii",
         invalidBattery: "Bateria wymaga pola nadajnika",
@@ -400,6 +407,7 @@
     lightValue: document.getElementById("light-value"),
     floorHue: document.getElementById("floor-hue"),
     floorColorSwatch: document.getElementById("floor-color-swatch"),
+    freeDriveToggle: document.getElementById("free-drive-toggle"),
     previewToggle: document.getElementById("preview-toggle"),
     commandQueue: document.getElementById("command-queue"),
     undoCommand: document.getElementById("undo-command"),
@@ -445,6 +453,7 @@
     displayPose: null,
     commands: [],
     preview: false,
+    freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
     floorHue: loadFloorHue(),
     cameraQuarterTurns: 0,
@@ -511,6 +520,26 @@
     } catch (error) {
       // The live floor color control still works without storage.
     }
+  }
+
+  function loadFreeDrive() {
+    try {
+      return localStorage.getItem(freeDriveStorageKey) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function saveFreeDrive() {
+    try {
+      localStorage.setItem(freeDriveStorageKey, state.freeDrive ? "true" : "false");
+    } catch (error) {
+      // The current free-drive setting still works without storage.
+    }
+  }
+
+  function simulationOptions() {
+    return { unlimitedEnergy: state.freeDrive };
   }
 
   function floorHueColor(value) {
@@ -722,7 +751,12 @@
     }
     if (sound) sound.speakExecution(state.language);
     state.runCount += 1;
-    var result = core.simulate(state.level, state.commands, state.robot);
+    var result = core.simulate(
+      state.level,
+      state.commands,
+      state.robot,
+      simulationOptions()
+    );
     state.animation = {
       result: result,
       steps: buildAnimationSteps(result.events),
@@ -952,10 +986,14 @@
     if (result.completed) {
       stopBatteryCountdown();
       if (sound) sound.playSuccess(state.language);
-      var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
-      state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
-      saveProgress();
-      setMessage("completed", starText(stars));
+      if (state.freeDrive) {
+        setMessage("freeDriveCompleted");
+      } else {
+        var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
+        state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
+        saveProgress();
+        setMessage("completed", starText(stars));
+      }
     } else if (result.stoppedReason === "collision") {
       setMessage("blocked", state.highlightIndex + 1);
     } else if (result.stoppedReason === "out-of-energy") {
@@ -1240,7 +1278,12 @@
       start = events.length > 0 ? events[0].from : state.robot;
       mode = "execute";
     } else if (state.preview && state.commands.length > 0) {
-      var preview = core.simulate(state.level, state.commands, state.robot);
+      var preview = core.simulate(
+        state.level,
+        state.commands,
+        state.robot,
+        simulationOptions()
+      );
       events = preview.events;
       start = state.robot;
       mode = "preview";
@@ -1373,15 +1416,20 @@
       " " +
       levelCopy.name;
     els.levelSubtitle.textContent = levelCopy.subtitle;
-    els.energyValue.textContent =
-      formatEnergy(state.robot.energyRemaining) + " / " + formatEnergy(level.energyMax);
+    els.energyValue.textContent = state.freeDrive
+      ? text("noLimit")
+      : formatEnergy(state.robot.energyRemaining) + " / " + formatEnergy(level.energyMax);
+    els.energyValue.parentElement.classList.toggle("is-unlimited", state.freeDrive);
     els.runCount.textContent = String(state.runCount);
     els.bestStars.textContent = starText(bestStarsFor(level));
     renderRunMessage();
     els.runMessage.parentElement.classList.toggle("is-game-over", state.gameOver);
     els.objectiveStatus.textContent =
       collectedCount(level, state.robot) + " / " + level.goals.length + " " + text("beacons");
-    els.energyTarget.textContent = formatEnergy(level.parEnergy);
+    els.energyTarget.textContent = state.freeDrive
+      ? text("noLimit")
+      : formatEnergy(level.parEnergy);
+    els.energyTarget.parentElement.classList.toggle("is-unlimited", state.freeDrive);
     els.runTarget.textContent = String(level.parRuns);
     els.facingValue.textContent =
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
@@ -1391,6 +1439,8 @@
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
     els.previewToggle.checked = state.preview;
+    els.freeDriveToggle.checked = state.freeDrive;
+    els.freeDriveToggle.disabled = state.animating;
     els.executeProgram.disabled =
       state.animating ||
       state.gameOver ||
@@ -1645,6 +1695,17 @@
       sound.playShadowEnabled(state.language);
     }
     drawAll();
+  });
+
+  els.freeDriveToggle.addEventListener("change", function () {
+    if (state.animating) {
+      els.freeDriveToggle.checked = state.freeDrive;
+      return;
+    }
+    state.freeDrive = els.freeDriveToggle.checked;
+    saveFreeDrive();
+    setMessage("ready");
+    renderAll();
   });
 
   els.lightLevel.addEventListener("input", function () {

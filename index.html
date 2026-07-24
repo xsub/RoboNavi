@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-plfit1">
+    <link rel="stylesheet" href="styles.css?v=20260724-freedrive4">
   </head>
   <body>
     <div class="app-shell">
@@ -130,10 +130,16 @@
                   <input id="floor-hue" type="range" min="0" max="360" step="1" value="196">
                   <output id="floor-color-swatch" for="floor-hue" aria-hidden="true"></output>
                 </label>
-                <label class="toggle">
-                  <input id="preview-toggle" type="checkbox">
-                  <span data-i18n="shadow">Shadow</span>
-                </label>
+                <div class="program-toggles">
+                  <label class="toggle free-drive-toggle">
+                    <input id="free-drive-toggle" type="checkbox">
+                    <span data-i18n="freeDrive">Free drive</span>
+                  </label>
+                  <label class="toggle">
+                    <input id="preview-toggle" type="checkbox">
+                    <span data-i18n="shadow">Shadow</span>
+                  </label>
+                </div>
               </div>
             </div>
             <div id="command-queue" class="command-queue" aria-live="polite"></div>
@@ -297,10 +303,10 @@
       </form>
     </dialog>
 
-    <script src="src/core.js?v=20260724-edgewalls1"></script>
+    <script src="src/core.js?v=20260724-freedrive1"></script>
     <script src="src/generator.js?v=20260724-edgewalls1"></script>
     <script src="src/audio.js?v=20260724-actionaudio4"></script>
-  <script src="src/app.js?v=20260724-smoothdrive1"></script>
+  <script src="src/app.js?v=20260724-freedrive1"></script>
   <script type="module" src="src/three-renderer.mjs?v=20260724-smoothdrive1"></script>
   </body>
 </html>
