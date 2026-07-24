@@ -19,6 +19,7 @@
     floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
     sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
     ice: { top: "#a9d5df", edge: "#82b4c0", detail: "#f4feff", low: "#89bbc7" },
+    water: { top: "#65bad8", edge: "#397f9e", detail: "#d9f8ff", low: "#438eaa" },
     charger: { top: "#dfb5cb", edge: "#9f7189", detail: "#fff1f8", low: "#c28ea9" },
     wall: { top: "#b6cbb2", edge: "#667f72", detail: "#f2f8ef", low: "#8fa792" }
   };
@@ -117,7 +118,7 @@
       helpEnergyTitle: "Plan before running",
       helpEnergyText: "Every run has a startup cost. Enable Free drive to practice without energy costs.",
       helpTerrainTitle: "Read the terrain",
-      helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge.",
+      helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge. Water costs 3 energy.",
       commands: {
         forward: "Forward",
         "turn-left": "Turn left",
@@ -301,7 +302,7 @@
       helpEnergyTitle: "Planuj przed startem",
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Włącz Swobodną jazdę, aby ćwiczyć bez kosztów energii.",
       helpTerrainTitle: "Czytaj teren",
-      helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek.",
+      helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek. Woda kosztuje 3 energii.",
       commands: {
         forward: "Naprzód",
         "turn-left": "Skręt w lewo",
@@ -986,8 +987,23 @@
             to: { x: point.x, y: point.y },
             terrain: point.terrain || "floor",
             duration: movementDuration(point.terrain),
-            endsCommand: isLast
+            endsCommand: isLast && point.terrain !== "water"
           });
+          if (point.terrain === "water") {
+            steps.push({
+              type: "water",
+              commandIndex: event.commandIndex,
+              event: event,
+              from: {
+                x: point.x,
+                y: point.y,
+                direction: event.from.direction
+              },
+              terrain: "water",
+              duration: 1250,
+              endsCommand: isLast
+            });
+          }
           from = { x: point.x, y: point.y };
         });
       } else if (event.command === "forward" && event.blockedAt) {
@@ -1083,6 +1099,10 @@
       if (step.type === "bump") {
         sound.playCollision();
       }
+      return;
+    }
+    if (step.type === "water") {
+      sound.playWaterPump();
       return;
     }
     if (

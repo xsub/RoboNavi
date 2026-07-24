@@ -9,9 +9,9 @@
 
   var EPSILON = 0.00001;
   var DENSITIES = {
-    relaxed: { walls: 0.1, sand: 0.04 },
-    balanced: { walls: 0.16, sand: 0.06 },
-    dense: { walls: 0.22, sand: 0.08 }
+    relaxed: { walls: 0.1, sand: 0.04, water: 0.015 },
+    balanced: { walls: 0.16, sand: 0.06, water: 0.025 },
+    dense: { walls: 0.22, sand: 0.08, water: 0.04 }
   };
 
   function MinHeap() {
@@ -325,13 +325,10 @@
       return row
         .split("")
         .map(function (cell, x) {
-          if (
-            cell === "." &&
-            !isProtectedCell(x, y, protectedPoints) &&
-            rng() < density.sand
-          ) {
-            return "s";
-          }
+          if (cell !== "." || isProtectedCell(x, y, protectedPoints)) return cell;
+          var terrainRoll = rng();
+          if (terrainRoll < density.water) return "w";
+          if (terrainRoll < density.water + density.sand) return "s";
           return cell;
         })
         .join("");
@@ -475,7 +472,7 @@
       );
     }
 
-    var fallbackDensity = { walls: 0, sand: 0 };
+    var fallbackDensity = { walls: 0, sand: 0, water: 0 };
     var fallback = buildCandidate(normalized.size, fallbackDensity, rng);
     var fallbackDijkstra = dijkstra(
       fallback,

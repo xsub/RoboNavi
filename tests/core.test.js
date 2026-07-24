@@ -55,6 +55,33 @@ core.LEVELS.slice(10).forEach((level) => {
 }
 
 {
+  const level = {
+    id: "water-pump-test",
+    width: 5,
+    height: 5,
+    energyMax: 10,
+    parEnergy: 3.5,
+    parRuns: 1,
+    start: { x: 1, y: 2, direction: "east" },
+    goals: [{ x: 3, y: 2 }],
+    grid: [
+      ".....",
+      ".....",
+      "..w..",
+      ".....",
+      "....."
+    ],
+    walls: []
+  };
+  core.validateLevel(level);
+  const result = core.simulate(level, core.parseProgram("F"));
+  assert.strictEqual(result.events[0].path[0].terrain, "water");
+  assert.strictEqual(result.events[0].path[0].cost, 3);
+  assert.strictEqual(result.finalState.energySpent, 3.5);
+  assert.strictEqual(result.finalState.energyRemaining, 6.5);
+}
+
+{
   const level = core.LEVELS[0];
   const result = core.simulate(level, core.parseProgram("LFF"));
   assert.strictEqual(core.terrainAt(level, 0, level.start.y), "floor");

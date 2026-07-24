@@ -825,6 +825,54 @@
     disconnectLater(nodes, 620);
   }
 
+  function playWaterPump() {
+    if (!canPlay()) return;
+    var now = context.currentTime + 0.015;
+    var bus = context.createGain();
+    var filter = context.createBiquadFilter();
+    var pump = context.createOscillator();
+    var pumpGain = context.createGain();
+    var bubble = context.createOscillator();
+    var bubbleGain = context.createGain();
+    var nodes = [bus, filter, pump, pumpGain, bubble, bubbleGain];
+
+    bus.gain.value = 0.42;
+    filter.type = "lowpass";
+    filter.frequency.value = 1700;
+    filter.Q.value = 0.82;
+    filter.connect(bus);
+    bus.connect(masterGain);
+
+    pump.type = "sawtooth";
+    pump.frequency.setValueAtTime(74, now);
+    pump.frequency.linearRampToValueAtTime(112, now + 0.32);
+    pump.frequency.setValueAtTime(104, now + 0.86);
+    pump.frequency.exponentialRampToValueAtTime(58, now + 1.12);
+    pumpGain.gain.setValueAtTime(0.0001, now);
+    pumpGain.gain.exponentialRampToValueAtTime(0.13, now + 0.06);
+    pumpGain.gain.setValueAtTime(0.11, now + 0.88);
+    pumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.14);
+    pump.connect(pumpGain);
+    pumpGain.connect(filter);
+
+    bubble.type = "sine";
+    bubble.frequency.setValueAtTime(420, now + 0.38);
+    bubble.frequency.exponentialRampToValueAtTime(980, now + 0.9);
+    bubbleGain.gain.setValueAtTime(0.0001, now + 0.35);
+    bubbleGain.gain.exponentialRampToValueAtTime(0.085, now + 0.43);
+    bubbleGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.02);
+    bubble.connect(bubbleGain);
+    bubbleGain.connect(filter);
+
+    pump.start(now);
+    bubble.start(now + 0.35);
+    pump.stop(now + 1.18);
+    bubble.stop(now + 1.06);
+    nodes = nodes.concat(addNoiseBurst(filter, now + 0.16, 0.84, 880, 0.12));
+    nodes = nodes.concat(addNoiseBurst(filter, now + 0.78, 0.28, 2350, 0.1));
+    disconnectLater(nodes, 1650);
+  }
+
   function speakHeyYou(language) {
     if (!enabled) return;
     if (speech) speech.cancel();
@@ -995,6 +1043,7 @@
     playFailure: playFailure,
     playShadowEnabled: playShadowEnabled,
     playSparkCollision: playSparkCollision,
+    playWaterPump: playWaterPump,
     speakHeyYou: speakHeyYou,
     stopAll: stopAll
   };

@@ -17,6 +17,8 @@ const COLORS = {
   sandEdge: "#b89b5d",
   ice: "#78cfe3",
   iceEdge: "#70abba",
+  water: "#4faed2",
+  waterEdge: "#397f9e",
   charger: "#65d4c7",
   pink: "#dfb5cb",
   gold: "#d9bd77",
@@ -201,6 +203,51 @@ function makeIceTextures() {
   return { color, height };
 }
 
+function makeWaterTextures() {
+  const colorCanvas = document.createElement("canvas");
+  const bumpCanvas = document.createElement("canvas");
+  colorCanvas.width = bumpCanvas.width = 128;
+  colorCanvas.height = bumpCanvas.height = 128;
+  const context = colorCanvas.getContext("2d");
+  const bump = bumpCanvas.getContext("2d");
+  const gradient = context.createLinearGradient(0, 0, 128, 128);
+  gradient.addColorStop(0, "#8de0ee");
+  gradient.addColorStop(0.48, COLORS.water);
+  gradient.addColorStop(1, "#377fa9");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  bump.fillStyle = "#777777";
+  bump.fillRect(0, 0, 128, 128);
+
+  const random = seededRandom(2441);
+  for (let ripple = 0; ripple < 18; ripple += 1) {
+    const x = random() * 128;
+    const y = random() * 128;
+    const radiusX = 7 + random() * 20;
+    const radiusY = 2 + random() * 5;
+    context.strokeStyle = `rgba(221, 252, 255, ${0.12 + random() * 0.22})`;
+    context.lineWidth = 0.8 + random() * 1.4;
+    context.beginPath();
+    context.ellipse(x, y, radiusX, radiusY, -0.35, 0, Math.PI * 2);
+    context.stroke();
+    bump.strokeStyle = random() > 0.5 ? "#a4a4a4" : "#5d5d5d";
+    bump.lineWidth = 1.4;
+    bump.beginPath();
+    bump.ellipse(x, y, radiusX, radiusY, -0.35, 0, Math.PI * 2);
+    bump.stroke();
+  }
+
+  const color = new THREE.CanvasTexture(colorCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  const height = new THREE.CanvasTexture(bumpCanvas);
+  [color, height].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 4;
+  });
+  return { color, height };
+}
+
 function makeSignalTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 96;
@@ -257,6 +304,7 @@ function createMaterials() {
   const orangeTexture = makeMetalTexture("#e5e8e7", "#aeb7b8", "#ffffff", 71);
   const sandTextures = makeSandTextures();
   const iceTextures = makeIceTextures();
+  const waterTextures = makeWaterTextures();
 
   return {
     floor: [
@@ -349,6 +397,38 @@ function createMaterials() {
       color: COLORS.iceEdge,
       metalness: 0.24,
       roughness: 0.3
+    }),
+    water: physicalMaterial({
+      color: COLORS.water,
+      map: waterTextures.color,
+      bumpMap: waterTextures.height,
+      bumpScale: 0.035,
+      metalness: 0.02,
+      roughness: 0.08,
+      clearcoat: 1,
+      clearcoatRoughness: 0.04,
+      transparent: true,
+      opacity: 0.84,
+      transmission: 0.22,
+      thickness: 0.16,
+      ior: 1.333,
+      attenuationColor: "#57c8df",
+      attenuationDistance: 1.6,
+      emissive: "#176c8b",
+      emissiveIntensity: 0.14
+    }),
+    waterEdge: physicalMaterial({
+      color: COLORS.waterEdge,
+      metalness: 0.18,
+      roughness: 0.24
+    }),
+    waterGlow: new THREE.MeshBasicMaterial({
+      color: "#74e6ff",
+      transparent: true,
+      opacity: 0.13,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
     }),
     charger: physicalMaterial({
       color: "#92ddd5",
@@ -1021,6 +1101,36 @@ function createRobot(materials) {
   inductLight.position.set(0, 0.7, -0.3);
   model.add(inductLight);
 
+  const waterRig = new THREE.Group();
+  waterRig.position.set(0, 0.52, 0.2);
+  waterRig.visible = false;
+  model.add(waterRig);
+
+  const hoseLongGeometry = new THREE.CylinderGeometry(0.018, 0.023, 0.3, 10);
+  const hoseDropGeometry = new THREE.CylinderGeometry(0.018, 0.022, 0.25, 10);
+  const hoseLong = new THREE.Mesh(hoseLongGeometry, materials.graphite);
+  hoseLong.rotation.x = Math.PI / 2;
+  hoseLong.position.set(0, 0, 0.15);
+  waterRig.add(hoseLong);
+  const hoseDrop = new THREE.Mesh(hoseDropGeometry, materials.graphite);
+  hoseDrop.position.set(0, -0.125, 0.3);
+  waterRig.add(hoseDrop);
+  const waterNozzle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.024, 0.085, 12),
+    materials.silver
+  );
+  waterNozzle.position.set(0, -0.275, 0.3);
+  waterRig.add(waterNozzle);
+
+  const waterDrops = [];
+  const waterDropGeometry = new THREE.SphereGeometry(0.025, 10, 8);
+  for (let index = 0; index < 9; index += 1) {
+    const drop = new THREE.Mesh(waterDropGeometry, materials.waterGlow);
+    drop.visible = false;
+    model.add(drop);
+    waterDrops.push(drop);
+  }
+
   root.userData = {
     model,
     wheels,
@@ -1044,6 +1154,8 @@ function createRobot(materials) {
     chestMaterial,
     chestLampMaterial,
     inductLight,
+    waterRig,
+    waterDrops,
     lastPosition: null,
     lastAngle: null,
     lastLevel: null,
@@ -1448,6 +1560,7 @@ class RoboNaviThreeView {
       floor1: [],
       sand: [],
       ice: [],
+      water: [],
       charger: []
     };
     const wallSegments = core.wallSegments(level);
@@ -1465,6 +1578,8 @@ class RoboNaviThreeView {
           floorGroups.sand.push(cell);
         } else if (terrain === "ice") {
           floorGroups.ice.push(cell);
+        } else if (terrain === "water") {
+          floorGroups.water.push(cell);
         } else if (terrain === "charger") {
           floorGroups.charger.push(cell);
         } else {
@@ -1496,6 +1611,7 @@ class RoboNaviThreeView {
       [floorGroups.floor1, this.materials.floorEdge, this.materials.floor[1]],
       [floorGroups.sand, this.materials.sandEdge, this.materials.sand],
       [floorGroups.ice, this.materials.iceEdge, this.materials.ice],
+      [floorGroups.water, this.materials.waterEdge, this.materials.water],
       [floorGroups.charger, this.materials.floorEdge, this.materials.charger]
     ];
     terrainSets.forEach(([cells, edgeMaterial, topMaterial]) => {
@@ -1526,6 +1642,15 @@ class RoboNaviThreeView {
       this.materials.iceGlow,
       floorGroups.ice,
       0.101,
+      false,
+      false
+    );
+    addInstancedCells(
+      this.boardGroup,
+      this.geometries.iceSheen,
+      this.materials.waterGlow,
+      floorGroups.water,
+      0.102,
       false,
       false
     );
@@ -2379,6 +2504,7 @@ class RoboNaviThreeView {
     const drivePulse = Math.sin(actionProgress * Math.PI * 2);
     const batteryAction = activeStep && activeStep.command === "battery";
     const inductAction = activeStep && activeStep.command === "induct";
+    const waterAction = activeStep && activeStep.type === "water";
     robotData.model.rotation.x = driveAction ? -actionWave * 0.018 * motion : 0;
     robotData.model.position.y =
       Math.sin(time * 2.1) * 0.009 * motion +
@@ -2407,6 +2533,35 @@ class RoboNaviThreeView {
       ? 6 + actionWave * 5
       : 3.5;
     robotData.inductLight.intensity = inductAction ? actionWave * 14 : 0;
+    const waterExtension = waterAction
+      ? Math.sin(THREE.MathUtils.clamp(actionProgress, 0, 1) * Math.PI)
+      : 0;
+    robotData.waterRig.visible = waterExtension > 0.015;
+    robotData.waterRig.scale.set(
+      0.55 + waterExtension * 0.45,
+      0.25 + waterExtension * 0.75,
+      0.12 + waterExtension * 0.88
+    );
+    robotData.waterDrops.forEach((drop, index) => {
+      const active = waterAction && actionProgress > 0.24 && actionProgress < 0.92;
+      drop.visible = active;
+      if (!active) return;
+      const flow = THREE.MathUtils.euclideanModulo(
+        time * 3.8 + index / robotData.waterDrops.length,
+        1
+      );
+      drop.position.set(
+        Math.sin(flow * Math.PI * 2 + index) * 0.025,
+        0.28 - flow * 0.36,
+        0.47 + flow * 0.34
+      );
+      drop.scale.setScalar(0.7 + Math.sin(flow * Math.PI) * 0.65);
+    });
+
+    this.materials.water.emissiveIntensity =
+      0.12 + Math.sin(time * 2.4) * 0.035 * motion;
+    this.materials.waterGlow.opacity =
+      0.1 + Math.sin(time * 2.1) * 0.035 * motion;
 
     this.beacons.forEach((beacon) => {
       const openTarget = beacon.active ? 1 : 0;

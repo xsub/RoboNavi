@@ -21,6 +21,7 @@
     floor: { label: "Floor", cost: 1, passable: true },
     sand: { label: "Sand", cost: 2, passable: true },
     ice: { label: "Ice", cost: 1, passable: true },
+    water: { label: "Water", cost: 3, passable: true },
     charger: { label: "Charge", cost: 1, passable: true },
     wall: { label: "Wall", cost: Infinity, passable: false }
   };
@@ -29,6 +30,7 @@
     "#": "floor",
     "s": "sand",
     "i": "ice",
+    "w": "water",
     "c": "charger"
   };
   var DIR_DELTA = {
@@ -418,8 +420,8 @@
       subtitle: "A full-system route through every known terrain.",
       width: 14,
       height: 14,
-      energyMax: 20,
-      parEnergy: 52,
+      energyMax: 21,
+      parEnergy: 56,
       parRuns: 1,
       chargerPower: 14,
       start: { x: 1, y: 12, direction: "east" },
@@ -437,10 +439,10 @@
         "#............#",
         "#..###.......#",
         "#....s..c....#",
-        "#.i....#.#...#",
+        "#.i....#w#...#",
         "#.i.##.......#",
         "#.i......#...#",
-        "#....#.......#",
+        "#....#....w..#",
         "#......#.....#",
         "#..##........#",
         "#.....c......#",
