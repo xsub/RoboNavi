@@ -876,6 +876,9 @@
     if (!sound || !step) return;
     if (isDriveStep(step)) {
       sound.startDrive(step.type);
+      if (step.type === "bump") {
+        sound.playCollision();
+      }
       return;
     }
     if (

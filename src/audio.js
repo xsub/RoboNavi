@@ -235,6 +235,62 @@
     };
   }
 
+  function playCollision() {
+    if (!canPlay()) return;
+    var now = context.currentTime + 0.075;
+    var duration = 0.28;
+    var bus = context.createGain();
+    var filter = context.createBiquadFilter();
+    var whoop = context.createOscillator();
+    var whoopGain = context.createGain();
+    var impact = context.createOscillator();
+    var impactGain = context.createGain();
+    var nodes = [
+      bus,
+      filter,
+      whoop,
+      whoopGain,
+      impact,
+      impactGain
+    ];
+
+    filter.type = "lowpass";
+    filter.frequency.value = 2400;
+    filter.Q.value = 1.1;
+    filter.connect(bus);
+    bus.connect(masterGain);
+    bus.gain.value = 0.62;
+
+    whoop.type = "sine";
+    whoop.frequency.setValueAtTime(180, now);
+    whoop.frequency.exponentialRampToValueAtTime(920, now + 0.12);
+    whoop.frequency.exponentialRampToValueAtTime(145, now + duration);
+    whoopGain.gain.setValueAtTime(0.0001, now);
+    whoopGain.gain.exponentialRampToValueAtTime(0.28, now + 0.025);
+    whoopGain.gain.setValueAtTime(0.24, now + 0.12);
+    whoopGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    whoop.connect(whoopGain);
+    whoopGain.connect(filter);
+
+    impact.type = "triangle";
+    impact.frequency.setValueAtTime(105, now + 0.105);
+    impact.frequency.exponentialRampToValueAtTime(48, now + 0.24);
+    impactGain.gain.setValueAtTime(0.0001, now + 0.105);
+    impactGain.gain.exponentialRampToValueAtTime(0.34, now + 0.118);
+    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+    impact.connect(impactGain);
+    impactGain.connect(filter);
+
+    whoop.start(now);
+    whoop.stop(now + duration + 0.03);
+    impact.start(now + 0.105);
+    impact.stop(now + 0.28);
+    nodes = nodes.concat(
+      addNoiseBurst(filter, now + 0.105, 0.12, 1650, 0.19)
+    );
+    disconnectLater(nodes, 720);
+  }
+
   function playBatteryInstall() {
     if (!canPlay()) return;
     var now = context.currentTime + 0.012;
@@ -857,6 +913,7 @@
     playRobotWhistle: playWhistle,
     startDrive: startDrive,
     stopDrive: stopDrive,
+    playCollision: playCollision,
     playBatteryInstall: playBatteryInstall,
     playInduct: playInduct,
     speakExecution: speakExecution,
