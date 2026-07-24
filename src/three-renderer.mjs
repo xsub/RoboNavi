@@ -799,13 +799,18 @@ function createRobot(materials) {
     0.038,
     16
   );
-  const handGeometry = createRoundedBoxGeometry(
-    0.075,
-    0.065,
-    0.085,
-    0.022,
-    0.01
+  const handGeometry = new THREE.TorusGeometry(
+    0.045,
+    0.013,
+    10,
+    28,
+    Math.PI * 1.5
   );
+  handGeometry.rotateZ(Math.PI * 0.25);
+  handGeometry.rotateY(Math.PI / 2);
+  const handTipGeometry = new THREE.SphereGeometry(0.0135, 12, 8);
+  const handTipY = Math.sin(Math.PI * 0.25) * 0.045;
+  const handTipZ = -Math.cos(Math.PI * 0.25) * 0.045;
 
   [-1, 1].forEach((side) => {
     const pivot = new THREE.Group();
@@ -859,16 +864,26 @@ function createRobot(materials) {
     wrist.position.set(-side * 0.03, -0.268, -0.035);
     pivot.add(wrist);
 
-    const hand = new THREE.Mesh(handGeometry, materials.orangeLight);
-    hand.position.set(-side * 0.04, -0.305, -0.048);
+    const hand = new THREE.Group();
+    hand.position.set(-side * 0.04, -0.3, -0.05);
     pivot.add(hand);
 
-    const gripPad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.045, 0.018, 0.056),
-      materials.graphite
+    const claw = setShadow(
+      new THREE.Mesh(handGeometry, materials.orangeLight),
+      true,
+      true
     );
-    gripPad.position.set(-side * 0.042, -0.338, -0.052);
-    pivot.add(gripPad);
+    hand.add(claw);
+
+    [-1, 1].forEach((tipSide) => {
+      const tip = setShadow(
+        new THREE.Mesh(handTipGeometry, materials.orangeLight),
+        true,
+        true
+      );
+      tip.position.set(0, tipSide * handTipY, handTipZ);
+      hand.add(tip);
+    });
   });
 
   const chestLampMaterial = materials.eye.clone();
