@@ -30,8 +30,8 @@ const COLORS = {
   rubber: "#242829",
   graphite: "#354246",
   steel: "#a8b0b0",
-  beacon: "#ffc451",
-  beaconHot: "#fff4aa",
+  beacon: "#b85cff",
+  beaconHot: "#f2d5ff",
   path: "#2fc89c",
   preview: "#45b7ce",
   error: "#ef6477"
@@ -288,9 +288,12 @@ function createMaterials() {
       metalness: 0.08,
       roughness: 0.24
     }),
-    beaconCore: new THREE.MeshBasicMaterial({
-      color: COLORS.beaconHot,
-      toneMapped: false
+    beaconLens: new THREE.MeshStandardMaterial({
+      color: "#493653",
+      emissive: COLORS.beacon,
+      emissiveIntensity: 0.22,
+      metalness: 0.12,
+      roughness: 0.18
     }),
     iceCrack: new THREE.LineBasicMaterial({
       color: "#efffff",
@@ -339,11 +342,13 @@ function createGeometries() {
     wallAccent: new THREE.BoxGeometry(0.035, 0.2, 0.018),
     goalPad: new THREE.CylinderGeometry(0.31, 0.35, 0.055, 8),
     goalInset: new THREE.CylinderGeometry(0.24, 0.27, 0.035, 8),
-    beaconStem: new THREE.CylinderGeometry(0.075, 0.11, 0.34, 12),
-    beaconCollar: new THREE.TorusGeometry(0.12, 0.025, 8, 24),
-    beaconBulb: new THREE.SphereGeometry(0.16, 24, 16),
-    beaconCore: new THREE.SphereGeometry(0.095, 18, 12),
-    beaconRing: new THREE.TorusGeometry(0.22, 0.014, 7, 32, Math.PI * 1.55),
+    beaconProjector: new THREE.CylinderGeometry(0.35, 0.37, 0.025, 32),
+    beaconRim: new THREE.TorusGeometry(0.29, 0.025, 8, 32),
+    beaconLens: new THREE.CylinderGeometry(0.19, 0.21, 0.02, 32),
+    beaconHatch: new THREE.BoxGeometry(0.24, 0.025, 0.15),
+    beaconBeam: new THREE.CylinderGeometry(0.48, 0.12, 3.4, 32, 1, true),
+    beaconBeamCore: new THREE.CylinderGeometry(0.2, 0.045, 2.9, 24, 1, true),
+    beaconRing: new THREE.TorusGeometry(0.3, 0.012, 6, 36),
     chargerRing: new THREE.TorusGeometry(0.27, 0.025, 8, 32),
     chargerCore: new THREE.CylinderGeometry(0.13, 0.17, 0.04, 24),
     chargerCrystal: new THREE.OctahedronGeometry(0.12, 1),
@@ -830,7 +835,8 @@ class RoboNaviThreeView {
 
   clearLevel() {
     this.beacons.forEach((beacon) => {
-      beacon.bulbMaterial.dispose();
+      beacon.lensMaterial.dispose();
+      beacon.beamMaterials.forEach((material) => material.dispose());
       beacon.rings.forEach((ring) => ring.material.dispose());
       beacon.timer.material.map.dispose();
       beacon.timer.material.dispose();
@@ -1073,65 +1079,70 @@ class RoboNaviThreeView {
   addBeacon(level, goal, index) {
     const group = new THREE.Group();
     group.position.set(
-      cellX(level, goal.x) + 0.26,
-      0.13,
-      cellZ(level, goal.y) + 0.26
+      cellX(level, goal.x),
+      0.105,
+      cellZ(level, goal.y)
     );
-    group.scale.setScalar(0.72);
     const padMaterial = this.materials.goalPads[index % this.materials.goalPads.length];
-    const pad = setShadow(
-      new THREE.Mesh(this.geometries.goalPad, this.materials.graphite),
-      true,
+    const projector = setShadow(
+      new THREE.Mesh(this.geometries.beaconProjector, this.materials.graphite),
+      false,
       true
     );
-    group.add(pad);
-    const inset = new THREE.Mesh(this.geometries.goalInset, padMaterial);
-    inset.position.y = 0.038;
-    group.add(inset);
+    projector.position.y = 0.012;
+    group.add(projector);
 
-    const stem = setShadow(
-      new THREE.Mesh(this.geometries.beaconStem, this.materials.graphite),
-      true,
-      true
+    const rim = new THREE.Mesh(
+      this.geometries.beaconRim,
+      padMaterial
     );
-    stem.position.y = 0.23;
-    group.add(stem);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.033;
+    group.add(rim);
 
-    const collar = new THREE.Mesh(
-      this.geometries.beaconCollar,
-      this.materials.silver
-    );
-    collar.rotation.x = Math.PI / 2;
-    collar.position.y = 0.41;
-    group.add(collar);
+    const lensMaterial = this.materials.beaconLens.clone();
+    const lens = new THREE.Mesh(this.geometries.beaconLens, lensMaterial);
+    lens.position.y = 0.029;
+    group.add(lens);
 
-    const bulbMaterial = physicalMaterial({
-      color: "#d49a3e",
-      metalness: 0.08,
-      roughness: 0.12,
-      clearcoat: 1,
-      clearcoatRoughness: 0.04,
-      transparent: true,
-      opacity: 0.96,
-      emissive: COLORS.beacon,
-      emissiveIntensity: 0.38
+    const shutters = [0, 1, 2, 3].map((shutterIndex) => {
+      const pivot = new THREE.Group();
+      pivot.rotation.y = shutterIndex * Math.PI / 2;
+      pivot.position.y = 0.05;
+      const panel = new THREE.Mesh(this.geometries.beaconHatch, padMaterial);
+      panel.position.z = -0.145;
+      pivot.add(panel);
+      group.add(pivot);
+      return { pivot, panel };
     });
-    const bulb = setShadow(
-      new THREE.Mesh(this.geometries.beaconBulb, bulbMaterial),
-      true,
-      false
-    );
-    bulb.position.y = 0.59;
-    group.add(bulb);
 
-    const inner = new THREE.Mesh(
-      this.geometries.beaconCore,
-      this.materials.beaconCore
-    );
-    inner.position.copy(bulb.position);
-    group.add(inner);
+    const beamMaterial = new THREE.MeshBasicMaterial({
+      color: COLORS.beacon,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
+    });
+    const beam = new THREE.Mesh(this.geometries.beaconBeam, beamMaterial);
+    beam.position.y = 1.75;
+    beam.visible = false;
+    beam.renderOrder = 3;
+    group.add(beam);
 
-    const rings = [0, 1].map((ringIndex) => {
+    const beamCoreMaterial = beamMaterial.clone();
+    beamCoreMaterial.opacity = 0.1;
+    const beamCore = new THREE.Mesh(
+      this.geometries.beaconBeamCore,
+      beamCoreMaterial
+    );
+    beamCore.position.y = 1.5;
+    beamCore.visible = false;
+    beamCore.renderOrder = 3;
+    group.add(beamCore);
+
+    const rings = [0.62, 1.28, 2.02].map((height, ringIndex) => {
       const ring = new THREE.Mesh(
         this.geometries.beaconRing,
         this.materials.chargerGlow
@@ -1139,36 +1150,47 @@ class RoboNaviThreeView {
       ring.material = this.materials.chargerGlow.clone();
       ring.material.color.set(COLORS.beacon);
       ring.material.emissive.set(COLORS.beacon);
-      ring.material.emissiveIntensity = 0.55;
+      ring.material.emissiveIntensity = 2.4;
       ring.material.transparent = true;
-      ring.material.opacity = 0.34;
-      ring.position.y = 0.59 + ringIndex * 0.075;
-      ring.rotation.set(0.1 + ringIndex * 0.45, Math.PI / 4, 0);
-      ring.scale.setScalar(0.82 + ringIndex * 0.16);
+      ring.material.opacity = 0.7;
+      ring.material.depthWrite = false;
+      ring.position.y = height;
+      ring.rotation.x = Math.PI / 2 + (ringIndex - 1) * 0.08;
+      ring.scale.setScalar(0.48 + ringIndex * 0.38);
+      ring.visible = false;
       group.add(ring);
       return ring;
     });
 
-    const pointLight = new THREE.PointLight(COLORS.beacon, 1, 4.2, 2);
-    pointLight.position.y = 0.62;
+    const pointLight = new THREE.PointLight(COLORS.beacon, 0.25, 3.8, 1.7);
+    pointLight.position.y = 0.28;
     group.add(pointLight);
 
+    const beamLight = new THREE.PointLight(COLORS.beaconHot, 0, 3.4, 2);
+    beamLight.position.y = 0.92;
+    group.add(beamLight);
+
     const timer = createTimerSprite();
-    timer.position.y = 1.18;
+    timer.position.y = 2.55;
     timer.visible = false;
     group.add(timer);
 
     this.actorGroup.add(group);
     this.beacons.push({
       group,
-      bulb,
-      bulbMaterial,
-      inner,
+      lens,
+      lensMaterial,
+      shutters,
+      beam,
+      beamCore,
+      beamMaterials: [beamMaterial, beamCoreMaterial],
       rings,
       pointLight,
+      beamLight,
       timer,
       index,
       active: false,
+      openProgress: 0,
       phase: index * 1.35
     });
   }
@@ -1275,25 +1297,24 @@ class RoboNaviThreeView {
   updateBeacons(snapshot) {
     this.beacons.forEach((beacon) => {
       const active = (snapshot.robot.collected & (1 << beacon.index)) !== 0;
+      const failed = snapshot.gameOver && !active;
+      const signalColor = failed ? COLORS.error : COLORS.beacon;
       beacon.active = active;
-      beacon.bulbMaterial.color.set(active ? COLORS.beaconHot : "#d49a3e");
-      beacon.bulbMaterial.emissive.set(
-        snapshot.gameOver && !active ? COLORS.error : COLORS.beacon
-      );
-      beacon.bulbMaterial.emissiveIntensity = active ? 4.4 : 0.38;
-      beacon.inner.visible = active;
-      beacon.rings.forEach((ring) => {
-        ring.visible = true;
-        ring.material.opacity = active || snapshot.gameOver ? 1 : 0.34;
-        ring.material.emissiveIntensity = active || snapshot.gameOver ? 2.1 : 0.55;
-        if (snapshot.gameOver && !active) {
-          ring.material.color.set(COLORS.error);
-          ring.material.emissive.set(COLORS.error);
-        } else {
-          ring.material.color.set(COLORS.beacon);
-          ring.material.emissive.set(COLORS.beacon);
-        }
+      beacon.lensMaterial.color.set(active ? COLORS.beaconHot : "#493653");
+      beacon.lensMaterial.emissive.set(signalColor);
+      beacon.lensMaterial.emissiveIntensity = active ? 5.2 : failed ? 1.3 : 0.22;
+      beacon.beam.visible = active;
+      beacon.beamCore.visible = active;
+      beacon.beamMaterials.forEach((material) => {
+        material.color.set(signalColor);
       });
+      beacon.rings.forEach((ring) => {
+        ring.visible = active;
+        ring.material.color.set(signalColor);
+        ring.material.emissive.set(signalColor);
+      });
+      beacon.pointLight.color.set(signalColor);
+      beacon.beamLight.color.set(failed ? COLORS.error : COLORS.beaconHot);
       const showTimer =
         snapshot.batterySecondsRemaining !== null && !active && !snapshot.complete;
       updateTimerSprite(
@@ -1381,15 +1402,37 @@ class RoboNaviThreeView {
     robotData.inductLight.intensity = inductAction ? actionWave * 14 : 0;
 
     this.beacons.forEach((beacon) => {
-      const pulse = 1 + Math.sin(time * 3.2 + beacon.phase) * 0.07 * motion;
-      beacon.rings.forEach((ring, index) => {
-        ring.rotation.z = time * (index === 0 ? 0.7 : -0.55) * motion + index;
-        ring.scale.setScalar((0.82 + index * 0.16) * pulse);
+      const openTarget = beacon.active ? 1 : 0;
+      beacon.openProgress += (openTarget - beacon.openProgress) *
+        (reducedMotion.matches ? 1 : 0.12);
+      const open = beacon.openProgress;
+      beacon.shutters.forEach(({ panel }, index) => {
+        panel.position.z = -THREE.MathUtils.lerp(0.145, 0.34, open);
+        panel.position.y = Math.sin(open * Math.PI) * 0.035;
+        panel.rotation.x = (index % 2 === 0 ? -1 : 1) * open * 0.32;
       });
+
+      const pulse = 1 + Math.sin(time * 3.2 + beacon.phase) * 0.055 * motion;
+      beacon.rings.forEach((ring, index) => {
+        ring.rotation.y = time * (index % 2 === 0 ? 0.7 : -0.55) * motion;
+        ring.rotation.z = time * (index % 2 === 0 ? 0.2 : -0.25) * motion;
+        ring.scale.setScalar((0.48 + index * 0.38) * pulse);
+      });
+      beacon.beam.scale.set(pulse, 1, pulse);
+      beacon.beamCore.scale.set(0.96 + (pulse - 1) * 1.8, 1, 0.96 + (pulse - 1) * 1.8);
+      beacon.beamMaterials[0].opacity = beacon.active
+        ? 0.15 + Math.sin(time * 2.6 + beacon.phase) * 0.025 * motion
+        : 0;
+      beacon.beamMaterials[1].opacity = beacon.active
+        ? 0.08 + Math.sin(time * 3.4 + beacon.phase) * 0.018 * motion
+        : 0;
       beacon.pointLight.intensity = beacon.active
-        ? 15 + Math.sin(time * 2.8 + beacon.phase) * 2 * motion
-        : 0.7;
-      beacon.bulb.scale.setScalar(beacon.active ? pulse : 1);
+        ? 14 + Math.sin(time * 2.8 + beacon.phase) * 2.2 * motion
+        : 0.18;
+      beacon.beamLight.intensity = beacon.active
+        ? 5.5 + Math.sin(time * 2.4 + beacon.phase) * 1.2 * motion
+        : 0;
+      beacon.lens.scale.setScalar(beacon.active ? pulse : 1);
     });
 
     this.chargers.forEach((charger) => {

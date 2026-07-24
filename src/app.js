@@ -1729,100 +1729,96 @@
   function drawGoal(goal, index, layout) {
     var center = cellCenter(goal.x, goal.y, layout);
     var collected = (state.robot.collected & goalMask(index)) !== 0;
-    var baseAccent = collected ? "#58c9a3" : "#5aaec4";
-    var signal = "#f4b83f";
-    var signalBright = "#fff7b2";
+    var failed = state.gameOver && !collected;
+    var padColors = ["#cc91d9", "#d7b66c", "#8ecbb4", "#aaa0d9"];
+    var baseAccent = padColors[index % padColors.length];
+    var signal = failed ? "#ef6477" : "#b85cff";
+    var signalBright = failed ? "#ffd5dc" : "#f2d5ff";
     var scale = Math.max(0.42, Math.min(2.05, layout.tileW / 60));
 
     ctx.save();
     ctx.translate(center.x, center.y);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = "rgba(31, 37, 40, 0.2)";
+    if (collected) {
+      var beamGradient = ctx.createLinearGradient(0, 4, 0, -118);
+      beamGradient.addColorStop(0, "rgba(184, 92, 255, 0.62)");
+      beamGradient.addColorStop(0.58, "rgba(184, 92, 255, 0.2)");
+      beamGradient.addColorStop(1, "rgba(184, 92, 255, 0)");
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = beamGradient;
+      ctx.beginPath();
+      ctx.moveTo(-8, 2);
+      ctx.lineTo(-30, -118);
+      ctx.lineTo(30, -118);
+      ctx.lineTo(8, 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.44)";
     ctx.beginPath();
-    ctx.ellipse(0, 6, 19, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 5, 20, 9, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    drawPolygon(
-      [
-        { x: 0, y: -4 },
-        { x: 17, y: 3 },
-        { x: 0, y: 11 },
-        { x: -17, y: 3 }
-      ],
-      "#547b88",
-      "#345b68",
-      1.6
-    );
-    drawPolygon(
-      [
-        { x: 0, y: -7 },
-        { x: 14, y: -1 },
-        { x: 0, y: 6 },
-        { x: -14, y: -1 }
-      ],
-      baseAccent,
-      "#426f7b",
-      1.4
-    );
-
-    ctx.fillStyle = "#7aaeb4";
-    ctx.strokeStyle = "#3f6974";
-    ctx.lineWidth = 1.8;
+    ctx.fillStyle = "#263038";
+    ctx.strokeStyle = "#66727a";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-6, -2);
-    ctx.lineTo(-4.5, -27);
-    ctx.lineTo(4.5, -27);
-    ctx.lineTo(6, -2);
-    ctx.closePath();
+    ctx.ellipse(0, 1, 18, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = baseAccent;
-    ctx.fillRect(-5, -18, 10, 4);
-    ctx.fillStyle = "#406a75";
-    ctx.fillRect(-3.8, -11, 7.6, 2.5);
-
-    ctx.fillStyle = "#486d78";
-    ctx.strokeStyle = "#315560";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = baseAccent;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(-9, -27);
-    ctx.lineTo(-6, -36);
-    ctx.lineTo(6, -36);
-    ctx.lineTo(9, -27);
-    ctx.closePath();
-    ctx.fill();
+    ctx.ellipse(0, 1, 14, 6, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    var hatchOffset = collected ? 14 : 7;
+    [
+      [-hatchOffset, -1, -1],
+      [hatchOffset, -1, 1],
+      [0, -5 - hatchOffset * 0.18, 0],
+      [0, 4 + hatchOffset * 0.18, 0]
+    ].forEach(function (panel, panelIndex) {
+      ctx.save();
+      ctx.translate(panel[0], panel[1]);
+      ctx.rotate(panelIndex < 2 ? panel[2] * 0.14 : 0);
+      ctx.fillStyle = baseAccent;
+      ctx.strokeStyle = "#343d43";
+      ctx.lineWidth = 1;
+      ctx.fillRect(-5, -2, 10, 4);
+      ctx.strokeRect(-5, -2, 10, 4);
+      ctx.restore();
+    });
 
     ctx.save();
     ctx.shadowColor = signal;
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = collected ? 24 : 10;
     ctx.fillStyle = signal;
     ctx.beginPath();
-    ctx.arc(0, -32, 9, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 7, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = signalBright;
     ctx.beginPath();
-    ctx.arc(-2, -34, 4.2, 0, Math.PI * 2);
+    ctx.ellipse(-1.5, 0, 3.2, 1.4, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle = "rgba(244, 184, 63, 0.72)";
-    ctx.lineWidth = 1.7;
-    ctx.beginPath();
-    ctx.moveTo(-15, -32);
-    ctx.lineTo(-11, -32);
-    ctx.moveTo(11, -32);
-    ctx.lineTo(15, -32);
-    ctx.moveTo(0, -47);
-    ctx.lineTo(0, -43);
-    ctx.arc(0, -32, 15, -Math.PI * 0.72, -Math.PI * 0.28);
-    ctx.arc(0, -32, 20, -Math.PI * 0.67, -Math.PI * 0.33);
-    ctx.stroke();
+    if (collected) {
+      ctx.strokeStyle = "rgba(216, 157, 255, 0.72)";
+      ctx.lineWidth = 1.4;
+      [22, 43, 68].forEach(function (height, ringIndex) {
+        ctx.beginPath();
+        ctx.ellipse(0, -height, 10 + ringIndex * 5, 3 + ringIndex, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
     ctx.restore();
-
   }
 
   function drawBeaconCountdown(center, collected, layout) {
