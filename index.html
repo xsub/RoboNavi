@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-layout1">
+    <link rel="stylesheet" href="styles.css?v=20260724-map1">
   </head>
   <body>
     <div class="app-shell">
@@ -120,7 +120,13 @@
                 disabled
               >+</button>
             </div>
-            <canvas id="mini-map" aria-label="Top-down map"></canvas>
+            <canvas
+              id="mini-map"
+              role="button"
+              tabindex="0"
+              aria-label="Top-down map"
+              aria-expanded="false"
+            ></canvas>
           </div>
           <div class="message-row">
             <span id="run-message">Ready</span>
@@ -345,7 +351,7 @@
     <script src="src/core.js?v=20260724-freedrive1"></script>
     <script src="src/generator.js?v=20260724-edgewalls1"></script>
     <script src="src/audio.js?v=20260724-drive1"></script>
-    <script src="src/app.js?v=20260724-drive1"></script>
+    <script src="src/app.js?v=20260724-map1"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260724-hands1"></script>
   </body>
 </html>

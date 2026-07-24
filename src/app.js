@@ -98,6 +98,8 @@
       boardLabel: "Game board",
       canvasLabel: "Isometric puzzle board",
       mapLabel: "Top-down map",
+      expandMap: "Enlarge top-down map",
+      collapseMap: "Close enlarged map",
       controlsLabel: "Command controls",
       camera: "Camera",
       rotateCameraLeft: "Rotate camera left",
@@ -278,6 +280,8 @@
       boardLabel: "Plansza gry",
       canvasLabel: "Izometryczna plansza logiczna",
       mapLabel: "Mapa z góry",
+      expandMap: "Powiększ mapę z góry",
+      collapseMap: "Zamknij powiększoną mapę",
       controlsLabel: "Panel komend",
       camera: "Kamera",
       rotateCameraLeft: "Obróć kamerę w lewo",
@@ -530,6 +534,7 @@
     language: loadLanguage(),
     messageKey: "ready",
     messageValue: null,
+    miniMapExpanded: false,
     progress: loadProgress()
   };
 
@@ -588,13 +593,43 @@
     return Math.max(0, Math.min(360, Number(value) || 0));
   }
 
-  function loadFloorHue() {
+  function readCookie(name) {
     try {
-      var saved = localStorage.getItem(floorHueStorageKey);
-      return saved === null ? 196 : clampFloorHue(saved);
+      var prefix = encodeURIComponent(name) + "=";
+      var parts = document.cookie ? document.cookie.split(";") : [];
+      for (var index = 0; index < parts.length; index += 1) {
+        var part = parts[index].trim();
+        if (part.indexOf(prefix) === 0) {
+          return decodeURIComponent(part.slice(prefix.length));
+        }
+      }
     } catch (error) {
-      return 196;
+      // Cookies may be disabled or unavailable for file URLs.
     }
+    return null;
+  }
+
+  function writeCookie(name, value) {
+    try {
+      document.cookie =
+        encodeURIComponent(name) +
+        "=" +
+        encodeURIComponent(String(value)) +
+        "; Max-Age=31536000; Path=/; SameSite=Lax";
+    } catch (error) {
+      // Local storage remains the fallback for color persistence.
+    }
+  }
+
+  function loadFloorHue() {
+    var saved = null;
+    try {
+      saved = localStorage.getItem(floorHueStorageKey);
+    } catch (error) {
+      // Fall through to the cookie copy.
+    }
+    if (saved === null) saved = readCookie(floorHueStorageKey);
+    return saved === null ? 196 : clampFloorHue(saved);
   }
 
   function saveFloorHue() {
@@ -603,15 +638,18 @@
     } catch (error) {
       // The live floor color control still works without storage.
     }
+    writeCookie(floorHueStorageKey, state.floorHue);
   }
 
   function loadBackgroundHue() {
+    var saved = null;
     try {
-      var saved = localStorage.getItem(backgroundHueStorageKey);
-      return saved === null ? 195 : clampFloorHue(saved);
+      saved = localStorage.getItem(backgroundHueStorageKey);
     } catch (error) {
-      return 195;
+      // Fall through to the cookie copy.
     }
+    if (saved === null) saved = readCookie(backgroundHueStorageKey);
+    return saved === null ? 195 : clampFloorHue(saved);
   }
 
   function saveBackgroundHue() {
@@ -620,15 +658,18 @@
     } catch (error) {
       // The live background color control still works without storage.
     }
+    writeCookie(backgroundHueStorageKey, state.backgroundHue);
   }
 
   function loadRobotHue() {
+    var saved = null;
     try {
-      var saved = localStorage.getItem(robotHueStorageKey);
-      return saved === null ? 30 : clampFloorHue(saved);
+      saved = localStorage.getItem(robotHueStorageKey);
     } catch (error) {
-      return 30;
+      // Fall through to the cookie copy.
     }
+    if (saved === null) saved = readCookie(robotHueStorageKey);
+    return saved === null ? 30 : clampFloorHue(saved);
   }
 
   function saveRobotHue() {
@@ -637,6 +678,7 @@
     } catch (error) {
       // The live robot color control still works without storage.
     }
+    writeCookie(robotHueStorageKey, state.robotHue);
   }
 
   function loadFreeDrive() {
@@ -1564,6 +1606,28 @@
     mapCtx.fill();
   }
 
+  function setMiniMapExpanded(expanded) {
+    state.miniMapExpanded = Boolean(expanded);
+    els.miniMap.classList.toggle("is-expanded", state.miniMapExpanded);
+    els.miniMap.parentElement.classList.toggle(
+      "is-map-expanded",
+      state.miniMapExpanded
+    );
+    els.miniMap.setAttribute(
+      "aria-expanded",
+      state.miniMapExpanded ? "true" : "false"
+    );
+    els.miniMap.setAttribute(
+      "aria-label",
+      text(state.miniMapExpanded ? "collapseMap" : "expandMap")
+    );
+    window.requestAnimationFrame(drawMiniMap);
+  }
+
+  function toggleMiniMap() {
+    setMiniMapExpanded(!state.miniMapExpanded);
+  }
+
   function renderAll() {
     renderUi();
     drawAll();
@@ -1764,7 +1828,10 @@
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.stage.setAttribute("aria-label", text("canvasLabel"));
-    els.miniMap.setAttribute("aria-label", text("mapLabel"));
+    els.miniMap.setAttribute(
+      "aria-label",
+      text(state.miniMapExpanded ? "collapseMap" : "expandMap")
+    );
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
     els.cameraControls.setAttribute("aria-label", text("camera"));
     els.cameraRotateLeft.title = text("rotateCameraLeft");
@@ -1970,6 +2037,13 @@
     }
   });
 
+  els.miniMap.addEventListener("click", toggleMiniMap);
+  els.miniMap.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleMiniMap();
+  });
+
   els.soundToggle.addEventListener("click", function () {
     if (!sound || !sound.isSupported()) return;
     sound.toggle();
@@ -2020,6 +2094,11 @@
 
   window.addEventListener("keydown", function (event) {
     if (els.helpDialog.open || els.generatorDialog.open) return;
+    if (event.key === "Escape" && state.miniMapExpanded) {
+      event.preventDefault();
+      setMiniMapExpanded(false);
+      return;
+    }
     if (event.target && ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].indexOf(event.target.tagName) !== -1) {
       return;
     }
