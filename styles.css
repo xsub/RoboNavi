@@ -441,7 +441,13 @@ strong {
   height: clamp(430px, 62vw, 680px);
   overflow: hidden;
   background: #39758d;
-  pointer-events: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+#three-stage.is-panning {
+  cursor: grabbing;
 }
 
 #three-stage canvas {

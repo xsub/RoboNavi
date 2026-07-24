@@ -754,6 +754,11 @@ class RoboNaviThreeView {
     this.cameraAngle = Math.PI / 4;
     this.cameraLift = 0;
     this.cameraOrbit = null;
+    this.cameraZoom = 1;
+    this.cameraPan = new THREE.Vector3();
+    this.dragState = null;
+    this.raycaster = new THREE.Raycaster();
+    this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this.floorHue = -1;
     this.materials = createMaterials();
     this.geometries = createGeometries();
@@ -789,6 +794,7 @@ class RoboNaviThreeView {
     this.camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 100);
     this.camera.position.set(12, 13, 12);
     this.camera.lookAt(0, 0.2, 0);
+    this.installCameraInteractions();
 
     this.boardGroup = new THREE.Group();
     this.actorGroup = new THREE.Group();
@@ -1301,10 +1307,114 @@ class RoboNaviThreeView {
     this.camera.right = (viewHeight * aspect) / 2;
     this.camera.top = centerY + viewHeight / 2;
     this.camera.bottom = centerY - viewHeight / 2;
-    this.camera.zoom = 1.2;
+    this.camera.zoom = 1.2 * this.cameraZoom;
     this.camera.near = 0.1;
     this.camera.far = distance * 4;
     this.camera.updateProjectionMatrix();
+
+    this.camera.position.x += this.cameraPan.x;
+    this.camera.position.z += this.cameraPan.z;
+    this.camera.lookAt(this.cameraPan.x, 0.2, this.cameraPan.z);
+    this.camera.updateMatrixWorld(true);
+  }
+
+  zoomBy(steps) {
+    if (!this.snapshot) return;
+    const amount = THREE.MathUtils.clamp(Number(steps) || 0, -2, 2);
+    this.cameraZoom = THREE.MathUtils.clamp(
+      this.cameraZoom * Math.pow(1.18, amount),
+      0.65,
+      2.6
+    );
+    this.fitCamera(this.snapshot.level, this.cameraAngle, this.cameraLift);
+  }
+
+  pointerBoardPoint(event) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const pointer = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    this.raycaster.setFromCamera(pointer, this.camera);
+    return this.raycaster.ray.intersectPlane(
+      this.boardPlane,
+      new THREE.Vector3()
+    );
+  }
+
+  panToPointer(event) {
+    if (
+      !this.dragState ||
+      event.pointerId !== this.dragState.pointerId ||
+      !this.snapshot
+    ) {
+      return;
+    }
+    const point = this.pointerBoardPoint(event);
+    if (!point) return;
+    const delta = this.dragState.anchor.clone().sub(point);
+    const maxPan = Math.max(
+      this.snapshot.level.width,
+      this.snapshot.level.height
+    ) * 0.8;
+    this.cameraPan.x = THREE.MathUtils.clamp(
+      this.cameraPan.x + delta.x,
+      -maxPan,
+      maxPan
+    );
+    this.cameraPan.z = THREE.MathUtils.clamp(
+      this.cameraPan.z + delta.z,
+      -maxPan,
+      maxPan
+    );
+    this.fitCamera(this.snapshot.level, this.cameraAngle, this.cameraLift);
+  }
+
+  endPointerPan(event) {
+    if (!this.dragState || event.pointerId !== this.dragState.pointerId) return;
+    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
+      this.renderer.domElement.releasePointerCapture(event.pointerId);
+    }
+    this.dragState = null;
+    this.container.classList.remove("is-panning");
+  }
+
+  installCameraInteractions() {
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const wheelSteps = THREE.MathUtils.clamp(
+        -event.deltaY * 0.012,
+        -0.45,
+        0.45
+      );
+      this.zoomBy(wheelSteps);
+    }, { passive: false });
+
+    canvas.addEventListener("pointerdown", (event) => {
+      if (
+        (event.pointerType === "mouse" || event.pointerType === "pen") &&
+        event.button !== 0
+      ) {
+        return;
+      }
+      const anchor = this.pointerBoardPoint(event);
+      if (!anchor) return;
+      this.dragState = { pointerId: event.pointerId, anchor };
+      canvas.setPointerCapture(event.pointerId);
+      this.container.classList.add("is-panning");
+      event.preventDefault();
+    });
+    canvas.addEventListener("pointermove", (event) => this.panToPointer(event));
+    canvas.addEventListener("pointerup", (event) => this.endPointerPan(event));
+    canvas.addEventListener("pointercancel", (event) => this.endPointerPan(event));
+    canvas.addEventListener("lostpointercapture", (event) => {
+      if (this.dragState && event.pointerId === this.dragState.pointerId) {
+        this.dragState = null;
+        this.container.classList.remove("is-panning");
+      }
+    });
   }
 
   startCameraOrbit(quarterTurns) {
@@ -1369,6 +1479,10 @@ class RoboNaviThreeView {
       this.cameraAngle = Math.PI / 4 + requestedTurns * (Math.PI / 2);
       this.cameraLift = 0;
       this.cameraOrbit = null;
+      this.cameraZoom = 1;
+      this.cameraPan.set(0, 0, 0);
+      this.dragState = null;
+      this.container.classList.remove("is-panning");
       this.fitCamera(snapshot.level, this.cameraAngle, 0);
     } else if (requestedTurns !== this.cameraQuarterTurns) {
       this.cameraQuarterTurns = requestedTurns;

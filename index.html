@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-freedrive4">
+    <link rel="stylesheet" href="styles.css?v=20260724-camera1">
   </head>
   <body>
     <div class="app-shell">
@@ -53,8 +53,8 @@
             >
               <span id="sound-icon" aria-hidden="true">&#128266;</span>
             </button>
-            <div class="hela-label" aria-label="HELA, love">
-              <span>HELA</span>
+            <div class="hela-label" aria-label="HELKA, love">
+              <span>HELKA</span>
               <span class="hela-heart" aria-hidden="true">♥</span>
             </div>
           </div>
@@ -95,6 +95,20 @@
                 aria-label="Rotate camera right"
                 disabled
               >&#8635;</button>
+              <button
+                id="camera-zoom-out"
+                type="button"
+                title="Zoom out"
+                aria-label="Zoom out"
+                disabled
+              >&minus;</button>
+              <button
+                id="camera-zoom-in"
+                type="button"
+                title="Zoom in"
+                aria-label="Zoom in"
+                disabled
+              >+</button>
             </div>
             <canvas id="mini-map" aria-label="Top-down map"></canvas>
           </div>
@@ -306,7 +320,7 @@
     <script src="src/core.js?v=20260724-freedrive1"></script>
     <script src="src/generator.js?v=20260724-edgewalls1"></script>
     <script src="src/audio.js?v=20260724-actionaudio4"></script>
-  <script src="src/app.js?v=20260724-freedrive1"></script>
-  <script type="module" src="src/three-renderer.mjs?v=20260724-smoothdrive1"></script>
+    <script src="src/app.js?v=20260724-camera1"></script>
+    <script type="module" src="src/three-renderer.mjs?v=20260724-camera1"></script>
   </body>
 </html>

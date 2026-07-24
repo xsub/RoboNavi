@@ -92,6 +92,8 @@
       camera: "Camera",
       rotateCameraLeft: "Rotate camera left",
       rotateCameraRight: "Rotate camera right",
+      zoomCameraOut: "Zoom out",
+      zoomCameraIn: "Zoom in",
       helpTitle: "Robot operator guide",
       helpObjectiveTitle: "Restore the beacon",
       helpObjectiveText: "Reach each beacon and install its battery with B before the 60-second timer expires.",
@@ -266,6 +268,8 @@
       camera: "Kamera",
       rotateCameraLeft: "Obróć kamerę w lewo",
       rotateCameraRight: "Obróć kamerę w prawo",
+      zoomCameraOut: "Oddal kamerę",
+      zoomCameraIn: "Przybliż kamerę",
       helpTitle: "Przewodnik operatora robota",
       helpObjectiveTitle: "Uruchom nadajnik",
       helpObjectiveText: "Dotrzyj do każdego nadajnika i zainstaluj baterię klawiszem B przed upływem 60 sekund.",
@@ -393,6 +397,8 @@
     cameraControls: document.getElementById("camera-controls"),
     cameraRotateLeft: document.getElementById("camera-rotate-left"),
     cameraRotateRight: document.getElementById("camera-rotate-right"),
+    cameraZoomOut: document.getElementById("camera-zoom-out"),
+    cameraZoomIn: document.getElementById("camera-zoom-in"),
     levelName: document.getElementById("level-name"),
     levelSubtitle: document.getElementById("level-subtitle"),
     energyValue: document.getElementById("energy-value"),
@@ -1578,6 +1584,10 @@
     els.cameraRotateLeft.setAttribute("aria-label", text("rotateCameraLeft"));
     els.cameraRotateRight.title = text("rotateCameraRight");
     els.cameraRotateRight.setAttribute("aria-label", text("rotateCameraRight"));
+    els.cameraZoomOut.title = text("zoomCameraOut");
+    els.cameraZoomOut.setAttribute("aria-label", text("zoomCameraOut"));
+    els.cameraZoomIn.title = text("zoomCameraIn");
+    els.cameraZoomIn.setAttribute("aria-label", text("zoomCameraIn"));
     renderSoundControl();
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
@@ -1733,6 +1743,18 @@
     drawAll();
   });
 
+  els.cameraZoomOut.addEventListener("click", function () {
+    if (threeRenderer && typeof threeRenderer.zoomBy === "function") {
+      threeRenderer.zoomBy(-1);
+    }
+  });
+
+  els.cameraZoomIn.addEventListener("click", function () {
+    if (threeRenderer && typeof threeRenderer.zoomBy === "function") {
+      threeRenderer.zoomBy(1);
+    }
+  });
+
   els.soundToggle.addEventListener("click", function () {
     if (!sound || !sound.isSupported()) return;
     sound.toggle();
@@ -1853,6 +1875,8 @@
       els.stage.dataset.renderer = "three";
       els.cameraRotateLeft.disabled = false;
       els.cameraRotateRight.disabled = false;
+      els.cameraZoomOut.disabled = false;
+      els.cameraZoomIn.disabled = false;
       renderer.update(createThreeRenderSnapshot());
     },
     detach: function (renderer) {
@@ -1861,6 +1885,8 @@
       els.stage.dataset.renderer = "failed";
       els.cameraRotateLeft.disabled = true;
       els.cameraRotateRight.disabled = true;
+      els.cameraZoomOut.disabled = true;
+      els.cameraZoomIn.disabled = true;
     },
     snapshot: createThreeRenderSnapshot
   };
