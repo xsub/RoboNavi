@@ -54,6 +54,7 @@
     en: {
       controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Mission",
+      missionParameters: "Mission parameters",
       help: "Help",
       sound: "Sound",
       muteSound: "Mute sound",
@@ -241,6 +242,7 @@
     pl: {
       controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Misja",
+      missionParameters: "Parametry misji",
       help: "Pomoc",
       sound: "Dźwięk",
       muteSound: "Wycisz dźwięk",
