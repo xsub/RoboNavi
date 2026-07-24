@@ -781,6 +781,73 @@
     }, 470);
   }
 
+  function playSparkCollision() {
+    if (!canPlay()) return;
+    var now = context.currentTime + 0.008;
+    var bus = context.createGain();
+    var filter = context.createBiquadFilter();
+    var buzz = context.createOscillator();
+    var buzzGain = context.createGain();
+    var overtone = context.createOscillator();
+    var overtoneGain = context.createGain();
+    var nodes = [bus, filter, buzz, buzzGain, overtone, overtoneGain];
+
+    bus.gain.value = 0.34;
+    filter.type = "bandpass";
+    filter.frequency.value = 1550;
+    filter.Q.value = 0.72;
+    filter.connect(bus);
+    bus.connect(masterGain);
+
+    buzz.type = "sawtooth";
+    buzz.frequency.setValueAtTime(132, now);
+    buzz.frequency.exponentialRampToValueAtTime(72, now + 0.18);
+    buzzGain.gain.setValueAtTime(0.0001, now);
+    buzzGain.gain.exponentialRampToValueAtTime(0.15, now + 0.006);
+    buzzGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    buzz.connect(buzzGain);
+    buzzGain.connect(filter);
+
+    overtone.type = "square";
+    overtone.frequency.setValueAtTime(890, now);
+    overtone.frequency.exponentialRampToValueAtTime(420, now + 0.15);
+    overtoneGain.gain.setValueAtTime(0.0001, now);
+    overtoneGain.gain.exponentialRampToValueAtTime(0.085, now + 0.004);
+    overtoneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
+    overtone.connect(overtoneGain);
+    overtoneGain.connect(filter);
+
+    buzz.start(now);
+    overtone.start(now);
+    buzz.stop(now + 0.22);
+    overtone.stop(now + 0.19);
+    nodes = nodes.concat(addNoiseBurst(filter, now, 0.16, 2600, 0.17));
+    disconnectLater(nodes, 620);
+  }
+
+  function speakHeyYou(language) {
+    if (!enabled) return;
+    if (speech) speech.cancel();
+    if (ensureContext()) {
+      context.resume().then(playWhistle).catch(function () {
+        // The spoken greeting can still play if Web Audio stays locked.
+      });
+    }
+    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
+
+    var isPolish = language === "pl";
+    var utterance = new window.SpeechSynthesisUtterance(
+      isPolish ? "Hej, ty!" : "Hey, you!"
+    );
+    utterance.lang = isPolish ? "pl-PL" : "en-US";
+    utterance.rate = 0.82;
+    utterance.pitch = 1.08;
+    utterance.volume = 0.62;
+    window.setTimeout(function () {
+      if (enabled) speech.speak(utterance);
+    }, 380);
+  }
+
   function stopAll() {
     stopDrive(0.035);
     if (speech) speech.cancel();
@@ -927,6 +994,8 @@
     playSuccess: playSuccess,
     playFailure: playFailure,
     playShadowEnabled: playShadowEnabled,
+    playSparkCollision: playSparkCollision,
+    speakHeyYou: speakHeyYou,
     stopAll: stopAll
   };
 })();

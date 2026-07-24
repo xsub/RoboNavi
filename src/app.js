@@ -7,6 +7,7 @@
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
   var engineSpeedStorageKey = "robonavi-engine-speed-v1";
+  var sparkCountStorageKey = "robonavi-spark-count-v1";
   var floorHueStorageKey = "robonavi-floor-hue-v1";
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
@@ -76,6 +77,8 @@
       globalLight: "Global light",
       engine: "Engine",
       engineSpeed: "Engine tone and movement speed",
+      sparks: "Sparks",
+      sparkCount: "Signals moving through the grid",
       floorColor: "Floor color",
       backgroundColor: "Background color",
       robotColor: "Robot color",
@@ -258,6 +261,8 @@
       globalLight: "Światło globalne",
       engine: "Silnik",
       engineSpeed: "Brzmienie i prędkość silnika",
+      sparks: "Iskry",
+      sparkCount: "Sygnały poruszające się po gridzie",
       floorColor: "Kolor podłogi",
       backgroundColor: "Kolor tła",
       robotColor: "Kolor robota",
@@ -432,6 +437,8 @@
     lightValue: document.getElementById("light-value"),
     engineSpeed: document.getElementById("engine-speed"),
     engineSpeedValue: document.getElementById("engine-speed-value"),
+    sparkCount: document.getElementById("spark-count"),
+    sparkCountValue: document.getElementById("spark-count-value"),
     floorHue: document.getElementById("floor-hue"),
     floorColorSwatch: document.getElementById("floor-color-swatch"),
     backgroundHue: document.getElementById("background-hue"),
@@ -519,6 +526,7 @@
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
     engineSpeed: loadEngineSpeed(),
+    sparkCount: loadSparkCount(),
     floorHue: loadFloorHue(),
     backgroundHue: loadBackgroundHue(),
     robotHue: loadRobotHue(),
@@ -586,6 +594,27 @@
       localStorage.setItem(engineSpeedStorageKey, String(state.engineSpeed));
     } catch (error) {
       // The live engine control still works when storage is unavailable.
+    }
+  }
+
+  function clampSparkCount(value) {
+    return Math.max(0, Math.min(15, Math.round(Number(value) || 0)));
+  }
+
+  function loadSparkCount() {
+    try {
+      var saved = localStorage.getItem(sparkCountStorageKey);
+      return saved === null ? 5 : clampSparkCount(saved);
+    } catch (error) {
+      return 5;
+    }
+  }
+
+  function saveSparkCount() {
+    try {
+      localStorage.setItem(sparkCountStorageKey, String(state.sparkCount));
+    } catch (error) {
+      // The live signal control still works when storage is unavailable.
     }
   }
 
@@ -1534,6 +1563,8 @@
       floorHue: state.floorHue,
       backgroundHue: state.backgroundHue,
       robotHue: state.robotHue,
+      sparkCount: state.sparkCount,
+      language: state.language,
       cameraQuarterTurns: state.cameraQuarterTurns,
       cameraSnapKey: state.cameraSnapKey,
       batterySecondsRemaining: state.batterySecondsRemaining,
@@ -1662,6 +1693,8 @@
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
     els.engineSpeed.value = String(state.engineSpeed);
     els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
+    els.sparkCount.value = String(state.sparkCount);
+    els.sparkCountValue.textContent = String(state.sparkCount);
     els.floorHue.value = String(state.floorHue);
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
@@ -1847,6 +1880,7 @@
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
     els.engineSpeed.setAttribute("aria-label", text("engineSpeed"));
+    els.sparkCount.setAttribute("aria-label", text("sparkCount"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
@@ -1986,6 +2020,13 @@
     state.engineSpeed = clampEngineSpeed(els.engineSpeed.value);
     els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
     saveEngineSpeed();
+  });
+
+  els.sparkCount.addEventListener("input", function () {
+    state.sparkCount = clampSparkCount(els.sparkCount.value);
+    els.sparkCountValue.textContent = String(state.sparkCount);
+    saveSparkCount();
+    drawAll();
   });
 
   els.floorHue.addEventListener("input", function () {

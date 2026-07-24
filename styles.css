@@ -673,6 +673,7 @@ strong {
 .program-options,
 .lighting-control,
 .engine-control,
+.signal-control,
 .floor-color-control,
 .background-color-control,
 .robot-color-control {
@@ -712,7 +713,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .floor-color-control {
+.program-section .signal-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -720,7 +721,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .background-color-control {
+.program-section .floor-color-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -728,7 +729,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .robot-color-control {
+.program-section .background-color-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -736,8 +737,17 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
+.program-section .robot-color-control {
+  display: grid;
+  width: 100%;
+  grid-column: 1 / -1;
+  grid-row: 7;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
 .program-section .lighting-control input[type="range"],
-.program-section .engine-control input[type="range"] {
+.program-section .engine-control input[type="range"],
+.program-section .signal-control input[type="range"] {
   width: 100%;
   min-width: 0;
 }
@@ -767,6 +777,7 @@ strong {
 
 .lighting-control,
 .engine-control,
+.signal-control,
 .floor-color-control,
 .background-color-control,
 .robot-color-control {
@@ -859,7 +870,8 @@ strong {
 }
 
 .lighting-control input[type="range"],
-.engine-control input[type="range"] {
+.engine-control input[type="range"],
+.signal-control input[type="range"] {
   width: 116px;
   height: 12px;
   margin: 0;
@@ -873,7 +885,8 @@ strong {
 }
 
 .lighting-control input[type="range"]::-webkit-slider-thumb,
-.engine-control input[type="range"]::-webkit-slider-thumb {
+.engine-control input[type="range"]::-webkit-slider-thumb,
+.signal-control input[type="range"]::-webkit-slider-thumb {
   width: 12px;
   height: 18px;
   appearance: none;
@@ -884,7 +897,8 @@ strong {
 }
 
 .lighting-control input[type="range"]::-moz-range-thumb,
-.engine-control input[type="range"]::-moz-range-thumb {
+.engine-control input[type="range"]::-moz-range-thumb,
+.signal-control input[type="range"]::-moz-range-thumb {
   width: 10px;
   height: 16px;
   border: 2px solid #5c4228;
@@ -894,7 +908,8 @@ strong {
 }
 
 .lighting-control output,
-.engine-control output {
+.engine-control output,
+.signal-control output {
   width: 3.8em;
   color: #744823;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -912,6 +927,18 @@ strong {
   border-color: #31565b;
   background: #76d8d2;
   box-shadow: 0 0 7px rgba(91, 224, 216, 0.48);
+}
+
+.signal-control input[type="range"]::-webkit-slider-thumb {
+  border-color: #704063;
+  background: #ef8fc6;
+  box-shadow: 0 0 8px rgba(239, 111, 191, 0.52);
+}
+
+.signal-control input[type="range"]::-moz-range-thumb {
+  border-color: #704063;
+  background: #ef8fc6;
+  box-shadow: 0 0 8px rgba(239, 111, 191, 0.52);
 }
 
 .command-queue {
@@ -1982,6 +2009,7 @@ kbd {
 
   .lighting-control,
   .engine-control,
+  .signal-control,
   .floor-color-control,
   .background-color-control,
   .robot-color-control {
@@ -2642,29 +2670,38 @@ kbd {
     font-size: 0.44rem;
   }
 
+  .signal-control {
+    gap: 3px;
+    font-size: 0.44rem;
+  }
+
   .lighting-control input[type="range"],
-  .engine-control input[type="range"] {
+  .engine-control input[type="range"],
+  .signal-control input[type="range"] {
     width: 72px;
     height: 9px;
     border-width: 1px;
   }
 
   .lighting-control input[type="range"]::-webkit-slider-thumb,
-  .engine-control input[type="range"]::-webkit-slider-thumb {
+  .engine-control input[type="range"]::-webkit-slider-thumb,
+  .signal-control input[type="range"]::-webkit-slider-thumb {
     width: 8px;
     height: 13px;
     border-width: 1px;
   }
 
   .lighting-control input[type="range"]::-moz-range-thumb,
-  .engine-control input[type="range"]::-moz-range-thumb {
+  .engine-control input[type="range"]::-moz-range-thumb,
+  .signal-control input[type="range"]::-moz-range-thumb {
     width: 7px;
     height: 11px;
     border-width: 1px;
   }
 
   .lighting-control output,
-  .engine-control output {
+  .engine-control output,
+  .signal-control output {
     width: 3.4em;
     font-size: 0.44rem;
   }

@@ -927,7 +927,10 @@ function createRobot(materials) {
     lastAnimationTime: null,
     blinkStartedAt: null,
     nextBlinkAt: null,
-    blinkDuration: 0.18
+    blinkDuration: 0.18,
+    attentionStartedAt: null,
+    attentionDuration: 2.9,
+    nextAttentionAt: null
   };
   return root;
 }
@@ -1052,6 +1055,9 @@ class RoboNaviThreeView {
     this.signalCurve = null;
     this.signalSprites = [];
     this.signalLight = null;
+    this.signalFlash = 0;
+    this.lastSignalTime = null;
+    this.nextSignalCollisionAt = 0;
     this.materials = createMaterials();
     this.geometries = createGeometries();
 
@@ -1156,21 +1162,26 @@ class RoboNaviThreeView {
   createSignalPulse() {
     const texture = makeSignalTexture();
     const colors = ["#efffff", "#8affdf", "#65ddef", "#74bfff", "#b68cff"];
-    this.signalSprites = colors.map((color, index) => {
+    this.signalSprites = Array.from({ length: 15 }, (_, index) => {
+      const color = colors[index % colors.length];
       const material = new THREE.SpriteMaterial({
         map: texture,
         color,
         transparent: true,
-        opacity: 1 - index * 0.16,
+        opacity: 0.92,
         depthWrite: false,
         depthTest: true,
         blending: THREE.AdditiveBlending,
         toneMapped: false
       });
       const sprite = new THREE.Sprite(material);
-      const size = 0.24 - index * 0.027;
+      const size = 0.13 + (index % 3) * 0.025;
       sprite.scale.set(size, size, 1);
       sprite.renderOrder = 8;
+      sprite.userData.routeSpeed = 0.024 + (index % 5) * 0.0065;
+      sprite.userData.routeDirection = index % 3 === 0 ? -1 : 1;
+      sprite.userData.routeOffset = index / 15;
+      sprite.userData.baseScale = size;
       this.scene.add(sprite);
       return sprite;
     });
@@ -1208,25 +1219,71 @@ class RoboNaviThreeView {
 
   animateSignal(time) {
     if (!this.signalCurve) return;
-    const progress = THREE.MathUtils.euclideanModulo(
-      time * 0.047 + Math.sin(time * 0.37) * 0.012,
-      1
+    const count = THREE.MathUtils.clamp(
+      Math.round(Number(this.snapshot?.sparkCount) || 0),
+      0,
+      this.signalSprites.length
     );
+    const frameDelta = this.lastSignalTime === null
+      ? 1 / 60
+      : Math.min(0.05, Math.max(0, time - this.lastSignalTime));
+    this.lastSignalTime = time;
+    this.signalFlash *= Math.exp(-frameDelta * 7.5);
+    const visibleSprites = [];
+
     this.signalSprites.forEach((sprite, index) => {
-      const trailProgress = THREE.MathUtils.euclideanModulo(
-        progress - index * 0.0055,
+      const visible = index < count && (!reducedMotion.matches || index === 0);
+      sprite.visible = visible;
+      if (!visible) return;
+      const progress = THREE.MathUtils.euclideanModulo(
+        sprite.userData.routeOffset +
+          time * sprite.userData.routeSpeed * sprite.userData.routeDirection +
+          Math.sin(time * (0.31 + index * 0.013) + index) * 0.006,
         1
       );
-      sprite.position.copy(this.signalCurve.getPointAt(trailProgress));
-      sprite.position.y += index === 0 ? 0.018 : 0.009;
+      sprite.position.copy(this.signalCurve.getPointAt(progress));
+      sprite.position.y += 0.012 + (index % 2) * 0.01;
       sprite.material.opacity =
-        (1 - index * 0.16) * (0.8 + Math.sin(time * 7.4 - index) * 0.2);
-      sprite.visible = !reducedMotion.matches || index === 0;
+        0.72 + Math.sin(time * 7.4 - index * 0.7) * 0.2;
+      const pulse = 1 + Math.sin(time * 8.4 + index) * 0.18;
+      sprite.scale.setScalar(sprite.userData.baseScale * pulse);
+      visibleSprites.push(sprite);
     });
-    this.signalLight.position.copy(this.signalSprites[0].position);
+
+    if (
+      visibleSprites.length > 1 &&
+      time >= this.nextSignalCollisionAt &&
+      !reducedMotion.matches
+    ) {
+      let collision = null;
+      for (let first = 0; first < visibleSprites.length && !collision; first += 1) {
+        for (let second = first + 1; second < visibleSprites.length; second += 1) {
+          if (visibleSprites[first].position.distanceTo(visibleSprites[second].position) < 0.16) {
+            collision = visibleSprites[first].position;
+            break;
+          }
+        }
+      }
+      if (collision) {
+        this.signalFlash = 1;
+        this.nextSignalCollisionAt = time + 1.4;
+        this.signalLight.position.copy(collision);
+        window.RoboNaviSound?.playSparkCollision?.();
+      }
+    }
+
+    if (visibleSprites.length === 0) {
+      this.signalLight.intensity = 0;
+      return;
+    }
+    if (this.signalFlash < 0.05) {
+      this.signalLight.position.copy(visibleSprites[0].position);
+    }
     this.signalLight.position.y += 0.11;
     this.signalLight.intensity =
-      reducedMotion.matches ? 0.45 : 0.75 + Math.sin(time * 8.2) * 0.25;
+      reducedMotion.matches
+        ? 0.45
+        : 0.72 + Math.sin(time * 8.2) * 0.22 + this.signalFlash * 6.5;
   }
 
   levelSignature(level) {
@@ -1940,6 +1997,8 @@ class RoboNaviThreeView {
       data.lastLevel = snapshot.level;
       data.lastPosition = null;
       data.lastAngle = pose.angle;
+      data.attentionStartedAt = null;
+      data.nextAttentionAt = null;
     }
     let distance = 0;
     if (data.lastPosition) {
@@ -2064,7 +2123,57 @@ class RoboNaviThreeView {
     this.animateSignal(time);
     const motion = reducedMotion.matches ? 0 : 1;
     const robotData = this.robot.userData;
-    robotData.head.rotation.y = Math.sin(time * 1.45) * 0.045 * motion;
+    const canSeekAttention = Boolean(
+      motion &&
+      this.snapshot &&
+      !this.snapshot.programRunning &&
+      !this.snapshot.gameOver &&
+      !this.snapshot.complete
+    );
+    if (!canSeekAttention) {
+      robotData.attentionStartedAt = null;
+      robotData.nextAttentionAt = time + 10;
+    } else {
+      if (robotData.nextAttentionAt === null) {
+        robotData.nextAttentionAt = time + 12 + Math.random() * 9;
+      }
+      if (
+        robotData.attentionStartedAt === null &&
+        time >= robotData.nextAttentionAt
+      ) {
+        robotData.attentionStartedAt = time;
+        window.RoboNaviSound?.speakHeyYou?.(this.snapshot.language);
+      }
+    }
+    let attentionBlend = 0;
+    if (robotData.attentionStartedAt !== null) {
+      const attentionProgress = THREE.MathUtils.clamp(
+        (time - robotData.attentionStartedAt) / robotData.attentionDuration,
+        0,
+        1
+      );
+      const edge = attentionProgress < 0.24
+        ? attentionProgress / 0.24
+        : attentionProgress > 0.76
+          ? (1 - attentionProgress) / 0.24
+          : 1;
+      attentionBlend = THREE.MathUtils.smoothstep(edge, 0, 1);
+      if (attentionProgress >= 1) {
+        robotData.attentionStartedAt = null;
+        robotData.nextAttentionAt = time + 24 + Math.random() * 18;
+        attentionBlend = 0;
+      }
+    }
+    const cameraDelta = this.camera.position.clone().sub(this.robot.position);
+    const cameraFacing = Math.atan2(-cameraDelta.x, -cameraDelta.z);
+    const localCameraFacing = Math.atan2(
+      Math.sin(cameraFacing - this.robot.rotation.y),
+      Math.cos(cameraFacing - this.robot.rotation.y)
+    );
+    robotData.model.rotation.y = localCameraFacing * attentionBlend;
+    robotData.head.rotation.y =
+      Math.sin(time * 1.45) * 0.045 * motion +
+      Math.sin(attentionBlend * Math.PI) * 0.08;
     const antennaTarget =
       this.snapshot && this.snapshot.programRunning ? 0 : 1;
     const frameDelta =
@@ -2147,8 +2256,14 @@ class RoboNaviThreeView {
         ? -actionWave * 0.9
         : driveAction
           ? drivePulse * (index === 0 ? 0.055 : -0.055) * motion
+          : index === 0
+            ? attentionBlend * 1.22
+            : 0;
+      arm.rotation.y = batteryAction
+        ? (index === 0 ? -1 : 1) * actionWave * 0.24
+        : index === 0
+          ? -attentionBlend * 0.22
           : 0;
-      arm.rotation.y = batteryAction ? (index === 0 ? -1 : 1) * actionWave * 0.24 : 0;
     });
     robotData.chestMaterial.emissive.set(
       inductAction ? COLORS.charger : COLORS.orangeGlow
