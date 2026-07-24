@@ -573,7 +573,7 @@ strong {
   overflow-x: auto;
   overflow-y: hidden;
   gap: 6px;
-  padding: 2px 2px 7px;
+  padding: 2px 2px 12px;
   overscroll-behavior-inline: contain;
   scroll-behavior: smooth;
   scroll-snap-type: x proximity;
@@ -1886,6 +1886,7 @@ kbd {
   .control-panel {
     gap: 6px;
     padding: 8px;
+    grid-template-rows: minmax(82px, auto) minmax(0, 1fr) auto;
   }
 
   .panel-section {
@@ -1901,6 +1902,8 @@ kbd {
 
   .level-list {
     gap: 2px;
+    min-height: 42px;
+    padding: 2px 2px 12px;
   }
 
   .level-button {
@@ -1990,8 +1993,29 @@ kbd {
     font-size: 0.7rem;
   }
 
+  .stats-panel {
+    gap: 4px;
+    padding: 4px 6px;
+  }
+
   .stats-panel > div {
-    padding: 4px;
+    min-height: 34px;
+    align-content: center;
+    gap: 0;
+    padding: 2px 4px;
+  }
+
+  .stats-panel .label {
+    overflow: hidden;
+    font-size: 0.46rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stats-panel strong {
+    font-size: 0.76rem;
+    line-height: 1.05;
   }
 }
 
