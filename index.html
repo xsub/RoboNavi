@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260724-light1">
+    <link rel="stylesheet" href="styles.css?v=20260724-light3">
   </head>
   <body>
     <div class="app-shell">
@@ -43,6 +43,16 @@
               <span class="utility-icon" aria-hidden="true">?</span>
               <span data-i18n="help">Help</span>
             </button>
+            <button
+              id="sound-toggle"
+              class="utility-button sound-toggle"
+              type="button"
+              title="Mute sound"
+              aria-label="Mute sound"
+              aria-pressed="true"
+            >
+              <span id="sound-icon" aria-hidden="true">&#128266;</span>
+            </button>
             <div class="hela-label" aria-label="HELA, love">
               <span>HELA</span>
               <span class="hela-heart" aria-hidden="true">♥</span>
@@ -71,6 +81,22 @@
           <div class="canvas-wrap">
             <div id="three-stage" aria-hidden="true"></div>
             <canvas id="game-canvas" aria-label="Isometric puzzle board"></canvas>
+            <div id="camera-controls" class="camera-controls" role="group" aria-label="Camera">
+              <button
+                id="camera-rotate-left"
+                type="button"
+                title="Rotate camera left"
+                aria-label="Rotate camera left"
+                disabled
+              >&#8634;</button>
+              <button
+                id="camera-rotate-right"
+                type="button"
+                title="Rotate camera right"
+                aria-label="Rotate camera right"
+                disabled
+              >&#8635;</button>
+            </div>
             <canvas id="mini-map" aria-label="Top-down map"></canvas>
           </div>
           <div class="message-row">
@@ -91,13 +117,13 @@
             <div id="level-list" class="level-list"></div>
           </section>
 
-          <section class="panel-section">
+          <section class="panel-section program-section">
             <div class="section-head">
               <h2 data-i18n="program">Program</h2>
               <div class="program-options">
                 <label class="lighting-control">
                   <span data-i18n="light">Light</span>
-                  <input id="light-level" type="range" min="0" max="100" step="5" value="45">
+                  <input id="light-level" type="range" min="0" max="200" step="5" value="45">
                   <output id="light-value" for="light-level">45%</output>
                 </label>
                 <label class="toggle">
@@ -267,9 +293,10 @@
       </form>
     </dialog>
 
-    <script src="src/core.js?v=20260723-2035"></script>
-    <script src="src/generator.js?v=20260723-2035"></script>
-    <script src="src/app.js?v=20260724-beam1"></script>
-    <script type="module" src="src/three-renderer.mjs?v=20260724-beam1"></script>
+    <script src="src/core.js?v=20260724-edgewalls1"></script>
+    <script src="src/generator.js?v=20260724-edgewalls1"></script>
+    <script src="src/audio.js?v=20260724-sound2"></script>
+    <script src="src/app.js?v=20260724-light2"></script>
+    <script type="module" src="src/three-renderer.mjs?v=20260724-light2"></script>
   </body>
 </html>

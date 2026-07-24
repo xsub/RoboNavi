@@ -13,11 +13,17 @@ const generator = require("../src/generator");
     start: { x: 1, y: 2, direction: "east" },
     goals: [{ x: 3, y: 2 }],
     grid: [
-      "#####",
-      "#...#",
-      "#.#.#",
-      "#...#",
-      "#####"
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ],
+    walls: [
+      { axis: "vertical", x: 2, y: 2 },
+      { axis: "vertical", x: 3, y: 2 },
+      { axis: "horizontal", x: 2, y: 2 },
+      { axis: "horizontal", x: 2, y: 3 }
     ]
   };
   const result = generator.dijkstra(level, level.start, level.goals[0], 100);
@@ -62,6 +68,18 @@ const generator = require("../src/generator");
   core.validateLevel(level);
 
   assert.strictEqual(level.generated, true);
+  assert.strictEqual(Array.isArray(level.walls), true);
+  assert.strictEqual(
+    level.grid.some((row) => row.includes("#")),
+    false,
+    `${level.id} should use edge walls instead of blocked wall tiles`
+  );
+  level.walls.forEach((wall) => {
+    assert(
+      wall.axis === "horizontal" || wall.axis === "vertical",
+      `${level.id} should contain canonical edge-wall segments`
+    );
+  });
   assert(
     level.generation.routeCount >= options.minSolutions,
     `${level.id} should provide at least ${options.minSolutions} shortest routes`

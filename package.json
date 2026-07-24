@@ -4,7 +4,7 @@
   "private": true,
   "description": "A small robot-programming puzzle game prototype.",
   "scripts": {
-    "test": "node --check src/core.js && node --check src/generator.js && node --check src/app.js && node --check src/three-renderer.mjs && node tests/core.test.js && node tests/generator.test.js",
+    "test": "node --check src/core.js && node --check src/generator.js && node --check src/audio.js && node --check src/app.js && node --check src/three-renderer.mjs && node tests/core.test.js && node tests/generator.test.js",
     "dev": "python3 -m http.server 4173"
   },
   "dependencies": {

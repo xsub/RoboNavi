@@ -100,7 +100,7 @@
         var delta = core.DIR_DELTA[direction];
         var nextX = current.x + delta.x;
         var nextY = current.y + delta.y;
-        if (!core.canEnter(level, nextX, nextY)) return;
+        if (!core.canMove(level, current.x, current.y, nextX, nextY)) return;
 
         var terrain = core.terrainAt(level, nextX, nextY);
         var nextCost = current.cost + core.TERRAIN[terrain].cost;
@@ -143,12 +143,12 @@
     var delta = core.DIR_DELTA[state.direction];
     var nextX = state.x + delta.x;
     var nextY = state.y + delta.y;
-    if (!core.canEnter(level, nextX, nextY)) return null;
+    if (!core.canMove(level, state.x, state.y, nextX, nextY)) return null;
 
     var cost = 0;
     var x = state.x;
     var y = state.y;
-    while (core.canEnter(level, nextX, nextY)) {
+    while (core.canMove(level, x, y, nextX, nextY)) {
       x = nextX;
       y = nextY;
       var terrain = core.terrainAt(level, x, y);
@@ -298,23 +298,25 @@
     });
   }
 
+  function isProtectedEdge(first, second, points) {
+    return (
+      isProtectedCell(first.x, first.y, points) ||
+      isProtectedCell(second.x, second.y, points)
+    );
+  }
+
   function buildCandidate(size, density, rng) {
     var pair = oppositeCorners(size, rng);
     var startPoint = pair[0];
     var goal = pair[1];
     var protectedPoints = [startPoint, goal];
     var rows = [];
+    var walls = [];
 
     for (var y = 0; y < size; y += 1) {
       var row = "";
       for (var x = 0; x < size; x += 1) {
-        if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
-          row += "#";
-        } else if (!isProtectedCell(x, y, protectedPoints) && rng() < density.walls) {
-          row += "#";
-        } else {
-          row += ".";
-        }
+        row += ".";
       }
       rows.push(row);
     }
@@ -335,6 +337,35 @@
         .join("");
     });
 
+    for (var wallY = 0; wallY < size; wallY += 1) {
+      for (var wallX = 1; wallX < size; wallX += 1) {
+        if (
+          !isProtectedEdge(
+            { x: wallX - 1, y: wallY },
+            { x: wallX, y: wallY },
+            protectedPoints
+          ) &&
+          rng() < density.walls
+        ) {
+          walls.push({ axis: "vertical", x: wallX, y: wallY });
+        }
+      }
+    }
+    for (var edgeY = 1; edgeY < size; edgeY += 1) {
+      for (var edgeX = 0; edgeX < size; edgeX += 1) {
+        if (
+          !isProtectedEdge(
+            { x: edgeX, y: edgeY - 1 },
+            { x: edgeX, y: edgeY },
+            protectedPoints
+          ) &&
+          rng() < density.walls
+        ) {
+          walls.push({ axis: "horizontal", x: edgeX, y: edgeY });
+        }
+      }
+    }
+
     var starts = shuffledCopy(inwardDirections(startPoint, size), rng);
     return {
       width: size,
@@ -345,7 +376,8 @@
         direction: starts[0]
       },
       goals: [goal],
-      grid: rows
+      grid: rows,
+      walls: walls
     };
   }
 
@@ -385,6 +417,7 @@
       goals: candidate.goals,
       solution: aStarResult.solution,
       grid: candidate.grid,
+      walls: candidate.walls,
       generation: {
         seed: seed,
         attempt: attempt,

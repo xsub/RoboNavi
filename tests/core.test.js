@@ -57,9 +57,47 @@ core.LEVELS.slice(10).forEach((level) => {
 {
   const level = core.LEVELS[0];
   const result = core.simulate(level, core.parseProgram("LFF"));
+  assert.strictEqual(core.terrainAt(level, 0, level.start.y), "floor");
+  assert.strictEqual(
+    core.canMove(level, level.start.x, level.start.y, 0, level.start.y),
+    true,
+    "a former wall block should now be a playable floor tile"
+  );
   assert.strictEqual(result.stoppedReason, "collision");
-  assert.strictEqual(result.finalState.x, level.start.x);
+  assert.strictEqual(result.finalState.x, 0);
   assert.strictEqual(result.finalState.y, level.start.y);
+}
+
+{
+  const level = {
+    id: "edge-wall-test",
+    width: 5,
+    height: 5,
+    energyMax: 10,
+    parEnergy: 10,
+    parRuns: 1,
+    start: { x: 1, y: 2, direction: "east" },
+    goals: [{ x: 3, y: 2 }],
+    grid: [
+      ".....",
+      ".....",
+      ".....",
+      ".....",
+      "....."
+    ],
+    walls: [{ axis: "vertical", x: 2, y: 2 }]
+  };
+  core.validateLevel(level);
+  assert.strictEqual(core.canEnter(level, 2, 2), true);
+  assert.strictEqual(core.canMove(level, 1, 2, 2, 2), false);
+  assert.deepStrictEqual(
+    core.wallBetween(level, 1, 2, 2, 2),
+    { axis: "vertical", x: 2, y: 2 }
+  );
+  const result = core.simulate(level, core.parseProgram("F"));
+  assert.strictEqual(result.stoppedReason, "collision");
+  assert.strictEqual(result.finalState.x, 1);
+  assert.strictEqual(result.finalState.y, 2);
 }
 
 {

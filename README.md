@@ -17,7 +17,7 @@ the whole program.
 - Procedural levels with configurable size, route count, and wall density
 - Dijkstra validation and A* reference programs for generated boards
 - Forward, left, right, beacon-battery, and inductive-charge programming
-- Floor, walls, sand, ice, charging stations, and signal beacons
+- Floor, thin edge walls, sand, ice, charging stations, and signal beacons
 - Three.js 3D board and robot with metallic PBR materials and purple floor-projector beacons
 - Black cockpit display with a persistent global-light control
 - Automatic Canvas fallback when WebGL or JavaScript modules are unavailable
@@ -71,7 +71,7 @@ request.
 `RANDOM` creates a new board instead of selecting an existing campaign level.
 The generator pipeline:
 
-1. Builds a weighted grid and places walls and sand.
+1. Builds a weighted grid and places thin walls between tiles plus sand terrain.
 2. Uses Dijkstra to verify reachability and count shortest routes.
 3. Rejects boards below the selected minimum route count.
 4. Uses A* over position and robot orientation to find the optimal command

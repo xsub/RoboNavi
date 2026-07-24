@@ -10,6 +10,7 @@
   var DIRECTIONS = ["north", "east", "south", "west"];
   var COMMANDS = ["forward", "turn-left", "turn-right", "battery", "induct"];
   var EPSILON = 0.00001;
+  var WALL_CACHE = typeof WeakMap === "function" ? new WeakMap() : null;
   var COSTS = {
     startup: 0.5,
     turn: 0.25,
@@ -25,7 +26,7 @@
   };
   var TILE_FROM_CHAR = {
     ".": "floor",
-    "#": "wall",
+    "#": "floor",
     "s": "sand",
     "i": "ice",
     "c": "charger"
@@ -735,6 +736,125 @@
     return x >= 0 && y >= 0 && x < level.width && y < level.height;
   }
 
+  function wallSegmentKey(segment) {
+    return (segment.axis === "horizontal" ? "h" : "v") +
+      ":" + segment.x + ":" + segment.y;
+  }
+
+  function addWallSegment(segments, index, axis, x, y) {
+    var segment = {
+      axis: axis === "vertical" ? "vertical" : "horizontal",
+      x: Number(x),
+      y: Number(y)
+    };
+    var key = wallSegmentKey(segment);
+    if (index[key]) return;
+    index[key] = true;
+    segments.push(segment);
+  }
+
+  function addPerimeterWalls(level, segments, index) {
+    for (var x = 0; x < level.width; x += 1) {
+      addWallSegment(segments, index, "horizontal", x, 0);
+      addWallSegment(segments, index, "horizontal", x, level.height);
+    }
+    for (var y = 0; y < level.height; y += 1) {
+      addWallSegment(segments, index, "vertical", 0, y);
+      addWallSegment(segments, index, "vertical", level.width, y);
+    }
+  }
+
+  function addLegacyWallMarkers(level, segments, index) {
+    for (var y = 1; y < level.height - 1; y += 1) {
+      for (var x = 1; x < level.width - 1; x += 1) {
+        if (level.grid[y][x] !== "#") continue;
+        var horizontalNeighbors =
+          (level.grid[y][x - 1] === "#" ? 1 : 0) +
+          (level.grid[y][x + 1] === "#" ? 1 : 0);
+        var verticalNeighbors =
+          (level.grid[y - 1][x] === "#" ? 1 : 0) +
+          (level.grid[y + 1][x] === "#" ? 1 : 0);
+
+        if (horizontalNeighbors > 0) {
+          addWallSegment(segments, index, "horizontal", x, y);
+        }
+        if (verticalNeighbors > 0) {
+          addWallSegment(segments, index, "vertical", x, y);
+        }
+        if (horizontalNeighbors === 0 && verticalNeighbors === 0) {
+          addWallSegment(
+            segments,
+            index,
+            (x + y) % 2 === 0 ? "vertical" : "horizontal",
+            x,
+            y
+          );
+        }
+      }
+    }
+  }
+
+  function addExplicitWalls(level, segments, index) {
+    (level.walls || []).forEach(function (wall) {
+      if (!wall) return;
+      if (wall.axis === "horizontal" || wall.axis === "vertical") {
+        addWallSegment(segments, index, wall.axis, wall.x, wall.y);
+        return;
+      }
+      if (DIRECTIONS.indexOf(wall.direction) === -1) return;
+      if (wall.direction === "north") {
+        addWallSegment(segments, index, "horizontal", wall.x, wall.y);
+      } else if (wall.direction === "south") {
+        addWallSegment(segments, index, "horizontal", wall.x, wall.y + 1);
+      } else if (wall.direction === "west") {
+        addWallSegment(segments, index, "vertical", wall.x, wall.y);
+      } else {
+        addWallSegment(segments, index, "vertical", wall.x + 1, wall.y);
+      }
+    });
+  }
+
+  function wallData(level) {
+    if (WALL_CACHE && WALL_CACHE.has(level)) {
+      return WALL_CACHE.get(level);
+    }
+    var segments = [];
+    var index = {};
+    addPerimeterWalls(level, segments, index);
+    if (Array.isArray(level.walls)) {
+      addExplicitWalls(level, segments, index);
+    } else {
+      addLegacyWallMarkers(level, segments, index);
+    }
+    var data = { segments: segments, index: index };
+    if (WALL_CACHE) WALL_CACHE.set(level, data);
+    return data;
+  }
+
+  function wallSegments(level) {
+    return wallData(level).segments;
+  }
+
+  function wallBetween(level, fromX, fromY, toX, toY) {
+    var deltaX = toX - fromX;
+    var deltaY = toY - fromY;
+    if (Math.abs(deltaX) + Math.abs(deltaY) !== 1) return null;
+
+    var target;
+    if (deltaX === 1) {
+      target = { axis: "vertical", x: fromX + 1, y: fromY };
+    } else if (deltaX === -1) {
+      target = { axis: "vertical", x: fromX, y: fromY };
+    } else if (deltaY === 1) {
+      target = { axis: "horizontal", x: fromX, y: fromY + 1 };
+    } else {
+      target = { axis: "horizontal", x: fromX, y: fromY };
+    }
+
+    var targetKey = wallSegmentKey(target);
+    return wallData(level).index[targetKey] ? target : null;
+  }
+
   function terrainAt(level, x, y) {
     if (!inside(level, x, y)) return "wall";
     var char = level.grid[y][x];
@@ -743,6 +863,14 @@
 
   function canEnter(level, x, y) {
     return TERRAIN[terrainAt(level, x, y)].passable;
+  }
+
+  function canMove(level, fromX, fromY, toX, toY) {
+    return (
+      inside(level, fromX, fromY) &&
+      canEnter(level, toX, toY) &&
+      !wallBetween(level, fromX, fromY, toX, toY)
+    );
   }
 
   function spend(state, amount) {
@@ -802,14 +930,16 @@
       collected: [],
       recharged: 0,
       blockedAt: null,
+      blockedWall: null,
       status: "ok"
     };
     var delta = DIR_DELTA[state.direction];
     var nextX = state.x + delta.x;
     var nextY = state.y + delta.y;
 
-    if (!canEnter(level, nextX, nextY)) {
+    if (!canMove(level, state.x, state.y, nextX, nextY)) {
       event.blockedAt = { x: nextX, y: nextY };
+      event.blockedWall = wallBetween(level, state.x, state.y, nextX, nextY);
       event.cost = Math.min(COSTS.collision, state.energyRemaining);
       spend(state, COSTS.collision);
       event.status = "collision";
@@ -842,7 +972,7 @@
 
       nextX = state.x + delta.x;
       nextY = state.y + delta.y;
-      if (!canEnter(level, nextX, nextY)) {
+      if (!canMove(level, state.x, state.y, nextX, nextY)) {
         break;
       }
     }
@@ -959,7 +1089,7 @@
       var delta = DIR_DELTA[direction];
       var nextX = state.x + delta.x;
       var nextY = state.y + delta.y;
-      if (!canEnter(level, nextX, nextY)) return;
+      if (!canMove(level, state.x, state.y, nextX, nextY)) return;
 
       var clockwiseTurns =
         (directionIndex - currentDirection + DIRECTIONS.length) % DIRECTIONS.length;
@@ -1089,6 +1219,21 @@
         throw new Error(level.id + " has a blocked goal");
       }
     });
+    wallSegments(level).forEach(function (wall) {
+      var valid =
+        wall.axis === "horizontal"
+          ? wall.x >= 0 &&
+            wall.x < level.width &&
+            wall.y >= 0 &&
+            wall.y <= level.height
+          : wall.x >= 0 &&
+            wall.x <= level.width &&
+            wall.y >= 0 &&
+            wall.y < level.height;
+      if (!valid) {
+        throw new Error(level.id + " has an invalid wall segment");
+      }
+    });
     return true;
   }
 
@@ -1103,6 +1248,7 @@
     LEVELS: LEVELS,
     TERRAIN: TERRAIN,
     canEnter: canEnter,
+    canMove: canMove,
     cloneState: cloneState,
     commandType: commandType,
     commandToken: commandToken,
@@ -1115,6 +1261,8 @@
     simulate: simulate,
     terrainAt: terrainAt,
     turn: turn,
-    validateLevel: validateLevel
+    validateLevel: validateLevel,
+    wallBetween: wallBetween,
+    wallSegments: wallSegments
   };
 });

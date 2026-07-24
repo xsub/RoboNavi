@@ -3,18 +3,19 @@
 
   var core = window.RoboNaviCore;
   var generator = window.RoboNaviGenerator;
+  var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
   var terrainColors = {
-    floor: { top: "#bdd8e2", edge: "#789aa7", detail: "#f4fbfd", low: "#9ebfc9" },
-    sand: { top: "#d9bd77", edge: "#a7884b", detail: "#fff0bd", low: "#bfa05f" },
-    ice: { top: "#a9d5df", edge: "#6f9eab", detail: "#f4feff", low: "#89bbc7" },
+    floor: { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
+    sand: { top: "#d9bd77", edge: "#b89b5d", detail: "#fff0bd", low: "#bfa05f" },
+    ice: { top: "#a9d5df", edge: "#82b4c0", detail: "#f4feff", low: "#89bbc7" },
     charger: { top: "#dfb5cb", edge: "#9f7189", detail: "#fff1f8", low: "#c28ea9" },
     wall: { top: "#b6cbb2", edge: "#667f72", detail: "#f2f8ef", low: "#8fa792" }
   };
   var floorPalettes = [
-    { top: "#bdd8e2", edge: "#789aa7", detail: "#f4fbfd", low: "#9ebfc9" },
-    { top: "#c5dfe7", edge: "#82a2ad", detail: "#f8fdfe", low: "#a7c6cf" }
+    { top: "#bdd8e2", edge: "#9bb8c2", detail: "#f4fbfd", low: "#9ebfc9" },
+    { top: "#c5dfe7", edge: "#a7c1c9", detail: "#f8fdfe", low: "#a7c6cf" }
   ];
   var interestPalette = {
     top: "#dfb5cb",
@@ -38,6 +39,9 @@
       controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Mission",
       help: "Help",
+      sound: "Sound",
+      muteSound: "Mute sound",
+      enableSound: "Enable sound",
       energy: "Energy",
       runs: "Runs",
       best: "Best",
@@ -80,6 +84,9 @@
       canvasLabel: "Isometric puzzle board",
       mapLabel: "Top-down map",
       controlsLabel: "Command controls",
+      camera: "Camera",
+      rotateCameraLeft: "Rotate camera left",
+      rotateCameraRight: "Rotate camera right",
       helpTitle: "Robot operator guide",
       helpObjectiveTitle: "Restore the beacon",
       helpObjectiveText: "Reach each beacon and install its battery with B before the 60-second timer expires.",
@@ -202,6 +209,9 @@
       controlSystem: '3D "LOGO" PROGRAMMING',
       mission: "Misja",
       help: "Pomoc",
+      sound: "Dźwięk",
+      muteSound: "Wycisz dźwięk",
+      enableSound: "Włącz dźwięk",
       energy: "Energia",
       runs: "Uruchomienia",
       best: "Najlepiej",
@@ -244,6 +254,9 @@
       canvasLabel: "Izometryczna plansza logiczna",
       mapLabel: "Mapa z góry",
       controlsLabel: "Panel komend",
+      camera: "Kamera",
+      rotateCameraLeft: "Obróć kamerę w lewo",
+      rotateCameraRight: "Obróć kamerę w prawo",
       helpTitle: "Przewodnik operatora robota",
       helpObjectiveTitle: "Uruchom nadajnik",
       helpObjectiveText: "Dotrzyj do każdego nadajnika i zainstaluj baterię klawiszem B przed upływem 60 sekund.",
@@ -367,6 +380,9 @@
   var els = {
     canvas: document.getElementById("game-canvas"),
     miniMap: document.getElementById("mini-map"),
+    cameraControls: document.getElementById("camera-controls"),
+    cameraRotateLeft: document.getElementById("camera-rotate-left"),
+    cameraRotateRight: document.getElementById("camera-rotate-right"),
     levelName: document.getElementById("level-name"),
     levelSubtitle: document.getElementById("level-subtitle"),
     energyValue: document.getElementById("energy-value"),
@@ -388,6 +404,8 @@
     runTarget: document.getElementById("run-target"),
     facingValue: document.getElementById("facing-value"),
     helpButton: document.getElementById("help-button"),
+    soundToggle: document.getElementById("sound-toggle"),
+    soundIcon: document.getElementById("sound-icon"),
     helpDialog: document.getElementById("help-dialog"),
     closeHelp: document.getElementById("close-help"),
     generatorDialog: document.getElementById("generator-dialog"),
@@ -424,6 +442,7 @@
     commands: [],
     preview: false,
     globalLight: loadGlobalLight(),
+    cameraQuarterTurns: 0,
     runCount: 0,
     highlightIndex: null,
     animating: false,
@@ -447,7 +466,7 @@
   }
 
   function clampGlobalLight(value) {
-    return Math.max(0, Math.min(100, Number(value) || 0));
+    return Math.max(0, Math.min(200, Number(value) || 0));
   }
 
   function loadGlobalLight() {
@@ -489,6 +508,17 @@
 
   function text(key) {
     return uppercase(copy()[key] || translations.en[key] || key);
+  }
+
+  function renderSoundControl() {
+    var supported = Boolean(sound && sound.isSupported());
+    var active = supported && sound.isEnabled();
+    var actionKey = active ? "muteSound" : "enableSound";
+    els.soundToggle.disabled = !supported;
+    els.soundToggle.setAttribute("aria-pressed", active ? "true" : "false");
+    els.soundToggle.title = text(actionKey);
+    els.soundToggle.setAttribute("aria-label", text(actionKey));
+    els.soundIcon.textContent = active ? "\ud83d\udd0a" : "\ud83d\udd07";
   }
 
   function setMessage(key, value) {
@@ -1087,6 +1117,8 @@
         }
         threeRenderer = null;
         els.canvas.parentElement.classList.remove("three-ready");
+        els.cameraRotateLeft.disabled = true;
+        els.cameraRotateRight.disabled = true;
         drawBoard();
         console.warn("RoboNavi switched back to the Canvas renderer.", error);
       }
@@ -1147,6 +1179,7 @@
       path: createThreeRenderPath(),
       activeStep: activeStep,
       globalLight: state.globalLight,
+      cameraQuarterTurns: state.cameraQuarterTurns,
       batterySecondsRemaining: state.batterySecondsRemaining,
       gameOver: state.gameOver,
       complete: core.isComplete(state.level, state.robot)
@@ -1171,9 +1204,7 @@
     });
     cells.forEach(function (cell) {
       var terrain = core.terrainAt(state.level, cell.x, cell.y);
-      if (terrain !== "wall") {
-        drawTile(cell.x, cell.y, terrain, layout);
-      }
+      drawTile(cell.x, cell.y, terrain, layout);
     });
 
     if (state.animating && state.animation) {
@@ -1183,15 +1214,15 @@
     }
 
     var actors = [];
-    cells.forEach(function (cell) {
-      if (core.terrainAt(state.level, cell.x, cell.y) === "wall") {
-        actors.push({
-          depth: cell.x + cell.y + 0.55,
-          draw: function () {
-            drawWall(cell.x, cell.y, layout);
-          }
-        });
-      }
+    core.wallSegments(state.level).forEach(function (wall) {
+      var centerX = wall.axis === "horizontal" ? wall.x + 0.5 : wall.x;
+      var centerY = wall.axis === "horizontal" ? wall.y : wall.y + 0.5;
+      actors.push({
+        depth: centerX + centerY + 0.55,
+        draw: function () {
+          drawWallSegment(wall, layout);
+        }
+      });
     });
     state.level.goals.forEach(function (goal, index) {
       actors.push({
@@ -1448,11 +1479,25 @@
         ? floorPalettes[(x + y * 2) % floorPalettes.length]
         : terrainColors[terrain];
     var points = tilePath(x, y, layout, 0);
-    drawDiamond(points, colors.edge, "rgba(57, 78, 84, 0.42)");
-    var face = insetPoints(points, 0.055);
-    drawDiamond(face, surfaceGradient(face, colors), "rgba(255, 255, 255, 0.48)");
-    var innerFace = insetPoints(face, 0.075);
-    drawDiamond(innerFace, "rgba(255, 255, 255, 0.025)", "rgba(66, 91, 98, 0.13)");
+    drawDiamond(points, colors.edge, "rgba(57, 78, 84, 0.22)");
+    var face = insetPoints(points, 0.026);
+    drawDiamond(face, surfaceGradient(face, colors), null);
+
+    ctx.save();
+    ctx.lineWidth = Math.max(0.65, layout.tileW * 0.007);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.26)";
+    ctx.beginPath();
+    ctx.moveTo(face[3].x, face[3].y);
+    ctx.lineTo(face[0].x, face[0].y);
+    ctx.lineTo(face[1].x, face[1].y);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(43, 64, 70, 0.2)";
+    ctx.beginPath();
+    ctx.moveTo(face[1].x, face[1].y);
+    ctx.lineTo(face[2].x, face[2].y);
+    ctx.lineTo(face[3].x, face[3].y);
+    ctx.stroke();
+    ctx.restore();
 
     var center = cellCenter(x, y, layout);
     if (terrain === "floor") {
@@ -1584,73 +1629,65 @@
     ctx.restore();
   }
 
-  function drawWall(x, y, layout) {
-    var colors = wallPalettes[(x * 2 + y) % wallPalettes.length];
+  function drawWallSegment(wall, layout) {
+    var colors =
+      wallPalettes[
+        (wall.x * 2 + wall.y + (wall.axis === "vertical" ? 1 : 0)) %
+          wallPalettes.length
+      ];
     var lift = Math.max(4, Math.min(26, layout.tileW * 0.19));
-    var top = tilePath(x, y, layout, lift);
-    var base = tilePath(x, y, layout, 0);
-    var rightFace = [base[1], base[2], top[2], top[1]];
-    var leftFace = [base[2], base[3], top[3], top[2]];
-    var outlineColor = "rgba(34, 43, 42, 0.48)";
+    var start = project({ x: wall.x, y: wall.y }, layout);
+    var end =
+      wall.axis === "horizontal"
+        ? project({ x: wall.x + 1, y: wall.y }, layout)
+        : project({ x: wall.x, y: wall.y + 1 }, layout);
+    var topStart = { x: start.x, y: start.y - lift };
+    var topEnd = { x: end.x, y: end.y - lift };
+    var face = [start, end, topEnd, topStart];
+    var outlineColor = "rgba(28, 43, 40, 0.62)";
     var outlineWidth = Math.max(1, layout.tileW * 0.014);
-    drawPolygon(
-      rightFace,
-      sideGradient(rightFace, colors.right, colors.edge),
-      outlineColor,
-      outlineWidth
+    var faceGradient = ctx.createLinearGradient(
+      topStart.x,
+      topStart.y,
+      start.x,
+      start.y
     );
-    drawPolygon(
-      leftFace,
-      sideGradient(leftFace, colors.left, colors.low),
-      outlineColor,
-      outlineWidth
-    );
-    drawPolygon(top, surfaceGradient(top, colors), outlineColor, outlineWidth);
-    drawPolygon(
-      insetPoints(top, 0.13),
-      "rgba(255, 255, 255, 0.08)",
-      "rgba(49, 62, 59, 0.22)",
-      Math.max(0.8, layout.tileW * 0.01)
-    );
+    faceGradient.addColorStop(0, "rgba(218, 237, 216, 0.64)");
+    faceGradient.addColorStop(0.2, "rgba(166, 204, 173, 0.54)");
+    faceGradient.addColorStop(1, "rgba(95, 133, 109, 0.48)");
+    drawPolygon(face, faceGradient, outlineColor, outlineWidth);
 
     ctx.save();
-    ctx.strokeStyle = "rgba(36, 47, 45, 0.3)";
-    ctx.lineWidth = Math.max(0.8, layout.tileW * 0.009);
+    ctx.strokeStyle = "rgba(239, 250, 237, 0.75)";
+    ctx.lineWidth = Math.max(0.9, layout.tileW * 0.011);
     ctx.beginPath();
-    ctx.moveTo(lerp(base[1].x, base[2].x, 0.16), lerp(base[1].y, base[2].y, 0.16));
-    ctx.lineTo(lerp(top[1].x, top[2].x, 0.16), lerp(top[1].y, top[2].y, 0.16));
-    ctx.moveTo(lerp(base[3].x, base[2].x, 0.16), lerp(base[3].y, base[2].y, 0.16));
-    ctx.lineTo(lerp(top[3].x, top[2].x, 0.16), lerp(top[3].y, top[2].y, 0.16));
+    ctx.moveTo(topStart.x, topStart.y);
+    ctx.lineTo(topEnd.x, topEnd.y);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(244, 250, 244, 0.78)";
     ctx.strokeStyle = "rgba(48, 65, 60, 0.32)";
     ctx.lineWidth = 0.7;
     [0.18, 0.82].forEach(function (amount) {
-      var boltRight = {
-        x: lerp(top[1].x, top[2].x, amount),
-        y: lerp(top[1].y, top[2].y, amount) + lift * 0.45
-      };
-      var boltLeft = {
-        x: lerp(top[3].x, top[2].x, amount),
-        y: lerp(top[3].y, top[2].y, amount) + lift * 0.45
+      var bolt = {
+        x: lerp(start.x, end.x, amount),
+        y: lerp(start.y, end.y, amount) - lift * 0.48
       };
       ctx.beginPath();
-      ctx.arc(boltRight.x, boltRight.y, 1.2, 0, Math.PI * 2);
-      ctx.arc(boltLeft.x, boltLeft.y, 1.2, 0, Math.PI * 2);
+      ctx.arc(bolt.x, bolt.y, 1.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     });
 
-    if ((x + y) % 3 === 0) {
+    if (
+      (wall.x + wall.y + (wall.axis === "vertical" ? 1 : 0)) % 3 ===
+      0
+    ) {
       ctx.strokeStyle = "#ed86b3";
       ctx.lineWidth = Math.max(1.5, layout.tileW * 0.035);
       ctx.beginPath();
-      ctx.moveTo(lerp(base[1].x, base[2].x, 0.42), lerp(base[1].y, base[2].y, 0.42));
-      ctx.lineTo(
-        lerp(top[1].x, top[2].x, 0.42),
-        lerp(top[1].y, top[2].y, 0.42) + lift * 0.18
-      );
+      ctx.moveTo(lerp(start.x, end.x, 0.5), lerp(start.y, end.y, 0.5));
+      ctx.lineTo(lerp(topStart.x, topEnd.x, 0.5), lerp(topStart.y, topEnd.y, 0.5));
       ctx.stroke();
     }
     ctx.restore();
@@ -2042,7 +2079,7 @@
     var shoulder = robotPoint(basis, 0, side * 12, 29);
     var elbow = robotPoint(basis, 1, side * 17, 23);
     var hand = robotPoint(basis, 7, side * 18, 18);
-    ctx.strokeStyle = "#773718";
+    ctx.strokeStyle = "#8a350f";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 7;
@@ -2051,13 +2088,13 @@
     ctx.lineTo(elbow.x, elbow.y);
     ctx.lineTo(hand.x, hand.y);
     ctx.stroke();
-    ctx.strokeStyle = "#e27b32";
+    ctx.strokeStyle = "#f49a2e";
     ctx.lineWidth = 4.3;
     ctx.stroke();
 
     [shoulder, elbow].forEach(function (joint) {
-      ctx.fillStyle = "#e7863e";
-      ctx.strokeStyle = "#743717";
+      ctx.fillStyle = "#ffb43f";
+      ctx.strokeStyle = "#8a340f";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.arc(joint.x, joint.y, 3.7, 0, Math.PI * 2);
@@ -2070,7 +2107,7 @@
     ctx.arc(hand.x, hand.y, 2.8, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = "#713718";
+    ctx.strokeStyle = "#8a340f";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(hand.x, hand.y);
@@ -2116,14 +2153,14 @@
       ctx.restore();
     } else {
       var rearPort = robotPoint(basis, -10.8, 0, 46.5);
-      ctx.fillStyle = "#bd652b";
-      ctx.strokeStyle = "#763718";
+      ctx.fillStyle = "#e46a1f";
+      ctx.strokeStyle = "#8a340f";
       ctx.lineWidth = 1.25;
       ctx.beginPath();
       ctx.arc(rearPort.x, rearPort.y, 4.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#e9a15f";
+      ctx.fillStyle = "#ffd066";
       ctx.beginPath();
       ctx.arc(rearPort.x, rearPort.y, 2.4, 0, Math.PI * 2);
       ctx.fill();
@@ -2155,11 +2192,11 @@
       basis,
       { forward: 0, side: 0, halfForward: 13, halfSide: 15, bottom: 10, top: 18 },
       {
-        top: "#f4a356",
-        front: "#df7730",
-        back: "#cb6325",
-        side: "#ba5121",
-        stroke: "#713516"
+        top: "#ffd15c",
+        front: "#f59a2f",
+        back: "#e87520",
+        side: "#cc5316",
+        stroke: "#8a350f"
       }
     );
 
@@ -2178,9 +2215,9 @@
       28,
       14.5,
       15.5,
-      "#ffad62",
-      "#c95e24",
-      "#743619"
+      "#ffc34f",
+      "#e66a1f",
+      "#8a340f"
     );
 
     var chestLight = robotPoint(basis, 10.5, 0, 28);
@@ -2212,15 +2249,15 @@
       47,
       17,
       17.5,
-      "#ffb567",
-      "#ca5c23",
-      "#743518"
+      "#ffd05a",
+      "#e96f20",
+      "#8a340f"
     );
 
     var visibleSide = basis.py >= 0 ? 1 : -1;
     var sidePort = robotPoint(basis, 0, visibleSide * 15, 47);
-    ctx.fillStyle = "#d76e2c";
-    ctx.strokeStyle = "#743518";
+    ctx.fillStyle = "#f38b27";
+    ctx.strokeStyle = "#8a340f";
     ctx.lineWidth = 1.15;
     ctx.beginPath();
     ctx.arc(sidePort.x, sidePort.y, 3.5, 0, Math.PI * 2);
@@ -2274,6 +2311,23 @@
         mapCtx.fillRect(offsetX + x * cell, offsetY + y * cell, Math.ceil(cell), Math.ceil(cell));
       }
     }
+
+    mapCtx.save();
+    mapCtx.strokeStyle = "rgba(53, 84, 72, 0.82)";
+    mapCtx.lineWidth = Math.max(1, cell * 0.11);
+    mapCtx.beginPath();
+    core.wallSegments(level).forEach(function (wall) {
+      var startX = offsetX + wall.x * cell;
+      var startY = offsetY + wall.y * cell;
+      mapCtx.moveTo(startX, startY);
+      if (wall.axis === "horizontal") {
+        mapCtx.lineTo(startX + cell, startY);
+      } else {
+        mapCtx.lineTo(startX, startY + cell);
+      }
+    });
+    mapCtx.stroke();
+    mapCtx.restore();
 
     level.goals.forEach(function (goal, index) {
       var collected = (state.robot.collected & goalMask(index)) !== 0;
@@ -2462,6 +2516,12 @@
     els.canvas.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute("aria-label", text("mapLabel"));
     els.controlPanel.setAttribute("aria-label", text("controlsLabel"));
+    els.cameraControls.setAttribute("aria-label", text("camera"));
+    els.cameraRotateLeft.title = text("rotateCameraLeft");
+    els.cameraRotateLeft.setAttribute("aria-label", text("rotateCameraLeft"));
+    els.cameraRotateRight.title = text("rotateCameraRight");
+    els.cameraRotateRight.setAttribute("aria-label", text("rotateCameraRight"));
+    renderSoundControl();
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
@@ -2583,6 +2643,22 @@
     drawAll();
   });
 
+  els.cameraRotateLeft.addEventListener("click", function () {
+    state.cameraQuarterTurns -= 1;
+    drawAll();
+  });
+
+  els.cameraRotateRight.addEventListener("click", function () {
+    state.cameraQuarterTurns += 1;
+    drawAll();
+  });
+
+  els.soundToggle.addEventListener("click", function () {
+    if (!sound || !sound.isSupported()) return;
+    sound.toggle();
+    renderSoundControl();
+  });
+
   els.languageSwitch.addEventListener("click", function (event) {
     var button = event.target.closest("[data-language]");
     if (!button) return;
@@ -2679,6 +2755,12 @@
 
   window.addEventListener("resize", scheduleCanvasRedraw);
   window.addEventListener("load", scheduleCanvasRedraw);
+  document.addEventListener("pointerdown", function () {
+    if (sound) sound.unlock();
+  }, { capture: true, once: true });
+  document.addEventListener("keydown", function () {
+    if (sound) sound.unlock();
+  }, { capture: true, once: true });
   if (typeof window.ResizeObserver === "function") {
     var canvasResizeObserver = new window.ResizeObserver(scheduleCanvasRedraw);
     canvasResizeObserver.observe(els.canvas);
@@ -2690,12 +2772,16 @@
       if (!renderer || typeof renderer.update !== "function") return;
       threeRenderer = renderer;
       els.canvas.parentElement.classList.add("three-ready");
+      els.cameraRotateLeft.disabled = false;
+      els.cameraRotateRight.disabled = false;
       renderer.update(createThreeRenderSnapshot());
     },
     detach: function (renderer) {
       if (renderer && threeRenderer !== renderer) return;
       threeRenderer = null;
       els.canvas.parentElement.classList.remove("three-ready");
+      els.cameraRotateLeft.disabled = true;
+      els.cameraRotateRight.disabled = true;
       drawBoard();
     },
     snapshot: createThreeRenderSnapshot
