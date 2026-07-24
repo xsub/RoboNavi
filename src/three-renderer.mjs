@@ -756,47 +756,119 @@ function createRobot(materials) {
   serviceLight.position.set(0, 0.62, 0.252);
   model.add(serviceLight);
 
+  const shoulderRingGeometry = new THREE.CylinderGeometry(
+    0.073,
+    0.073,
+    0.045,
+    20
+  );
+  const shoulderGeometry = new THREE.SphereGeometry(0.058, 18, 12);
+  const upperArmGeometry = new THREE.CylinderGeometry(
+    0.04,
+    0.048,
+    0.135,
+    14
+  );
+  const elbowHousingGeometry = new THREE.CylinderGeometry(
+    0.052,
+    0.052,
+    0.052,
+    18
+  );
+  const elbowAxleGeometry = new THREE.CylinderGeometry(
+    0.025,
+    0.025,
+    0.061,
+    14
+  );
+  const elbowCapGeometry = new THREE.CylinderGeometry(
+    0.033,
+    0.033,
+    0.012,
+    16
+  );
+  const lowerArmGeometry = new THREE.CylinderGeometry(
+    0.033,
+    0.04,
+    0.11,
+    14
+  );
+  const wristGeometry = new THREE.CylinderGeometry(
+    0.033,
+    0.038,
+    0.038,
+    16
+  );
+  const handGeometry = createRoundedBoxGeometry(
+    0.075,
+    0.065,
+    0.085,
+    0.022,
+    0.01
+  );
+
   [-1, 1].forEach((side) => {
     const pivot = new THREE.Group();
-    pivot.position.set(side * 0.31, 0.67, -0.015);
-    pivot.rotation.z = side * 0.42;
+    pivot.position.set(side * 0.305, 0.68, -0.015);
+    pivot.rotation.z = side * 0.34;
     model.add(pivot);
     armPivots.push(pivot);
 
-    const shoulder = new THREE.Mesh(
-      new THREE.SphereGeometry(0.085, 18, 12),
-      materials.orangeLight
-    );
-    pivot.add(shoulder);
-
-    const upper = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.046, 0.055, 0.21, 14),
-      materials.orange
-    );
-    upper.position.y = -0.12;
-    pivot.add(upper);
-
-    const elbow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.064, 16, 10),
-      materials.orangeLight
-    );
-    elbow.position.y = -0.235;
-    pivot.add(elbow);
-
-    const lower = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.038, 0.046, 0.17, 14),
-      materials.orange
-    );
-    lower.position.set(-side * 0.035, -0.32, -0.025);
-    lower.rotation.z = -side * 0.36;
-    pivot.add(lower);
-
-    const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 14, 10),
+    const shoulderRing = new THREE.Mesh(
+      shoulderRingGeometry,
       materials.silver
     );
-    hand.position.set(-side * 0.07, -0.405, -0.05);
+    shoulderRing.rotation.z = Math.PI / 2;
+    pivot.add(shoulderRing);
+
+    const shoulder = new THREE.Mesh(shoulderGeometry, materials.orangeLight);
+    pivot.add(shoulder);
+
+    const upper = new THREE.Mesh(upperArmGeometry, materials.orange);
+    upper.position.y = -0.09;
+    pivot.add(upper);
+
+    const elbowHousing = new THREE.Mesh(
+      elbowHousingGeometry,
+      materials.silver
+    );
+    elbowHousing.rotation.z = Math.PI / 2;
+    elbowHousing.position.y = -0.165;
+    pivot.add(elbowHousing);
+
+    const elbowAxle = new THREE.Mesh(
+      elbowAxleGeometry,
+      materials.graphite
+    );
+    elbowAxle.rotation.z = Math.PI / 2;
+    elbowAxle.position.y = -0.165;
+    pivot.add(elbowAxle);
+
+    const elbowCap = new THREE.Mesh(elbowCapGeometry, materials.orangeDark);
+    elbowCap.rotation.z = Math.PI / 2;
+    elbowCap.position.set(side * 0.032, -0.165, 0);
+    pivot.add(elbowCap);
+
+    const lower = new THREE.Mesh(lowerArmGeometry, materials.orange);
+    lower.position.set(-side * 0.016, -0.218, -0.018);
+    lower.rotation.z = -side * 0.28;
+    pivot.add(lower);
+
+    const wrist = new THREE.Mesh(wristGeometry, materials.silver);
+    wrist.rotation.z = Math.PI / 2;
+    wrist.position.set(-side * 0.03, -0.268, -0.035);
+    pivot.add(wrist);
+
+    const hand = new THREE.Mesh(handGeometry, materials.orangeLight);
+    hand.position.set(-side * 0.04, -0.305, -0.048);
     pivot.add(hand);
+
+    const gripPad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.045, 0.018, 0.056),
+      materials.graphite
+    );
+    gripPad.position.set(-side * 0.042, -0.338, -0.052);
+    pivot.add(gripPad);
   });
 
   const chestLampMaterial = materials.eye.clone();
