@@ -9,7 +9,7 @@ the whole program.
 
 **[Play RoboNavi in your browser](https://xsub.github.io/RoboNavi/)**
 
-![RoboNavi gameplay showing the isometric board and robot control panel](docs/robonavi-gameplay.png)
+![RoboNavi level 7 showing the 3D board, programmed route, robot, and mission-control panel](docs/robonavi-gameplay.png)
 
 ## Features
 
@@ -18,13 +18,19 @@ the whole program.
 - Dijkstra validation and A* reference programs for generated boards
 - Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, thin edge walls, sand, ice, charging stations, and signal beacons
-- Three.js 3D board and robot with metallic PBR materials and purple floor-projector beacons
-- Black cockpit display with a persistent global-light control
-- Automatic Canvas fallback when WebGL or JavaScript modules are unavailable
+- Three.js 3D board and robot with metallic PBR materials, animated multicolor
+  tank tracks, expressive blinking, a telescopic idle antenna, and purple
+  floor-projector beacons
+- Mission-control cockpit with global-light and floor-color controls
+- Quarter-turn camera rotation, zoom controls, wheel or touchpad zoom, and drag-to-pan navigation
 - Optional route preview without a ghost robot
+- Unlimited-energy Free Drive mode for relaxed practice
 - Energy and execution targets with three-star scoring
 - Full-screen confetti celebration after the final beacon
 - A 60-second beacon-network countdown after the first battery is installed
+- Procedural Web Audio for the motor, wheels, turns, wall collisions, batteries,
+  induction charging, robot whistles, failures, and success
+- Localized synthesized execution messages in English and Polish
 - English and Polish interface
 - Desktop and compact iPhone landscape layouts
 - Local progress saved in the browser
@@ -39,6 +45,11 @@ the whole program.
 - `CLEAR`: empty the command queue
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
+- `FREE DRIVE`: disable energy costs and display `NO LIMIT`
+- `SHADOW`: preview the programmed route
+- `↺`, `↻`: rotate the camera by 90 degrees
+- `-`, `+` or the mouse wheel/touchpad: zoom the board
+- Click or touch and drag the board to pan the camera
 - Keyboard: `L`, `F`, `R`, `B`, `I`, `1`-`4`, arrow keys, `Z` or `Backspace`
   to undo, `Enter` to execute, `C` to clear, and `X` to reset the level
 
@@ -52,8 +63,9 @@ npm run dev
 
 Then open [http://localhost:4173](http://localhost:4173).
 
-Opening `index.html` directly keeps the Canvas renderer available as a fallback.
-The pinned Three.js runtime and its MIT license are stored in `vendor/three`.
+RoboNavi uses JavaScript modules, so serve it over HTTP instead of opening
+`index.html` directly. The pinned Three.js runtime and its MIT license are
+stored in `vendor/three`.
 
 ## Tests
 

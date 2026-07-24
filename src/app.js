@@ -768,12 +768,15 @@
       steps: buildAnimationSteps(result.events),
       index: 0,
       startedAt: 0,
-      step: null
+      step: null,
+      preparing: true,
+      prepareStartedAt: 0,
+      prepareDuration: 360
     };
     state.animating = true;
     state.highlightIndex = null;
     setMessage("executing");
-    renderUi();
+    renderAll();
     window.requestAnimationFrame(tickAnimation);
   }
 
@@ -903,6 +906,18 @@
   function tickAnimation(timestamp) {
     var animation = state.animation;
     if (!animation) return;
+
+    if (animation.preparing) {
+      if (!animation.prepareStartedAt) {
+        animation.prepareStartedAt = timestamp;
+      }
+      drawAll();
+      if (timestamp - animation.prepareStartedAt < animation.prepareDuration) {
+        window.requestAnimationFrame(tickAnimation);
+        return;
+      }
+      animation.preparing = false;
+    }
 
     if (!animation.step) {
       animation.step = animation.steps[animation.index];
@@ -1338,6 +1353,7 @@
       },
       path: createThreeRenderPath(),
       activeStep: activeStep,
+      programRunning: state.animating,
       globalLight: state.globalLight,
       floorHue: state.floorHue,
       cameraQuarterTurns: state.cameraQuarterTurns,

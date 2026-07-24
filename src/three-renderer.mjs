@@ -388,6 +388,35 @@ function setShadow(mesh, cast, receive) {
   return mesh;
 }
 
+function createRoundedBoxGeometry(width, height, depth, radius, bevelSize) {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const corner = Math.min(radius, halfWidth, halfHeight);
+  const shape = new THREE.Shape();
+  shape.moveTo(-halfWidth + corner, -halfHeight);
+  shape.lineTo(halfWidth - corner, -halfHeight);
+  shape.quadraticCurveTo(halfWidth, -halfHeight, halfWidth, -halfHeight + corner);
+  shape.lineTo(halfWidth, halfHeight - corner);
+  shape.quadraticCurveTo(halfWidth, halfHeight, halfWidth - corner, halfHeight);
+  shape.lineTo(-halfWidth + corner, halfHeight);
+  shape.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth, halfHeight - corner);
+  shape.lineTo(-halfWidth, -halfHeight + corner);
+  shape.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth + corner, -halfHeight);
+
+  const bevel = Math.min(bevelSize, depth * 0.2, corner * 0.45);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: Math.max(0.01, depth - bevel * 2),
+    steps: 1,
+    curveSegments: 6,
+    bevelEnabled: true,
+    bevelSegments: 3,
+    bevelSize: bevel,
+    bevelThickness: bevel
+  });
+  geometry.center();
+  return geometry;
+}
+
 function cellX(level, x) {
   return x - (level.width - 1) / 2;
 }
@@ -433,19 +462,55 @@ function createRobot(materials) {
   root.add(model);
 
   const wheels = [];
+  const trackLinks = [];
   const armPivots = [];
-  const wheelGeometry = new THREE.CylinderGeometry(0.09, 0.09, 0.105, 18);
-  const wheelHubGeometry = new THREE.CylinderGeometry(0.035, 0.035, 0.112, 14);
-  const trackGeometry = new THREE.BoxGeometry(0.18, 0.2, 0.64);
+  const eyes = [];
+  const wheelGeometry = new THREE.CylinderGeometry(0.096, 0.096, 0.105, 20);
+  const wheelHubGeometry = new THREE.CylinderGeometry(0.038, 0.038, 0.118, 16);
+  const trackHousingGeometry = createRoundedBoxGeometry(
+    0.61,
+    0.19,
+    0.12,
+    0.075,
+    0.014
+  );
+  trackHousingGeometry.rotateY(Math.PI / 2);
+  const trackLinkGeometry = new THREE.BoxGeometry(0.145, 0.052, 0.074);
+  const trackMaterials = [
+    materials.rubber,
+    physicalMaterial({
+      color: "#526b74",
+      metalness: 0.62,
+      roughness: 0.46,
+      clearcoat: 0.18
+    }),
+    physicalMaterial({
+      color: "#d86b2f",
+      metalness: 0.46,
+      roughness: 0.38,
+      clearcoat: 0.42
+    })
+  ];
+
+  function positionTrackLink(link, travel) {
+    const progress = THREE.MathUtils.euclideanModulo(
+      link.offset + travel * 0.055,
+      1
+    );
+    const point = link.curve.getPointAt(progress);
+    const tangent = link.curve.getTangentAt(progress).normalize();
+    link.mesh.position.copy(point);
+    link.mesh.rotation.x = Math.atan2(-tangent.y, tangent.z);
+  }
 
   [-1, 1].forEach((side) => {
-    const track = setShadow(
-      new THREE.Mesh(trackGeometry, materials.rubber),
+    const trackHousing = setShadow(
+      new THREE.Mesh(trackHousingGeometry, materials.rubber),
       true,
       true
     );
-    track.position.set(side * 0.31, 0.17, 0.02);
-    model.add(track);
+    trackHousing.position.set(side * 0.36, 0.17, 0.02);
+    model.add(trackHousing);
 
     [-0.22, 0, 0.22].forEach((z, wheelIndex) => {
       const wheel = setShadow(
@@ -454,8 +519,9 @@ function createRobot(materials) {
         true
       );
       wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(side * 0.415, 0.17, z + 0.02);
+      wheel.position.set(side * 0.438, 0.17, z + 0.02);
       wheel.scale.setScalar(wheelIndex === 1 ? 0.86 : 1);
+      wheel.userData.trackSide = side;
       model.add(wheel);
       wheels.push(wheel);
 
@@ -466,15 +532,66 @@ function createRobot(materials) {
       hub.scale.setScalar(wheelIndex === 1 ? 0.82 : 0.92);
       model.add(hub);
     });
+
+    const trackCurve = new THREE.CatmullRomCurve3(
+      [
+        new THREE.Vector3(side * 0.49, 0.286, -0.2),
+        new THREE.Vector3(side * 0.49, 0.286, 0.24),
+        new THREE.Vector3(side * 0.49, 0.25, 0.3),
+        new THREE.Vector3(side * 0.49, 0.17, 0.335),
+        new THREE.Vector3(side * 0.49, 0.09, 0.3),
+        new THREE.Vector3(side * 0.49, 0.054, 0.24),
+        new THREE.Vector3(side * 0.49, 0.054, -0.2),
+        new THREE.Vector3(side * 0.49, 0.09, -0.26),
+        new THREE.Vector3(side * 0.49, 0.17, -0.295),
+        new THREE.Vector3(side * 0.49, 0.25, -0.26)
+      ],
+      true,
+      "centripetal",
+      0.45
+    );
+
+    for (let linkIndex = 0; linkIndex < 24; linkIndex += 1) {
+      const materialIndex =
+        linkIndex % 6 === 0 ? 2 : linkIndex % 2 === 0 ? 1 : 0;
+      const linkMesh = setShadow(
+        new THREE.Mesh(trackLinkGeometry, trackMaterials[materialIndex]),
+        true,
+        true
+      );
+      const link = {
+        mesh: linkMesh,
+        curve: trackCurve,
+        side,
+        offset: linkIndex / 24
+      };
+      positionTrackLink(link, 0);
+      model.add(linkMesh);
+      trackLinks.push(link);
+    }
   });
 
   const undercarriage = setShadow(
-    new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.16, 0.54), materials.orangeDark),
+    new THREE.Mesh(
+      createRoundedBoxGeometry(0.57, 0.16, 0.46, 0.065, 0.018),
+      materials.orangeDark
+    ),
     true,
     true
   );
-  undercarriage.position.y = 0.26;
+  undercarriage.position.y = 0.285;
   model.add(undercarriage);
+
+  const undercarriageDeck = setShadow(
+    new THREE.Mesh(
+      createRoundedBoxGeometry(0.62, 0.075, 0.49, 0.055, 0.014),
+      materials.orange
+    ),
+    true,
+    true
+  );
+  undercarriageDeck.position.y = 0.37;
+  model.add(undercarriageDeck);
 
   const belly = setShadow(
     new THREE.Mesh(new THREE.SphereGeometry(0.31, 24, 16), materials.orange),
@@ -530,6 +647,7 @@ function createRobot(materials) {
     eye.scale.set(0.82, 1.18, 0.38);
     eye.position.set(side * 0.084, 0.035, -0.312);
     head.add(eye);
+    eyes.push(eye);
   });
 
   const mouth = new THREE.Mesh(
@@ -561,6 +679,39 @@ function createRobot(materials) {
   rearPort.rotation.x = Math.PI / 2;
   rearPort.position.set(0, 0.015, 0.282);
   head.add(rearPort);
+
+  const antennaBase = setShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.052, 0.064, 0.052, 18),
+      materials.orangeDark
+    ),
+    true,
+    true
+  );
+  antennaBase.position.set(0, 0.265, 0.015);
+  head.add(antennaBase);
+
+  const antenna = new THREE.Group();
+  antenna.position.set(0, 0.29, 0.015);
+  head.add(antenna);
+
+  const antennaMast = setShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.018, 0.22, 12),
+      materials.silver
+    ),
+    true,
+    true
+  );
+  antenna.add(antennaMast);
+
+  const antennaTipMaterial = materials.pinkAccent.clone();
+  antennaTipMaterial.emissiveIntensity = 1.1;
+  const antennaTip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.038, 16, 12),
+    antennaTipMaterial
+  );
+  antenna.add(antennaTip);
 
   const servicePanel = new THREE.Mesh(
     new THREE.BoxGeometry(0.16, 0.115, 0.025),
@@ -634,13 +785,26 @@ function createRobot(materials) {
   root.userData = {
     model,
     wheels,
+    trackLinks,
+    positionTrackLink,
+    wheelTravelBySide: { "-1": 0, "1": 0 },
     armPivots,
+    eyes,
     head,
+    antennaMast,
+    antennaTip,
+    antennaTipMaterial,
+    antennaExtension: 1,
     chestMaterial,
     chestLampMaterial,
     inductLight,
     lastPosition: null,
-    wheelTravel: 0
+    lastAngle: null,
+    lastLevel: null,
+    lastAnimationTime: null,
+    blinkStartedAt: null,
+    nextBlinkAt: null,
+    blinkDuration: 0.18
   };
   return root;
 }
@@ -1535,18 +1699,41 @@ class RoboNaviThreeView {
       cellZ(snapshot.level, pose.y)
     );
     const data = this.robot.userData;
+    if (data.lastLevel !== snapshot.level) {
+      data.lastLevel = snapshot.level;
+      data.lastPosition = null;
+      data.lastAngle = pose.angle;
+    }
+    let distance = 0;
     if (data.lastPosition) {
-      const distance = Math.hypot(
+      distance = Math.hypot(
         next.x - data.lastPosition.x,
         next.z - data.lastPosition.z
       );
-      data.wheelTravel += distance * 4.8;
     }
+    const angleDelta =
+      data.lastAngle === null
+        ? 0
+        : Math.atan2(
+            Math.sin(pose.angle - data.lastAngle),
+            Math.cos(pose.angle - data.lastAngle)
+          );
+    const driveTravel = distance * 4.8;
+    const turnTravel = angleDelta * 2.1;
+    data.wheelTravelBySide["-1"] += driveTravel - turnTravel;
+    data.wheelTravelBySide["1"] += driveTravel + turnTravel;
     data.lastPosition = next.clone();
+    data.lastAngle = pose.angle;
     this.robot.position.copy(next);
     this.robot.rotation.y = -pose.angle - Math.PI / 2;
     data.wheels.forEach((wheel) => {
-      wheel.rotation.x = data.wheelTravel;
+      wheel.rotation.x = data.wheelTravelBySide[String(wheel.userData.trackSide)];
+    });
+    data.trackLinks.forEach((link) => {
+      data.positionTrackLink(
+        link,
+        data.wheelTravelBySide[String(link.side)]
+      );
     });
   }
 
@@ -1640,6 +1827,71 @@ class RoboNaviThreeView {
     const motion = reducedMotion.matches ? 0 : 1;
     const robotData = this.robot.userData;
     robotData.head.rotation.y = Math.sin(time * 1.45) * 0.045 * motion;
+    const antennaTarget =
+      this.snapshot && this.snapshot.programRunning ? 0 : 1;
+    const frameDelta =
+      robotData.lastAnimationTime === null
+        ? 1 / 60
+        : Math.min(0.05, Math.max(0, time - robotData.lastAnimationTime));
+    robotData.lastAnimationTime = time;
+    if (motion === 0) {
+      robotData.antennaExtension = antennaTarget;
+    } else {
+      const antennaBlend = 1 - Math.exp(-frameDelta * 13);
+      robotData.antennaExtension = THREE.MathUtils.lerp(
+        robotData.antennaExtension,
+        antennaTarget,
+        antennaBlend
+      );
+    }
+    const antennaExtension = robotData.antennaExtension;
+    robotData.antennaMast.scale.y = Math.max(0.02, antennaExtension);
+    robotData.antennaMast.position.y = antennaExtension * 0.11;
+    robotData.antennaTip.position.y = 0.012 + antennaExtension * 0.218;
+    const antennaPulse =
+      1 + Math.sin(time * 3.4) * 0.08 * motion * antennaExtension;
+    robotData.antennaTip.scale.setScalar(
+      (0.18 + antennaExtension * 0.82) * antennaPulse
+    );
+    robotData.antennaTipMaterial.emissiveIntensity =
+      0.35 + antennaExtension * (0.78 + Math.sin(time * 3.4) * 0.18 * motion);
+    if (motion === 0) {
+      robotData.eyes.forEach((eye) => {
+        eye.scale.y = 1.18;
+      });
+    } else {
+      if (robotData.nextBlinkAt === null) {
+        robotData.nextBlinkAt = time + 2.4 + Math.random() * 2.4;
+      }
+      if (
+        robotData.blinkStartedAt === null &&
+        time >= robotData.nextBlinkAt
+      ) {
+        robotData.blinkStartedAt = time;
+        robotData.blinkDuration = 0.16 + Math.random() * 0.06;
+      }
+
+      let blinkAmount = 0;
+      if (robotData.blinkStartedAt !== null) {
+        const blinkProgress = THREE.MathUtils.clamp(
+          (time - robotData.blinkStartedAt) / robotData.blinkDuration,
+          0,
+          1
+        );
+        const blinkPhase = blinkProgress < 0.46
+          ? blinkProgress / 0.46
+          : (1 - blinkProgress) / 0.54;
+        blinkAmount = THREE.MathUtils.smoothstep(blinkPhase, 0, 1);
+        if (blinkProgress >= 1) {
+          robotData.blinkStartedAt = null;
+          robotData.nextBlinkAt = time + 2.8 + Math.random() * 4.2;
+          blinkAmount = 0;
+        }
+      }
+      robotData.eyes.forEach((eye) => {
+        eye.scale.y = 1.18 * (1 - blinkAmount * 0.92);
+      });
+    }
 
     const activeStep = this.snapshot ? this.snapshot.activeStep : null;
     const actionProgress = activeStep ? activeStep.progress : 0;
