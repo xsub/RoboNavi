@@ -641,6 +641,7 @@ strong {
 
 .program-options,
 .lighting-control,
+.engine-control,
 .floor-color-control,
 .background-color-control,
 .robot-color-control {
@@ -672,7 +673,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .floor-color-control {
+.program-section .engine-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -680,7 +681,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .background-color-control {
+.program-section .floor-color-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -688,7 +689,7 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .robot-color-control {
+.program-section .background-color-control {
   display: grid;
   width: 100%;
   grid-column: 1 / -1;
@@ -696,7 +697,16 @@ strong {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.program-section .lighting-control input[type="range"] {
+.program-section .robot-color-control {
+  display: grid;
+  width: 100%;
+  grid-column: 1 / -1;
+  grid-row: 6;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.program-section .lighting-control input[type="range"],
+.program-section .engine-control input[type="range"] {
   width: 100%;
   min-width: 0;
 }
@@ -725,6 +735,7 @@ strong {
 }
 
 .lighting-control,
+.engine-control,
 .floor-color-control,
 .background-color-control,
 .robot-color-control {
@@ -816,7 +827,8 @@ strong {
   background: var(--robot-hue-color, #ff9f2f);
 }
 
-.lighting-control input[type="range"] {
+.lighting-control input[type="range"],
+.engine-control input[type="range"] {
   width: 116px;
   height: 12px;
   margin: 0;
@@ -829,7 +841,8 @@ strong {
   cursor: pointer;
 }
 
-.lighting-control input[type="range"]::-webkit-slider-thumb {
+.lighting-control input[type="range"]::-webkit-slider-thumb,
+.engine-control input[type="range"]::-webkit-slider-thumb {
   width: 12px;
   height: 18px;
   appearance: none;
@@ -839,7 +852,8 @@ strong {
   box-shadow: 0 0 7px rgba(255, 188, 91, 0.45);
 }
 
-.lighting-control input[type="range"]::-moz-range-thumb {
+.lighting-control input[type="range"]::-moz-range-thumb,
+.engine-control input[type="range"]::-moz-range-thumb {
   width: 10px;
   height: 16px;
   border: 2px solid #5c4228;
@@ -848,12 +862,25 @@ strong {
   box-shadow: 0 0 7px rgba(255, 188, 91, 0.45);
 }
 
-.lighting-control output {
+.lighting-control output,
+.engine-control output {
   width: 3.8em;
   color: #744823;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 850;
   text-align: right;
+}
+
+.engine-control input[type="range"]::-webkit-slider-thumb {
+  border-color: #31565b;
+  background: #76d8d2;
+  box-shadow: 0 0 7px rgba(91, 224, 216, 0.48);
+}
+
+.engine-control input[type="range"]::-moz-range-thumb {
+  border-color: #31565b;
+  background: #76d8d2;
+  box-shadow: 0 0 7px rgba(91, 224, 216, 0.48);
 }
 
 .command-queue {
@@ -1923,6 +1950,7 @@ kbd {
   }
 
   .lighting-control,
+  .engine-control,
   .floor-color-control,
   .background-color-control,
   .robot-color-control {
@@ -2578,25 +2606,34 @@ kbd {
     font-size: 0.44rem;
   }
 
-  .lighting-control input[type="range"] {
+  .engine-control {
+    gap: 3px;
+    font-size: 0.44rem;
+  }
+
+  .lighting-control input[type="range"],
+  .engine-control input[type="range"] {
     width: 72px;
     height: 9px;
     border-width: 1px;
   }
 
-  .lighting-control input[type="range"]::-webkit-slider-thumb {
+  .lighting-control input[type="range"]::-webkit-slider-thumb,
+  .engine-control input[type="range"]::-webkit-slider-thumb {
     width: 8px;
     height: 13px;
     border-width: 1px;
   }
 
-  .lighting-control input[type="range"]::-moz-range-thumb {
+  .lighting-control input[type="range"]::-moz-range-thumb,
+  .engine-control input[type="range"]::-moz-range-thumb {
     width: 7px;
     height: 11px;
     border-width: 1px;
   }
 
-  .lighting-control output {
+  .lighting-control output,
+  .engine-control output {
     width: 3.4em;
     font-size: 0.44rem;
   }

@@ -6,6 +6,7 @@
   var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
   var lightStorageKey = "robonavi-global-light-v1";
+  var engineSpeedStorageKey = "robonavi-engine-speed-v1";
   var floorHueStorageKey = "robonavi-floor-hue-v1";
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
@@ -73,6 +74,8 @@
       program: "Program",
       light: "Light",
       globalLight: "Global light",
+      engine: "Engine",
+      engineSpeed: "Engine tone and movement speed",
       floorColor: "Floor color",
       backgroundColor: "Background color",
       robotColor: "Robot color",
@@ -251,6 +254,8 @@
       program: "Program",
       light: "Światło",
       globalLight: "Światło globalne",
+      engine: "Silnik",
+      engineSpeed: "Brzmienie i prędkość silnika",
       floorColor: "Kolor podłogi",
       backgroundColor: "Kolor tła",
       robotColor: "Kolor robota",
@@ -421,6 +426,8 @@
     resetLevel: document.getElementById("reset-level"),
     lightLevel: document.getElementById("light-level"),
     lightValue: document.getElementById("light-value"),
+    engineSpeed: document.getElementById("engine-speed"),
+    engineSpeedValue: document.getElementById("engine-speed-value"),
     floorHue: document.getElementById("floor-hue"),
     floorColorSwatch: document.getElementById("floor-color-swatch"),
     backgroundHue: document.getElementById("background-hue"),
@@ -507,6 +514,7 @@
     preview: false,
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
+    engineSpeed: loadEngineSpeed(),
     floorHue: loadFloorHue(),
     backgroundHue: loadBackgroundHue(),
     robotHue: loadRobotHue(),
@@ -552,6 +560,27 @@
       localStorage.setItem(lightStorageKey, String(state.globalLight));
     } catch (error) {
       // The live control still works when storage is unavailable.
+    }
+  }
+
+  function clampEngineSpeed(value) {
+    return Math.max(60, Math.min(160, Number(value) || 100));
+  }
+
+  function loadEngineSpeed() {
+    try {
+      var saved = localStorage.getItem(engineSpeedStorageKey);
+      return saved === null ? 100 : clampEngineSpeed(saved);
+    } catch (error) {
+      return 100;
+    }
+  }
+
+  function saveEngineSpeed() {
+    try {
+      localStorage.setItem(engineSpeedStorageKey, String(state.engineSpeed));
+    } catch (error) {
+      // The live engine control still works when storage is unavailable.
     }
   }
 
@@ -884,7 +913,8 @@
             event: event,
             from: from,
             to: { x: point.x, y: point.y },
-            duration: 400,
+            terrain: point.terrain || "floor",
+            duration: movementDuration(point.terrain),
             endsCommand: isLast
           });
           from = { x: point.x, y: point.y };
@@ -896,7 +926,7 @@
           event: event,
           from: { x: event.from.x, y: event.from.y },
           to: event.blockedAt,
-          duration: 260,
+          duration: scaledDriveDuration(280),
           endsCommand: true
         });
       } else if (event.command === "turn-left" || event.command === "turn-right") {
@@ -909,7 +939,7 @@
           to: { direction: event.after.direction },
           fromAngle: directionAngle(event.from.direction),
           toAngle: directionAngle(event.from.direction) + turnAmount,
-          duration: 280,
+          duration: scaledDriveDuration(420),
           endsCommand: true
         });
       } else {
@@ -933,6 +963,15 @@
       step.continuesToMove = connectedMoveSteps(step, steps[index + 1]);
     });
     return steps;
+  }
+
+  function scaledDriveDuration(duration) {
+    return Math.round(duration * (100 / state.engineSpeed));
+  }
+
+  function movementDuration(terrain) {
+    var duration = terrain === "ice" ? 245 : terrain === "sand" ? 620 : 400;
+    return scaledDriveDuration(duration);
   }
 
   function connectedMoveSteps(first, second) {
@@ -969,7 +1008,7 @@
   function startAnimationStepSound(step) {
     if (!sound || !step) return;
     if (isDriveStep(step)) {
-      sound.startDrive(step.type);
+      sound.startDrive(step.type, state.engineSpeed, step.terrain || "floor");
       if (step.type === "bump") {
         sound.playCollision();
       }
@@ -1023,7 +1062,7 @@
 
     var step = animation.step;
     var progress = Math.min(1, (timestamp - animation.startedAt) / step.duration);
-    var eased = easeInOut(progress);
+    var eased = step.type === "turn" ? smootherStep(progress) : easeInOut(progress);
     animation.stepProgress = progress;
     state.highlightIndex = step.commandIndex;
 
@@ -1201,6 +1240,10 @@
 
   function easeInOut(value) {
     return value < 0.5 ? 2 * value * value : 1 - Math.pow(-2 * value + 2, 2) / 2;
+  }
+
+  function smootherStep(value) {
+    return value * value * value * (value * (value * 6 - 15) + 10);
   }
 
   function lerp(start, end, amount) {
@@ -1553,6 +1596,8 @@
       uppercase(copy().directions[state.robot.direction] || core.DIR_LABEL[state.robot.direction]);
     els.lightLevel.value = String(state.globalLight);
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
+    els.engineSpeed.value = String(state.engineSpeed);
+    els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
     els.floorHue.value = String(state.floorHue);
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
@@ -1734,6 +1779,7 @@
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
+    els.engineSpeed.setAttribute("aria-label", text("engineSpeed"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
@@ -1867,6 +1913,12 @@
     els.lightValue.textContent = String(Math.round(state.globalLight)) + "%";
     saveGlobalLight();
     drawAll();
+  });
+
+  els.engineSpeed.addEventListener("input", function () {
+    state.engineSpeed = clampEngineSpeed(els.engineSpeed.value);
+    els.engineSpeedValue.textContent = String(Math.round(state.engineSpeed)) + "%";
+    saveEngineSpeed();
   });
 
   els.floorHue.addEventListener("input", function () {

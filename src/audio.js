@@ -127,11 +127,14 @@
     disconnectLater(sound.nodes, Math.ceil((fade + 0.14) * 1000));
   }
 
-  function startDrive(mode) {
+  function startDrive(mode, speedPercent, terrain) {
     if (!canPlay()) return;
     var turning = mode === "turn";
     var strained = mode === "bump";
-    var targetMotor = strained ? 58 : turning ? 92 : 108;
+    var speed = Math.max(0.6, Math.min(1.6, Number(speedPercent) / 100 || 1));
+    var terrainPitch = terrain === "ice" ? 1.16 : terrain === "sand" ? 0.78 : 1;
+    var targetMotor = (strained ? 58 : turning ? 92 : 108) * speed * terrainPitch;
+    var targetWheel = (turning ? 31 : 38) * speed * terrainPitch;
 
     if (driveSound) {
       driveSound.motor.frequency.setTargetAtTime(
@@ -143,6 +146,16 @@
         targetMotor * 2.35,
         context.currentTime,
         0.035
+      );
+      driveSound.wheel.frequency.setTargetAtTime(
+        targetWheel,
+        context.currentTime,
+        0.035
+      );
+      driveSound.noiseFilter.frequency.setTargetAtTime(
+        (turning ? 520 : terrain === "sand" ? 430 : 680) * speed,
+        context.currentTime,
+        0.04
       );
       return;
     }
@@ -182,7 +195,7 @@
     harmonicGain.gain.value = 0.085;
 
     wheel.type = "square";
-    wheel.frequency.value = turning ? 31 : 38;
+    wheel.frequency.value = targetWheel;
     wheelGain.gain.value = strained ? 0.055 : 0.032;
 
     vibration.type = "sine";
@@ -194,7 +207,7 @@
     noise.buffer = ensureNoiseBuffer();
     noise.loop = true;
     noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = turning ? 520 : 680;
+    noiseFilter.frequency.value = (turning ? 520 : terrain === "sand" ? 430 : 680) * speed;
     noiseFilter.Q.value = 0.55;
     noiseGain.gain.value = strained ? 0.07 : 0.038;
 
@@ -216,6 +229,8 @@
       bus: bus,
       motor: motor,
       harmonic: harmonic,
+      wheel: wheel,
+      noiseFilter: noiseFilter,
       sources: [motor, harmonic, wheel, vibration, noise],
       nodes: [
         bus,
@@ -237,58 +252,48 @@
 
   function playCollision() {
     if (!canPlay()) return;
-    var now = context.currentTime + 0.075;
-    var duration = 0.28;
+    var now = context.currentTime + 0.025;
     var bus = context.createGain();
     var filter = context.createBiquadFilter();
-    var whoop = context.createOscillator();
-    var whoopGain = context.createGain();
-    var impact = context.createOscillator();
-    var impactGain = context.createGain();
-    var nodes = [
-      bus,
-      filter,
-      whoop,
-      whoopGain,
-      impact,
-      impactGain
-    ];
+    var nodes = [bus, filter];
 
-    filter.type = "lowpass";
-    filter.frequency.value = 2400;
-    filter.Q.value = 1.1;
+    filter.type = "highpass";
+    filter.frequency.value = 980;
+    filter.Q.value = 0.72;
     filter.connect(bus);
     bus.connect(masterGain);
-    bus.gain.value = 0.62;
+    bus.gain.value = 0.48;
 
-    whoop.type = "sine";
-    whoop.frequency.setValueAtTime(180, now);
-    whoop.frequency.exponentialRampToValueAtTime(920, now + 0.12);
-    whoop.frequency.exponentialRampToValueAtTime(145, now + duration);
-    whoopGain.gain.setValueAtTime(0.0001, now);
-    whoopGain.gain.exponentialRampToValueAtTime(0.28, now + 0.025);
-    whoopGain.gain.setValueAtTime(0.24, now + 0.12);
-    whoopGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    whoop.connect(whoopGain);
-    whoopGain.connect(filter);
+    [
+      { frequency: 5400, offset: 0, duration: 0.16 },
+      { frequency: 3900, offset: 0.025, duration: 0.23 },
+      { frequency: 7100, offset: 0.055, duration: 0.19 },
+      { frequency: 2850, offset: 0.09, duration: 0.3 },
+      { frequency: 4750, offset: 0.14, duration: 0.27 }
+    ].forEach(function (shard, index) {
+      var oscillator = context.createOscillator();
+      var gain = context.createGain();
+      var start = now + shard.offset;
+      var end = start + shard.duration;
+      oscillator.type = index % 2 === 0 ? "triangle" : "sine";
+      oscillator.frequency.setValueAtTime(shard.frequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        shard.frequency * 0.36,
+        end
+      );
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.16 / (1 + index * 0.12), start + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      oscillator.connect(gain);
+      gain.connect(filter);
+      oscillator.start(start);
+      oscillator.stop(end + 0.02);
+      nodes.push(oscillator, gain);
+    });
 
-    impact.type = "triangle";
-    impact.frequency.setValueAtTime(105, now + 0.105);
-    impact.frequency.exponentialRampToValueAtTime(48, now + 0.24);
-    impactGain.gain.setValueAtTime(0.0001, now + 0.105);
-    impactGain.gain.exponentialRampToValueAtTime(0.34, now + 0.118);
-    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-    impact.connect(impactGain);
-    impactGain.connect(filter);
-
-    whoop.start(now);
-    whoop.stop(now + duration + 0.03);
-    impact.start(now + 0.105);
-    impact.stop(now + 0.28);
-    nodes = nodes.concat(
-      addNoiseBurst(filter, now + 0.105, 0.12, 1650, 0.19)
-    );
-    disconnectLater(nodes, 720);
+    nodes = nodes.concat(addNoiseBurst(filter, now, 0.09, 7200, 0.23));
+    nodes = nodes.concat(addNoiseBurst(filter, now + 0.07, 0.31, 3300, 0.15));
+    disconnectLater(nodes, 920);
   }
 
   function playBatteryInstall() {
@@ -585,10 +590,11 @@
     feedback.gain.value = 0.2;
 
     [
-      { frequency: 523.25, start: 0, duration: 0.16 },
-      { frequency: 659.25, start: 0.12, duration: 0.17 },
-      { frequency: 783.99, start: 0.24, duration: 0.2 },
-      { frequency: 1046.5, start: 0.38, duration: 0.58 }
+      { frequency: 587.33, start: 0, duration: 0.44 },
+      { frequency: 739.99, start: 0, duration: 0.44 },
+      { frequency: 783.99, start: 0.5, duration: 0.72 },
+      { frequency: 987.77, start: 0.5, duration: 0.72 },
+      { frequency: 1174.66, start: 0.5, duration: 0.72 }
     ].forEach(function (note, index) {
       ["triangle", "sine"].forEach(function (type, layer) {
         var oscillator = context.createOscillator();
@@ -600,7 +606,7 @@
           note.frequency * (layer === 0 ? 1 : 2),
           start
         );
-        if (index === 3) {
+        if (index >= 2) {
           oscillator.frequency.linearRampToValueAtTime(
             note.frequency * (layer === 0 ? 1.015 : 2.03),
             end
@@ -623,7 +629,7 @@
         nodes.push(oscillator, gain);
       });
     });
-    disconnectLater(nodes, 1500);
+    disconnectLater(nodes, 1900);
   }
 
   function playSuccess(language) {
@@ -636,14 +642,14 @@
     }
     if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
 
-    var utterance = new window.SpeechSynthesisUtterance("Ta-daaam!");
+    var utterance = new window.SpeechSynthesisUtterance("Taaaa... daaaam!");
     utterance.lang = language === "pl" ? "pl-PL" : "en-US";
-    utterance.rate = 0.68;
-    utterance.pitch = 0.92;
+    utterance.rate = 0.5;
+    utterance.pitch = 0.96;
     utterance.volume = 0.68;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 340);
+    }, 260);
   }
 
   function playFailureTone() {

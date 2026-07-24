@@ -149,6 +149,11 @@
                   <input id="light-level" type="range" min="0" max="200" step="5" value="45">
                   <output id="light-value" for="light-level">45%</output>
                 </label>
+                <label class="engine-control">
+                  <span data-i18n="engine">Engine</span>
+                  <input id="engine-speed" type="range" min="60" max="160" step="5" value="100">
+                  <output id="engine-speed-value" for="engine-speed">100%</output>
+                </label>
                 <label class="floor-color-control">
                   <span data-i18n="floorColor">Floor</span>
                   <input id="floor-hue" type="range" min="0" max="360" step="1" value="196">
@@ -339,8 +344,8 @@
 
     <script src="src/core.js?v=20260724-freedrive1"></script>
     <script src="src/generator.js?v=20260724-edgewalls1"></script>
-    <script src="src/audio.js?v=20260724-collision1"></script>
-    <script src="src/app.js?v=20260724-signals1"></script>
+    <script src="src/audio.js?v=20260724-drive1"></script>
+    <script src="src/app.js?v=20260724-drive1"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260724-hands1"></script>
   </body>
 </html>
