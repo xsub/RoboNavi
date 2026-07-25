@@ -1196,39 +1196,67 @@
     disconnectLater(nodes, 1650);
   }
 
+  function playAttentionChirp() {
+    if (!canPlay()) return;
+    var now = context.currentTime + 0.02;
+    var bus = context.createGain();
+    var filter = context.createBiquadFilter();
+    var nodes = [bus, filter];
+
+    bus.gain.value = 0.3;
+    filter.type = "bandpass";
+    filter.frequency.value = 2100;
+    filter.Q.value = 0.75;
+    filter.connect(bus);
+    bus.connect(masterGain);
+
+    [
+      { start: 0, from: 640, to: 820, duration: 0.085 },
+      { start: 0.115, from: 880, to: 1180, duration: 0.12 }
+    ].forEach(function (note) {
+      var oscillator = context.createOscillator();
+      var gain = context.createGain();
+      var startsAt = now + note.start;
+      var endsAt = startsAt + note.duration;
+
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(note.from, startsAt);
+      oscillator.frequency.exponentialRampToValueAtTime(note.to, endsAt);
+      gain.gain.setValueAtTime(0.0001, startsAt);
+      gain.gain.exponentialRampToValueAtTime(0.12, startsAt + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+      oscillator.connect(gain);
+      gain.connect(filter);
+      oscillator.start(startsAt);
+      oscillator.stop(endsAt + 0.02);
+      nodes.push(oscillator, gain);
+    });
+
+    disconnectLater(nodes, 520);
+  }
+
   function speakHeyYou(language) {
     if (!enabled) return;
-    if (speech) speech.cancel();
     if (ensureContext()) {
       context.resume().then(function () {
-        playWhistle();
-        playVoiceSample("happy-chuckle", {
-          delay: 0.18,
-          gain: 0.4,
-          rate: 1.12
-        });
+        playAttentionChirp();
       }).catch(function () {
         // The spoken greeting can still play if Web Audio stays locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
     var isPolish = isPolishLanguage(language);
-    var selectedVoice = findSpeechVoice(isPolish ? "pl" : "en");
-    if (isPolish && !selectedVoice) {
-      return;
-    }
-    var utterance = new window.SpeechSynthesisUtterance(
-      isPolish ? "Hej ty." : "Hey, you!"
+    var utterance = createLocalizedUtterance(
+      language,
+      "Hej! Ty!",
+      "Hey! You!"
     );
-    utterance.lang = isPolish ? "pl-PL" : "en-US";
-    if (selectedVoice) utterance.voice = selectedVoice;
-    utterance.rate = isPolish ? 0.94 : 0.82;
-    utterance.pitch = isPolish ? 0.98 : 1.08;
-    utterance.volume = isPolish ? 0.68 : 0.62;
+    if (!utterance) return;
+    utterance.rate = isPolish ? 1.08 : 1;
+    utterance.pitch = isPolish ? 1.12 : 1.14;
+    utterance.volume = 0.78;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 620);
+    }, 285);
   }
 
   function stopAll() {

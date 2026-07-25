@@ -66,8 +66,9 @@ assert(
   "Polish attention speech should prefer the native Zosia voice"
 );
 assert(
-  audioSource.includes('"Hej ty."'),
-  "Polish attention speech should use the tuned Polish phrase"
+  audioSource.includes('"Hej! Ty!"') &&
+    audioSource.includes("playAttentionChirp()"),
+  "Polish attention speech should use the energetic two-beat call"
 );
 assert(
   audioSource.includes("if (isPolish && !selectedVoice)"),
