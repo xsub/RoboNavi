@@ -48,16 +48,18 @@ the whole program.
 - `1`-`4` after `I`: invest 1-4 energy and receive 3, 5, 7, or 9 energy
 - `UNDO`: remove the last command
 - `CLEAR`: empty the command queue
+- `LOOP`: repeat the program indefinitely in `FREE DRIVE`; press `Enter` to stop
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
 - `FREE DRIVE`: disable energy costs and display `NO LIMIT`
 - `SHADOW`: preview the programmed route
-- `OPTIONS`: enable or disable the sampled robot voice library
+- `OPTIONS`: control the sampled robot voice library and maximum spark count
 - `↺`, `↻`: rotate the camera by 90 degrees
 - `-`, `+` or the mouse wheel/touchpad: zoom the board
 - Click or touch and drag the board to pan the camera
 - Keyboard: `L`, `F`, `R`, `B`, `I`, `1`-`4`, arrow keys, `Z` or `Backspace`
-  to undo, `Enter` to execute, `C` to clear, and `X` to reset the level
+  to undo, `Enter` to execute or stop a loop, `C` to clear, and `X` to reset
+  the level
 
 ## Local Development
 

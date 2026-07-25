@@ -1108,7 +1108,7 @@ strong {
   display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1119,6 +1119,24 @@ strong {
   min-height: 44px;
   border-radius: 8px;
   font-weight: 800;
+}
+
+.loop-button:not(:disabled) {
+  border-color: #41625c;
+  background: linear-gradient(180deg, #88b8a8, #4e7469);
+  color: #effff7;
+  text-shadow: 0 1px 0 rgba(23, 49, 43, 0.6);
+}
+
+.loop-button.is-active {
+  border-color: #79552d;
+  background: linear-gradient(180deg, #efbd68, #a96d35);
+  color: #2b2118;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 240, 188, 0.42),
+    inset 0 -4px 0 rgba(81, 43, 18, 0.24),
+    0 0 12px rgba(239, 184, 89, 0.55);
+  text-shadow: none;
 }
 
 .quiet-button {
@@ -2679,7 +2697,7 @@ kbd {
 
   html[lang="pl"] .action-row .quiet-button,
   html[lang="pl"] .action-row .execute-button {
-    font-size: clamp(0.5rem, 2.45vw, 0.65rem);
+    font-size: clamp(0.46rem, 2.15vw, 0.62rem);
   }
 
   .stats-panel {

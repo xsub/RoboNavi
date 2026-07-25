@@ -105,6 +105,8 @@
       shadow: "Shadow",
       undo: "Undo",
       clear: "Clear",
+      loop: "Loop",
+      stopLoop: "Stop",
       execute: "Execute",
       energyTarget: "Energy target",
       runTarget: "Run target",
@@ -154,6 +156,9 @@
       messages: {
         ready: "Ready",
         executing: "Executing",
+        loopRunning: "Loop running — press Enter to stop",
+        loopStopping: "Stopping loop",
+        loopStopped: "Loop stopped",
         completed: "Beacon network restored: {value}",
         freeDriveCompleted: "Free drive complete",
         blocked: "Blocked at command {value}",
@@ -297,6 +302,8 @@
       shadow: "Podgląd",
       undo: "Cofnij",
       clear: "Wyczyść",
+      loop: "Pętla",
+      stopLoop: "Stop",
       execute: "Uruchom",
       energyTarget: "Cel energii",
       runTarget: "Cel uruchomień",
@@ -346,6 +353,9 @@
       messages: {
         ready: "Gotowy",
         executing: "Wykonywanie",
+        loopRunning: "Pętla działa — Enter zatrzymuje",
+        loopStopping: "Zatrzymywanie pętli",
+        loopStopped: "Pętla zatrzymana",
         completed: "Sieć nadajników uruchomiona: {value}",
         freeDriveCompleted: "Swobodna jazda ukończona",
         blocked: "Blokada przy komendzie {value}",
@@ -475,6 +485,7 @@
     commandQueue: document.getElementById("command-queue"),
     undoCommand: document.getElementById("undo-command"),
     clearProgram: document.getElementById("clear-program"),
+    loopProgram: document.getElementById("loop-program"),
     executeProgram: document.getElementById("execute-program"),
     energyTarget: document.getElementById("energy-target"),
     runTarget: document.getElementById("run-target"),
@@ -568,6 +579,8 @@
     highlightIndex: null,
     animating: false,
     animation: null,
+    looping: false,
+    loopStopRequested: false,
     gameOver: false,
     batteryDeadline: null,
     batterySecondsRemaining: null,
@@ -977,6 +990,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     centerActiveLevel = true;
@@ -1002,6 +1017,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     setMessage("ready");
@@ -1046,22 +1063,25 @@
     renderAll();
   }
 
-  function executeProgram() {
-    if (
+  function canStartProgram() {
+    return !(
       state.animating ||
       state.gameOver ||
       state.commands.length === 0 ||
-      core.isComplete(state.level, state.robot)
-    ) {
-      return;
-    }
-    if (sound) sound.speakExecution(state.language);
+      (!state.freeDrive && core.isComplete(state.level, state.robot))
+    );
+  }
+
+  function startProgramAnimation(loopIteration) {
+    var options = simulationOptions();
+    options.ignoreCompletion = state.looping;
+    if (!loopIteration && sound) sound.speakExecution(state.language);
     state.runCount += 1;
     var result = core.simulate(
       state.level,
       state.commands,
       state.robot,
-      simulationOptions()
+      options
     );
     state.animation = {
       result: result,
@@ -1069,15 +1089,58 @@
       index: 0,
       startedAt: 0,
       step: null,
-      preparing: true,
+      preparing: !loopIteration,
       prepareStartedAt: 0,
-      prepareDuration: 360
+      prepareDuration: loopIteration ? 0 : 360
     };
     state.animating = true;
     state.highlightIndex = null;
-    setMessage("executing");
+    setMessage(state.looping ? "loopRunning" : "executing");
     renderAll();
     window.requestAnimationFrame(tickAnimation);
+  }
+
+  function executeProgram() {
+    if (!canStartProgram()) return;
+    state.looping = false;
+    state.loopStopRequested = false;
+    startProgramAnimation(false);
+  }
+
+  function requestLoopStop() {
+    if (!state.looping || state.loopStopRequested) return;
+    state.loopStopRequested = true;
+    setMessage("loopStopping");
+    renderAll();
+  }
+
+  function stopLoopExecution() {
+    if (sound) sound.stopDrive();
+    state.animating = false;
+    state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
+    syncDisplayPose();
+    setMessage("loopStopped");
+    renderAll();
+  }
+
+  function toggleProgramLoop() {
+    if (state.looping) {
+      requestLoopStop();
+      return;
+    }
+    if (
+      !state.freeDrive ||
+      !canStartProgram() ||
+      state.gameOver ||
+      state.commands.length === 0
+    ) {
+      return;
+    }
+    state.looping = true;
+    state.loopStopRequested = false;
+    startProgramAnimation(false);
   }
 
   function buildAnimationSteps(events) {
@@ -1250,6 +1313,10 @@
         return;
       }
       animation.preparing = false;
+      if (state.looping && state.loopStopRequested) {
+        stopLoopExecution();
+        return;
+      }
     }
 
     if (!animation.step) {
@@ -1310,6 +1377,10 @@
         step,
         animation.steps[animation.index + 1]
       );
+      if (step.endsCommand && state.looping && state.loopStopRequested) {
+        stopLoopExecution();
+        return;
+      }
       animation.index += 1;
       animation.step = animation.steps[animation.index] || null;
       animation.startedAt += step.duration;
@@ -1327,6 +1398,25 @@
     if (sound) sound.stopDrive();
     state.robot = core.cloneState(result.finalState);
     syncDisplayPose();
+
+    if (
+      state.looping &&
+      !state.loopStopRequested &&
+      result.stoppedReason === "program-ended"
+    ) {
+      state.animation = null;
+      state.highlightIndex = null;
+      startProgramAnimation(true);
+      return;
+    }
+
+    if (state.looping && state.loopStopRequested) {
+      stopLoopExecution();
+      return;
+    }
+
+    state.looping = false;
+    state.loopStopRequested = false;
     state.animating = false;
     state.animation = null;
     state.highlightIndex =
@@ -1434,6 +1524,8 @@
     state.gameOver = true;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.highlightIndex = null;
     syncDisplayPose();
     setMessage("batteryDied");
@@ -1849,7 +1941,16 @@
       state.animating ||
       state.gameOver ||
       state.commands.length === 0 ||
-      core.isComplete(level, state.robot);
+      (!state.freeDrive && core.isComplete(level, state.robot));
+    els.loopProgram.disabled =
+      !state.freeDrive ||
+      state.gameOver ||
+      state.commands.length === 0 ||
+      (state.animating && !state.looping) ||
+      state.loopStopRequested;
+    els.loopProgram.classList.toggle("is-active", state.looping);
+    els.loopProgram.setAttribute("aria-pressed", state.looping ? "true" : "false");
+    els.loopProgram.textContent = text(state.looping ? "stopLoop" : "loop");
     els.undoCommand.disabled =
       state.animating || state.gameOver || state.commands.length === 0;
     els.clearProgram.disabled =
@@ -2150,6 +2251,7 @@
   els.clearProgram.addEventListener("click", clearProgram);
 
   els.executeProgram.addEventListener("click", executeProgram);
+  els.loopProgram.addEventListener("click", toggleProgramLoop);
 
   els.randomLevel.addEventListener("click", openGeneratorDialog);
 
@@ -2344,6 +2446,11 @@
     if (event.key === "Escape" && state.miniMapExpanded) {
       event.preventDefault();
       setMiniMapExpanded(false);
+      return;
+    }
+    if (event.key === "Enter" && state.looping) {
+      event.preventDefault();
+      requestLoopStop();
       return;
     }
     if (event.target && ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].indexOf(event.target.tagName) !== -1) {

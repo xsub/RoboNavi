@@ -113,5 +113,15 @@ assert(
   rendererSource.includes("ensureSignalSpriteCapacity(requestedCount)"),
   "the Three.js renderer should create spark sprites up to the selected count"
 );
+assert(
+  htmlSource.includes('id="loop-program"'),
+  "free drive should expose a loop program control"
+);
+assert(
+  appSource.includes("options.ignoreCompletion = state.looping") &&
+    appSource.includes("requestLoopStop()") &&
+    appSource.includes('event.key === "Enter" && state.looping'),
+  "free-drive loops should repeat past completion and support an explicit stop"
+);
 
 console.log(`Validated ${library.clips.length} robot voice samples.`);
