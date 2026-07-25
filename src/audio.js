@@ -82,10 +82,13 @@
     }
   }
 
+  function isPolishLanguage(language) {
+    return String(language || "").toLowerCase().indexOf("pl") === 0;
+  }
+
   function findSpeechVoice(language) {
     if (!speech || typeof speech.getVoices !== "function") return null;
-    var languagePrefix =
-      String(language || "").toLowerCase().indexOf("pl") === 0 ? "pl" : "en";
+    var languagePrefix = isPolishLanguage(language) ? "pl" : "en";
     var preferredNames =
       languagePrefix === "pl"
         ? ["zosia", "krzysztof", "ewa"]
@@ -103,6 +106,22 @@
       });
     });
     return preferredVoice || matchingVoices[0];
+  }
+
+  function createLocalizedUtterance(language, polishText, englishText) {
+    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") {
+      return null;
+    }
+    if (speech) speech.cancel();
+    var isPolish = isPolishLanguage(language);
+    var selectedVoice = findSpeechVoice(isPolish ? "pl" : "en");
+    if (isPolish && !selectedVoice) return null;
+    var utterance = new window.SpeechSynthesisUtterance(
+      isPolish ? polishText : englishText
+    );
+    utterance.lang = isPolish ? "pl-PL" : "en-US";
+    if (selectedVoice) utterance.voice = selectedVoice;
+    return utterance;
   }
 
   function saveEnabled() {
@@ -721,23 +740,16 @@
         // Speech can still play when Web Audio remains locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
-    speech.cancel();
-    var isPolish = language === "pl";
-    var utterance = new window.SpeechSynthesisUtterance(
-      isPolish ? "Wykonuję" : "Executing"
+    var isPolish = isPolishLanguage(language);
+    var utterance = createLocalizedUtterance(
+      language,
+      "Wykonuję",
+      "Executing"
     );
-    utterance.lang = isPolish ? "pl-PL" : "en-US";
+    if (!utterance) return;
     utterance.rate = isPolish ? 0.86 : 0.9;
     utterance.pitch = 0.68;
     utterance.volume = 0.72;
-    var languagePrefix = isPolish ? "pl" : "en";
-    var voices = speech.getVoices();
-    var matchingVoice = voices.find(function (voice) {
-      return String(voice.lang || "").toLowerCase().indexOf(languagePrefix) === 0;
-    });
-    if (matchingVoice) utterance.voice = matchingVoice;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
     }, 55);
@@ -840,10 +852,12 @@
         // The voice fallback can still play when Web Audio stays locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
-    var utterance = new window.SpeechSynthesisUtterance("Aaaah...");
-    utterance.lang = language === "pl" ? "pl-PL" : "en-US";
+    var utterance = createLocalizedUtterance(
+      language,
+      "Aaaach...",
+      "Aaaah..."
+    );
+    if (!utterance) return;
     utterance.rate = 0.56;
     utterance.pitch = 0.34;
     utterance.volume = 0.42;
@@ -932,10 +946,12 @@
         // The spoken flourish can still play if Web Audio stays locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
-    var utterance = new window.SpeechSynthesisUtterance("Taaaa... daaaam!");
-    utterance.lang = language === "pl" ? "pl-PL" : "en-US";
+    var utterance = createLocalizedUtterance(
+      language,
+      "Taaaa... daaaam!",
+      "Taaaa... daaaam!"
+    );
+    if (!utterance) return;
     utterance.rate = 0.5;
     utterance.pitch = 0.96;
     utterance.volume = 0.68;
@@ -998,13 +1014,13 @@
         // The spoken reaction can still play when Web Audio stays locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
-    var isPolish = language === "pl";
-    var utterance = new window.SpeechSynthesisUtterance(
-      isPolish ? "O nie..." : "Oh no..."
+    var isPolish = isPolishLanguage(language);
+    var utterance = createLocalizedUtterance(
+      language,
+      "O nie...",
+      "Oh no..."
     );
-    utterance.lang = isPolish ? "pl-PL" : "en-US";
+    if (!utterance) return;
     utterance.rate = 0.66;
     utterance.pitch = 0.46;
     utterance.volume = 0.46;
@@ -1074,10 +1090,12 @@
         // The whistles remain optional when Web Audio stays locked.
       });
     }
-    if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
-
-    var utterance = new window.SpeechSynthesisUtterance("No, no!");
-    utterance.lang = language === "pl" ? "pl-PL" : "en-US";
+    var utterance = createLocalizedUtterance(
+      language,
+      "No proszę!",
+      "No, no!"
+    );
+    if (!utterance) return;
     utterance.rate = 0.78;
     utterance.pitch = 0.76;
     utterance.volume = 0.58;
@@ -1195,8 +1213,7 @@
     }
     if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
 
-    var isPolish =
-      String(language || "").toLowerCase().indexOf("pl") === 0;
+    var isPolish = isPolishLanguage(language);
     var selectedVoice = findSpeechVoice(isPolish ? "pl" : "en");
     if (isPolish && !selectedVoice) {
       return;
