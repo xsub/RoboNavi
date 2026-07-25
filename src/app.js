@@ -433,7 +433,7 @@
         depleted: "Komenda {command}: brak energii na polu {cell}",
         invalidBattery: "Komenda {command}: bateria wymaga nadajnika, pole {cell}",
         invalidInduct: "Komenda {command}: indukcja wymaga ładowarki, pole {cell}",
-        batteryDied: "Beacon battery died! ;(",
+        batteryDied: "Bateria nadajnika rozładowała się! ;(",
         ended: "Program zakończony"
       },
       levelData: {
