@@ -56,6 +56,9 @@
       mission: "Mission",
       missionParameters: "Mission parameters",
       help: "Help",
+      options: "Options",
+      closeOptions: "Close options",
+      useSoundLibrary: "Use sound library",
       sound: "Sound",
       muteSound: "Mute sound",
       enableSound: "Enable sound",
@@ -244,6 +247,9 @@
       mission: "Misja",
       missionParameters: "Parametry misji",
       help: "Pomoc",
+      options: "Opcje",
+      closeOptions: "Zamknij opcje",
+      useSoundLibrary: "Używaj biblioteki dźwięków",
       sound: "Dźwięk",
       muteSound: "Wycisz dźwięk",
       enableSound: "Włącz dźwięk",
@@ -469,10 +475,14 @@
     runTarget: document.getElementById("run-target"),
     facingValue: document.getElementById("facing-value"),
     helpButton: document.getElementById("help-button"),
+    optionsButton: document.getElementById("options-button"),
     soundToggle: document.getElementById("sound-toggle"),
     soundIcon: document.getElementById("sound-icon"),
     helpDialog: document.getElementById("help-dialog"),
     closeHelp: document.getElementById("close-help"),
+    optionsDialog: document.getElementById("options-dialog"),
+    closeOptions: document.getElementById("close-options"),
+    voiceLibraryToggle: document.getElementById("voice-library-toggle"),
     generatorDialog: document.getElementById("generator-dialog"),
     generatorForm: document.getElementById("generator-form"),
     closeGenerator: document.getElementById("close-generator"),
@@ -800,6 +810,17 @@
     els.soundToggle.title = text(actionKey);
     els.soundToggle.setAttribute("aria-label", text(actionKey));
     els.soundIcon.textContent = active ? "\ud83d\udd0a" : "\ud83d\udd07";
+  }
+
+  function renderVoiceLibraryControl() {
+    var supported = Boolean(
+      sound &&
+      sound.isSupported() &&
+      typeof sound.isVoiceLibraryEnabled === "function"
+    );
+    els.voiceLibraryToggle.disabled = !supported;
+    els.voiceLibraryToggle.checked =
+      supported && sound.isVoiceLibraryEnabled();
   }
 
   function setMessage(key, value) {
@@ -1910,6 +1931,9 @@
 
     els.languageSwitch.setAttribute("aria-label", text("language"));
     els.closeHelp.setAttribute("aria-label", text("closeHelp"));
+    els.optionsButton.title = text("options");
+    els.optionsButton.setAttribute("aria-label", text("options"));
+    els.closeOptions.setAttribute("aria-label", text("closeOptions"));
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.stage.setAttribute("aria-label", text("canvasLabel"));
@@ -1928,6 +1952,7 @@
     els.cameraZoomIn.title = text("zoomCameraIn");
     els.cameraZoomIn.setAttribute("aria-label", text("zoomCameraIn"));
     renderSoundControl();
+    renderVoiceLibraryControl();
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
@@ -1978,6 +2003,23 @@
       els.generatorDialog.showModal();
     } else {
       els.generatorDialog.setAttribute("open", "");
+    }
+  }
+
+  function openOptionsDialog() {
+    renderVoiceLibraryControl();
+    if (typeof els.optionsDialog.showModal === "function") {
+      els.optionsDialog.showModal();
+    } else {
+      els.optionsDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeOptionsDialog() {
+    if (typeof els.optionsDialog.close === "function") {
+      els.optionsDialog.close();
+    } else {
+      els.optionsDialog.removeAttribute("open");
     }
   }
 
@@ -2157,6 +2199,22 @@
     renderSoundControl();
   });
 
+  els.optionsButton.addEventListener("click", openOptionsDialog);
+
+  els.voiceLibraryToggle.addEventListener("change", function () {
+    if (!sound || typeof sound.setVoiceLibraryEnabled !== "function") return;
+    sound.setVoiceLibraryEnabled(els.voiceLibraryToggle.checked);
+    renderVoiceLibraryControl();
+  });
+
+  els.closeOptions.addEventListener("click", closeOptionsDialog);
+
+  els.optionsDialog.addEventListener("click", function (event) {
+    if (event.target === els.optionsDialog) {
+      closeOptionsDialog();
+    }
+  });
+
   els.languageSwitch.addEventListener("click", function (event) {
     var button = event.target.closest("[data-language]");
     if (!button) return;
@@ -2200,7 +2258,11 @@
   });
 
   window.addEventListener("keydown", function (event) {
-    if (els.helpDialog.open || els.generatorDialog.open) return;
+    if (
+      els.helpDialog.open ||
+      els.optionsDialog.open ||
+      els.generatorDialog.open
+    ) return;
     if (event.key === "Escape" && state.miniMapExpanded) {
       event.preventDefault();
       setMiniMapExpanded(false);

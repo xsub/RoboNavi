@@ -32,8 +32,9 @@ the whole program.
 - A 60-second beacon-network countdown after the first battery is installed
 - Procedural Web Audio for the motor, wheels, turns, wall collisions, batteries,
   induction charging, robot whistles, failures, and success
-- A compact ten-clip sampled robot voice library for idle chatter,
-  acknowledgements, curiosity, failures, depleted energy, and celebrations
+- An optional ten-clip sampled robot voice library for idle chatter,
+  acknowledgements, curiosity, failures, depleted energy, and celebrations;
+  disabled by default and controlled from `OPTIONS`
 - Localized synthesized execution messages in English and Polish
 - English and Polish interface
 - Desktop and compact iPhone landscape layouts
@@ -51,6 +52,7 @@ the whole program.
 - `RANDOM`: open the procedural generator
 - `FREE DRIVE`: disable energy costs and display `NO LIMIT`
 - `SHADOW`: preview the programmed route
+- `OPTIONS`: enable or disable the sampled robot voice library
 - `↺`, `↻`: rotate the camera by 90 degrees
 - `-`, `+` or the mouse wheel/touchpad: zoom the board
 - Click or touch and drag the board to pan the camera

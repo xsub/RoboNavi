@@ -12,6 +12,8 @@ const libraryPath = path.join(
 );
 const library = JSON.parse(fs.readFileSync(libraryPath, "utf8"));
 const audioSource = fs.readFileSync(path.join(root, "src", "audio.js"), "utf8");
+const appSource = fs.readFileSync(path.join(root, "src", "app.js"), "utf8");
+const htmlSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
 assert.strictEqual(library.version, 1);
 assert.strictEqual(library.clips.length, 10);
@@ -70,6 +72,29 @@ assert(
 assert(
   audioSource.includes("voiceSampleGainMultiplier = 3"),
   "sampled robot voices should use the requested 3x gain"
+);
+assert(
+  audioSource.includes(
+    'localStorage.getItem(voiceLibraryStorageKey) === "true"'
+  ),
+  "sampled robot voices should be disabled by default"
+);
+assert(
+  audioSource.includes("if (!voiceLibraryEnabled || !context"),
+  "disabled sampled voices should not be loaded"
+);
+assert(
+  audioSource.includes("setVoiceLibraryEnabled: setVoiceLibraryEnabled"),
+  "the audio engine should expose the library preference"
+);
+assert(
+  htmlSource.includes('id="options-button"') &&
+    htmlSource.includes('id="voice-library-toggle"'),
+  "the options dialog should expose the sampled voice preference"
+);
+assert(
+  appSource.includes("sound.setVoiceLibraryEnabled"),
+  "the options checkbox should control the audio engine"
 );
 
 console.log(`Validated ${library.clips.length} robot voice samples.`);

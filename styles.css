@@ -306,6 +306,14 @@ input:focus-visible {
   padding: 0;
 }
 
+.options-button {
+  min-width: 38px;
+  justify-content: center;
+  padding: 0;
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
 .sound-toggle[aria-pressed="true"] {
   border-color: #688574;
   color: #c9f5d1;
@@ -1910,6 +1918,7 @@ h1 {
 }
 
 .help-dialog,
+.options-dialog,
 .generator-dialog {
   width: min(680px, calc(100vw - 28px));
   max-width: none;
@@ -1924,13 +1933,30 @@ h1 {
   width: min(540px, calc(100vw - 28px));
 }
 
+.options-dialog {
+  width: min(420px, calc(100vw - 28px));
+}
+
+.help-dialog[open],
+.options-dialog[open],
+.generator-dialog[open] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  max-height: calc(100dvh - 28px);
+  margin: 0;
+  transform: translate(-50%, -50%);
+}
+
 .help-dialog::backdrop,
+.options-dialog::backdrop,
 .generator-dialog::backdrop {
   background: rgba(42, 46, 55, 0.48);
   backdrop-filter: blur(4px);
 }
 
 .help-window,
+.options-window,
 .generator-window {
   overflow: hidden;
   border: 5px solid #4b4e50;
@@ -1950,6 +1976,7 @@ h1 {
 }
 
 .help-head,
+.options-head,
 .generator-head {
   display: flex;
   align-items: center;
@@ -1977,10 +2004,43 @@ h1 {
 }
 
 .help-head h2,
+.options-head h2,
 .generator-head h2 {
   margin-top: 3px;
   color: #bce2bf;
   font-size: 1.1rem;
+}
+
+.options-content {
+  padding: 18px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.045) 0,
+      rgba(255, 255, 255, 0.045) 1px,
+      rgba(38, 41, 44, 0.025) 1px,
+      rgba(38, 41, 44, 0.025) 4px
+    ),
+    #b8b9ba;
+}
+
+.option-toggle {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  color: #24282b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.option-toggle input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: #c18b50;
 }
 
 .algorithm-strip {
@@ -2445,7 +2505,8 @@ kbd {
     font-size: 0.67rem;
   }
 
-  .sound-toggle {
+  .sound-toggle,
+  .options-button {
     min-width: 31px;
     padding: 0;
   }
@@ -2807,7 +2868,8 @@ kbd {
     font-size: 0.54rem;
   }
 
-  .sound-toggle {
+  .sound-toggle,
+  .options-button {
     min-width: 28px;
     padding: 0;
   }

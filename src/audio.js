@@ -3,6 +3,7 @@
 
   var AudioContextClass = window.AudioContext || window.webkitAudioContext;
   var storageKey = "robonavi-sound-enabled-v1";
+  var voiceLibraryStorageKey = "robonavi-voice-library-enabled-v1";
   var context = null;
   var masterGain = null;
   var whistleTimer = null;
@@ -10,6 +11,7 @@
   var noiseBuffer = null;
   var speech = window.speechSynthesis || null;
   var enabled = loadEnabled();
+  var voiceLibraryEnabled = loadVoiceLibraryEnabled();
   var voiceSampleVersion = "20260725-voice4";
   var voiceSampleGainMultiplier = 3;
   var voiceSampleBase = "assets/audio/robot-voice/";
@@ -61,6 +63,25 @@
     }
   }
 
+  function loadVoiceLibraryEnabled() {
+    try {
+      return localStorage.getItem(voiceLibraryStorageKey) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function saveVoiceLibraryEnabled() {
+    try {
+      localStorage.setItem(
+        voiceLibraryStorageKey,
+        voiceLibraryEnabled ? "true" : "false"
+      );
+    } catch (error) {
+      // The setting still works for the current session.
+    }
+  }
+
   function findSpeechVoice(language) {
     if (!speech || typeof speech.getVoices !== "function") return null;
     var languagePrefix =
@@ -108,7 +129,7 @@
     compressor.release.value = 0.22;
     masterGain.connect(compressor);
     compressor.connect(context.destination);
-    preloadVoiceSamples();
+    if (voiceLibraryEnabled) preloadVoiceSamples();
     return true;
   }
 
@@ -153,7 +174,7 @@
 
   function loadVoiceSample(name) {
     var definition = voiceSampleDefinitions[name];
-    if (!context || !definition || !window.fetch) {
+    if (!voiceLibraryEnabled || !context || !definition || !window.fetch) {
       return Promise.resolve(null);
     }
     if (voiceSampleBuffers[name]) {
@@ -187,7 +208,7 @@
   }
 
   function preloadVoiceSamples() {
-    if (!context) return;
+    if (!voiceLibraryEnabled || !context) return;
     Object.keys(voiceSampleDefinitions).forEach(function (name) {
       loadVoiceSample(name);
     });
@@ -211,7 +232,7 @@
 
   function playVoiceSample(name, options) {
     options = options || {};
-    if (!enabled || !context) return false;
+    if (!voiceLibraryEnabled || !enabled || !context) return false;
     var definition = voiceSampleDefinitions[name];
     if (!definition) return false;
     var buffer = voiceSampleBuffers[name];
@@ -1268,7 +1289,7 @@
     whistleTimer = window.setTimeout(function () {
       whistleTimer = null;
       if (!document.hidden) {
-        if (Math.random() < 0.72) {
+        if (voiceLibraryEnabled && Math.random() < 0.72) {
           playVoiceGroup("idle", {
             gain: 0.4,
             rate: 1.04
@@ -1304,6 +1325,17 @@
     return enabled;
   }
 
+  function setVoiceLibraryEnabled(nextEnabled) {
+    voiceLibraryEnabled = Boolean(nextEnabled);
+    saveVoiceLibraryEnabled();
+    if (!voiceLibraryEnabled) {
+      stopVoiceSample(0.035);
+      return voiceLibraryEnabled;
+    }
+    if (context) preloadVoiceSamples();
+    return voiceLibraryEnabled;
+  }
+
   function unlock() {
     if (!enabled) return false;
     return setEnabled(true);
@@ -1333,7 +1365,11 @@
     isEnabled: function () {
       return enabled;
     },
+    isVoiceLibraryEnabled: function () {
+      return voiceLibraryEnabled;
+    },
     setEnabled: setEnabled,
+    setVoiceLibraryEnabled: setVoiceLibraryEnabled,
     toggle: function () {
       return setEnabled(!enabled);
     },
@@ -1355,6 +1391,7 @@
     playVoiceSample: playVoiceSample,
     getVoiceLibraryStatus: function () {
       return {
+        enabled: voiceLibraryEnabled,
         total: Object.keys(voiceSampleDefinitions).length,
         loaded: Object.keys(voiceSampleBuffers).length,
         failed: Object.keys(voiceSampleFailures).length,
