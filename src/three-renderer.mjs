@@ -4,6 +4,12 @@ const stage = document.getElementById("three-stage");
 const bridge = window.RoboNaviRenderBridge;
 const core = window.RoboNaviCore;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const SIGNAL_DIRECTIONS = [
+  { x: 1, z: 0 },
+  { x: 0, z: 1 },
+  { x: -1, z: 0 },
+  { x: 0, z: -1 }
+];
 
 const COLORS = {
   background: "#39758d",
@@ -1287,12 +1293,13 @@ class RoboNaviThreeView {
     this.floorHue = -1;
     this.backgroundHue = -1;
     this.robotHue = -1;
-    this.signalCurve = null;
+    this.signalField = null;
     this.signalSprites = [];
     this.signalLight = null;
     this.signalFlash = 0;
     this.lastSignalTime = null;
     this.nextSignalCollisionAt = 0;
+    this.signalSeed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
     this.materials = createMaterials();
     this.geometries = createGeometries();
 
@@ -1423,11 +1430,14 @@ class RoboNaviThreeView {
       });
       const sprite = new THREE.Sprite(material);
       const size = 0.13 + (index % 3) * 0.025;
+      const random = seededRandom(
+        (this.signalSeed ^ Math.imul(index + 1, 2654435761)) >>> 0
+      );
       sprite.scale.set(size, size, 1);
       sprite.renderOrder = 8;
-      sprite.userData.routeSpeed = 0.024 + (index % 5) * 0.0065;
-      sprite.userData.routeDirection = index % 3 === 0 ? -1 : 1;
-      sprite.userData.routeOffset = (index * 0.61803398875) % 1;
+      sprite.userData.signalRandom = random;
+      sprite.userData.routeSpeed = 0.64 + random() * 0.68;
+      sprite.userData.signalWalker = null;
       sprite.userData.baseScale = size;
       this.scene.add(sprite);
       this.signalSprites.push(sprite);
@@ -1435,35 +1445,147 @@ class RoboNaviThreeView {
   }
 
   updateSignalRoute(level) {
-    const halfX = level.width / 2 + 1.25;
-    const halfZ = level.height / 2 + 1.25;
-    const y = -0.27;
-    const points = [
-      new THREE.Vector3(-halfX, y, -halfZ),
-      new THREE.Vector3(0, y, -halfZ),
-      new THREE.Vector3(0, y, -halfZ - 1),
-      new THREE.Vector3(halfX, y, -halfZ - 1),
-      new THREE.Vector3(halfX, y, 0),
-      new THREE.Vector3(halfX + 1, y, 0),
-      new THREE.Vector3(halfX + 1, y, halfZ),
-      new THREE.Vector3(0, y, halfZ),
-      new THREE.Vector3(0, y, halfZ + 1),
-      new THREE.Vector3(-halfX, y, halfZ + 1),
-      new THREE.Vector3(-halfX, y, 0),
-      new THREE.Vector3(-halfX - 1, y, 0)
-    ];
-    const route = new THREE.CurvePath();
-    points.forEach((point, index) => {
-      route.add(
-        new THREE.LineCurve3(point, points[(index + 1) % points.length])
-      );
+    const blockedHalfX = Math.ceil(level.width / 2 + 0.75);
+    const blockedHalfZ = Math.ceil(level.height / 2 + 0.75);
+    this.signalField = {
+      minX: -blockedHalfX - 2,
+      maxX: blockedHalfX + 2,
+      minZ: -blockedHalfZ - 2,
+      maxZ: blockedHalfZ + 2,
+      blockedHalfX,
+      blockedHalfZ,
+      y: -0.27
+    };
+    this.signalSprites.forEach((sprite) => {
+      this.resetSignalWalker(sprite);
     });
-    route.autoClose = true;
-    this.signalCurve = route;
+  }
+
+  signalNodeIsOpen(x, z) {
+    const field = this.signalField;
+    if (!field) return false;
+    if (
+      x < field.minX ||
+      x > field.maxX ||
+      z < field.minZ ||
+      z > field.maxZ
+    ) {
+      return false;
+    }
+    return (
+      Math.abs(x) >= field.blockedHalfX ||
+      Math.abs(z) >= field.blockedHalfZ
+    );
+  }
+
+  randomSignalNode(random) {
+    const field = this.signalField;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const x = Math.round(THREE.MathUtils.lerp(field.minX, field.maxX, random()));
+      const z = Math.round(THREE.MathUtils.lerp(field.minZ, field.maxZ, random()));
+      if (this.signalNodeIsOpen(x, z)) return { x, z };
+    }
+    const side = Math.floor(random() * 4);
+    if (side < 2) {
+      return {
+        x: Math.round(THREE.MathUtils.lerp(field.minX, field.maxX, random())),
+        z: side === 0 ? field.minZ : field.maxZ
+      };
+    }
+    return {
+      x: side === 2 ? field.minX : field.maxX,
+      z: Math.round(THREE.MathUtils.lerp(field.minZ, field.maxZ, random()))
+    };
+  }
+
+  validSignalDirections(x, z) {
+    return SIGNAL_DIRECTIONS.map((direction, index) => ({
+      index,
+      x: x + direction.x,
+      z: z + direction.z
+    })).filter((candidate) => this.signalNodeIsOpen(candidate.x, candidate.z));
+  }
+
+  chooseSignalDirection(walker, random) {
+    const reverse = (walker.directionIndex + 2) % SIGNAL_DIRECTIONS.length;
+    let candidates = this.validSignalDirections(walker.fromX, walker.fromZ);
+    const forwardCandidates = candidates.filter((candidate) => candidate.index !== reverse);
+    if (forwardCandidates.length > 0) candidates = forwardCandidates;
+
+    if (walker.straightRun >= walker.maxStraight) {
+      const turningCandidates = candidates.filter(
+        (candidate) => candidate.index !== walker.directionIndex
+      );
+      if (turningCandidates.length > 0) candidates = turningCandidates;
+    }
+
+    const weighted = [];
+    candidates.forEach((candidate) => {
+      const weight = candidate.index === walker.directionIndex ? 2 : 3;
+      for (let count = 0; count < weight; count += 1) weighted.push(candidate);
+    });
+    const selected = weighted[Math.floor(random() * weighted.length)] || candidates[0];
+    if (selected.index === walker.directionIndex) {
+      walker.straightRun += 1;
+    } else {
+      walker.straightRun = 0;
+      walker.maxStraight = 1 + Math.floor(random() * 4);
+    }
+    return selected;
+  }
+
+  resetSignalWalker(sprite) {
+    if (!this.signalField) return;
+    const random = sprite.userData.signalRandom || Math.random;
+    const start = this.randomSignalNode(random);
+    const directions = this.validSignalDirections(start.x, start.z);
+    const first = directions[Math.floor(random() * directions.length)];
+    sprite.userData.signalWalker = {
+      fromX: start.x,
+      fromZ: start.z,
+      toX: first.x,
+      toZ: first.z,
+      directionIndex: first.index,
+      progress: random(),
+      straightRun: 0,
+      maxStraight: 1 + Math.floor(random() * 4)
+    };
+  }
+
+  advanceSignalWalker(sprite, frameDelta) {
+    if (!sprite.userData.signalWalker) {
+      this.resetSignalWalker(sprite);
+    }
+    const walker = sprite.userData.signalWalker;
+    const random = sprite.userData.signalRandom || Math.random;
+    let travel = frameDelta * sprite.userData.routeSpeed;
+
+    while (travel > 0) {
+      const remaining = 1 - walker.progress;
+      if (travel < remaining) {
+        walker.progress += travel;
+        travel = 0;
+        continue;
+      }
+      travel -= remaining;
+      walker.fromX = walker.toX;
+      walker.fromZ = walker.toZ;
+      const next = this.chooseSignalDirection(walker, random);
+      walker.toX = next.x;
+      walker.toZ = next.z;
+      walker.directionIndex = next.index;
+      walker.progress = 0;
+    }
+
+    sprite.position.set(
+      THREE.MathUtils.lerp(walker.fromX, walker.toX, walker.progress),
+      this.signalField.y,
+      THREE.MathUtils.lerp(walker.fromZ, walker.toZ, walker.progress)
+    );
   }
 
   animateSignal(time) {
-    if (!this.signalCurve) return;
+    if (!this.signalField) return;
     const requestedCount = THREE.MathUtils.clamp(
       Math.round(Number(this.snapshot?.sparkCount) || 0),
       0,
@@ -1482,13 +1604,7 @@ class RoboNaviThreeView {
       const visible = index < count && (!reducedMotion.matches || index === 0);
       sprite.visible = visible;
       if (!visible) return;
-      const progress = THREE.MathUtils.euclideanModulo(
-        sprite.userData.routeOffset +
-          time * sprite.userData.routeSpeed * sprite.userData.routeDirection +
-          Math.sin(time * (0.31 + index * 0.013) + index) * 0.006,
-        1
-      );
-      sprite.position.copy(this.signalCurve.getPointAt(progress));
+      this.advanceSignalWalker(sprite, frameDelta);
       sprite.position.y += 0.012 + (index % 2) * 0.01;
       sprite.material.opacity =
         0.72 + Math.sin(time * 7.4 - index * 0.7) * 0.2;
