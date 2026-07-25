@@ -15,7 +15,7 @@ the whole program.
 
 - 20 hand-authored levels with progressively larger boards
 - Procedural levels with configurable size, route count, and wall density
-- Dijkstra validation and A* reference programs for generated boards
+- Dijkstra validation with edge-disjoint route requirements and A* reference programs
 - Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, thin edge walls, sand, ice, charging stations, and signal beacons
 - Three.js 3D board and robot with metallic PBR materials, animated multicolor
@@ -25,9 +25,13 @@ the whole program.
 - Persistent spectrum controls for the floor, cockpit background, and robot paint
 - Animated electronic signal pulses travelling through the background grid
 - Quarter-turn camera rotation, zoom controls, wheel or touchpad zoom, and drag-to-pan navigation
-- Optional route preview without a ghost robot
+- `OFF`, single-step, and complete-path previews without a ghost robot
 - Unlimited-energy Free Drive mode for relaxed practice
+- Calm mode that disables the beacon countdown without changing energy rules
+- Selectable, insertable, draggable, and keyboard-reorderable command queue
 - Energy and execution targets with three-star scoring
+- Mission result panel explaining completion, energy, and run stars
+- Command failures that identify the command number, cause, and board cell
 - Full-screen confetti celebration after the final beacon
 - A 60-second beacon-network countdown after the first battery is installed
 - Procedural Web Audio for the motor, wheels, turns, wall collisions, batteries,
@@ -46,13 +50,15 @@ the whole program.
 - `B`: install a battery while standing on an unfinished beacon
 - `I`: inductively charge while standing on a charging station (`I1` by default)
 - `1`-`4` after `I`: invest 1-4 energy and receive 3, 5, 7, or 9 energy
-- `UNDO`: remove the last command
+- Select a queued command to insert after it; drag it or use the arrow tools to reorder
+- `UNDO`: restore the previous queue edit
 - `CLEAR`: empty the command queue
 - `LOOP`: repeat the program indefinitely in `FREE DRIVE`; press `Enter` to stop
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
 - `FREE DRIVE`: disable energy costs and display `NO LIMIT`
-- `SHADOW`: preview the programmed route
+- `PREVIEW OFF / STEP / PATH`: hide guidance, show only the next command, or show the complete route
+- `CALM MODE`: pause the beacon countdown while retaining normal energy costs
 - `OPTIONS`: control the sampled robot voice library and maximum spark count
 - `↺`, `↻`: rotate the camera by 90 degrees
 - `-`, `+` or the mouse wheel/touchpad: zoom the board
@@ -93,8 +99,9 @@ request.
 The generator pipeline:
 
 1. Builds a weighted grid and places thin walls between tiles plus sand terrain.
-2. Uses Dijkstra to verify reachability and count shortest routes.
-3. Rejects boards below the selected minimum route count.
+2. Uses Dijkstra to verify reachability and extract candidate routes.
+3. Rejects boards that do not provide the selected number of edge-disjoint
+   routes, so alternatives cannot be the same corridor with a tiny detour.
 4. Uses A* over position and robot orientation to find the optimal command
    program.
 5. Sets the energy target from the A* result and adds a practical battery

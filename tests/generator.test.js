@@ -30,6 +30,40 @@ const generator = require("../src/generator");
   assert.strictEqual(result.reachable, true);
   assert.strictEqual(result.distance, 4);
   assert.strictEqual(result.routeCount, 2);
+  assert.deepStrictEqual(result.path[0], {
+    x: level.start.x,
+    y: level.start.y
+  });
+  assert.deepStrictEqual(result.path[result.path.length - 1], level.goals[0]);
+
+  const diverse = generator.edgeDisjointRoutes(
+    level,
+    level.start,
+    level.goals[0],
+    2
+  );
+  assert.strictEqual(diverse.count, 2);
+  const firstEdges = new Set(
+    diverse.routes[0].slice(1).map((point, index) => {
+      const previous = diverse.routes[0][index];
+      return [previous, point]
+        .map((cell) => `${cell.x},${cell.y}`)
+        .sort()
+        .join("|");
+    })
+  );
+  diverse.routes[1].slice(1).forEach((point, index) => {
+    const previous = diverse.routes[1][index];
+    const key = [previous, point]
+      .map((cell) => `${cell.x},${cell.y}`)
+      .sort()
+      .join("|");
+    assert.strictEqual(
+      firstEdges.has(key),
+      false,
+      "diverse routes must not share edges"
+    );
+  });
 }
 
 {
@@ -61,7 +95,7 @@ const generator = require("../src/generator");
 [
   { size: 9, minSolutions: 2, density: "relaxed", seed: 11 },
   { size: 11, minSolutions: 4, density: "balanced", seed: 42 },
-  { size: 13, minSolutions: 8, density: "dense", seed: 99 },
+  { size: 13, minSolutions: 3, density: "dense", seed: 99 },
   { size: 13, minSolutions: 2, density: "balanced", seed: 20260723 }
 ].forEach((options) => {
   const level = generator.generateLevel(options);
@@ -83,6 +117,10 @@ const generator = require("../src/generator");
   assert(
     level.generation.routeCount >= options.minSolutions,
     `${level.id} should provide at least ${options.minSolutions} shortest routes`
+  );
+  assert(
+    level.generation.edgeDisjointRoutes >= options.minSolutions,
+    `${level.id} should provide at least ${options.minSolutions} edge-disjoint routes`
   );
   assert(
     level.energyMax >= level.parEnergy * 1.25,

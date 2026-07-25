@@ -2,6 +2,7 @@
   "use strict";
 
   var core = window.RoboNaviCore;
+  var gameplay = window.RoboNaviGameplay;
   var generator = window.RoboNaviGenerator;
   var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
@@ -16,6 +17,8 @@
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
   var freeDriveStorageKey = "robonavi-free-drive-v1";
+  var calmModeStorageKey = "robonavi-calm-mode-v1";
+  var previewModeStorageKey = "robonavi-preview-mode-v2";
   var repositoryUrl = "https://github.com/xsub/RoboNavi";
   var repositoryApiUrl = "https://api.github.com/repos/xsub/RoboNavi/commits/main";
   var fallbackProgramVersion = "834f799";
@@ -67,6 +70,8 @@
       muteSound: "Mute sound",
       enableSound: "Enable sound",
       energy: "Energy",
+      batteryStatus: "Battery",
+      routeCost: "Route cost",
       runs: "Runs",
       best: "Best",
       levels: "Levels",
@@ -101,8 +106,13 @@
       backgroundColor: "Background color",
       robotColor: "Robot color",
       freeDrive: "Free drive",
+      calmMode: "Calm mode: no beacon timer",
       noLimit: "No limit",
       shadow: "Shadow",
+      preview: "Preview",
+      previewOff: "Off",
+      previewStep: "Step",
+      previewPath: "Path",
       undo: "Undo",
       clear: "Clear",
       loop: "Loop",
@@ -111,6 +121,9 @@
       energyTarget: "Energy target",
       runTarget: "Run target",
       facing: "Facing",
+      timer: "Timer",
+      timerCalm: "Timer calm",
+      timerWaiting: "Timer --",
       empty: "Empty",
       beacons: "beacons",
       loadLevel: "Load level",
@@ -133,11 +146,35 @@
       helpObjectiveTitle: "Restore the beacon",
       helpObjectiveText: "Reach each beacon and install its battery with B before the 60-second timer expires.",
       helpProgramTitle: "Build a program",
-      helpProgramText: "Add commands, then execute the sequence. Z undoes, C clears, and X resets the level.",
+      helpProgramText: "Select a command to insert after it. Drag or use the arrow tools to reorder. Z undoes, C clears, and X resets.",
       helpEnergyTitle: "Plan before running",
       helpEnergyText: "Every run has a startup cost. Enable Free drive to practice without energy costs.",
       helpTerrainTitle: "Read the terrain",
       helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge. Water costs 3 energy.",
+      helpScoreTitle: "Earn three stars",
+      helpScoreText: "Finish the mission, meet the energy target, and stay within the run target.",
+      resultTitle: "Mission complete",
+      scoreCompletion: "Complete mission",
+      scoreEnergy: "Meet energy target",
+      scoreRuns: "Meet run target",
+      newRecord: "New record",
+      recordKept: "Result saved",
+      retry: "Retry",
+      nextLevel: "Next level",
+      moveCommandLeft: "Move selected command left",
+      moveCommandRight: "Move selected command right",
+      deleteCommand: "Delete selected command",
+      queueLabel: "Program command queue",
+      lessons: {
+        forwardBattery: "Lesson: plan forward moves, then install the battery.",
+        turns: "New: rotate left and right before moving.",
+        sand: "New: sand is slower and costs more energy.",
+        ice: "New: ice keeps the robot moving.",
+        relayTimer: "New: after the first beacon, the relay timer starts.",
+        induct: "New: use induction on a charging station.",
+        water: "New: water costs more energy and must be pumped out.",
+        practice: "Plan, predict, execute, then improve the program."
+      },
       commands: {
         forward: "Forward",
         "turn-left": "Turn left",
@@ -161,10 +198,10 @@
         loopStopped: "Loop stopped",
         completed: "Beacon network restored: {value}",
         freeDriveCompleted: "Free drive complete",
-        blocked: "Blocked at command {value}",
-        depleted: "Energy depleted",
-        invalidBattery: "Battery requires a beacon",
-        invalidInduct: "Induct requires a charging station",
+        blocked: "Command {command}: wall ahead at cell {cell}",
+        depleted: "Command {command}: not enough energy at cell {cell}",
+        invalidBattery: "Command {command}: battery requires a beacon at cell {cell}",
+        invalidInduct: "Command {command}: induction requires a charging station at cell {cell}",
         batteryDied: "Beacon battery died! ;(",
         ended: "Program ended"
       },
@@ -264,6 +301,8 @@
       muteSound: "Wycisz dźwięk",
       enableSound: "Włącz dźwięk",
       energy: "Energia",
+      batteryStatus: "Bateria",
+      routeCost: "Koszt trasy",
       runs: "Uruchomienia",
       best: "Najlepiej",
       levels: "Poziomy",
@@ -298,8 +337,13 @@
       backgroundColor: "Kolor tła",
       robotColor: "Kolor robota",
       freeDrive: "Swobodna jazda",
+      calmMode: "Tryb spokojny: bez timera nadajników",
       noLimit: "No limit",
       shadow: "Podgląd",
+      preview: "Podgląd",
+      previewOff: "Wył.",
+      previewStep: "Krok",
+      previewPath: "Trasa",
       undo: "Cofnij",
       clear: "Wyczyść",
       loop: "Pętla",
@@ -308,6 +352,9 @@
       energyTarget: "Cel energii",
       runTarget: "Cel uruchomień",
       facing: "Kierunek",
+      timer: "Timer",
+      timerCalm: "Timer spokojny",
+      timerWaiting: "Timer --",
       empty: "Pusto",
       beacons: "nadajniki",
       loadLevel: "Wczytaj poziom",
@@ -330,11 +377,35 @@
       helpObjectiveTitle: "Uruchom nadajnik",
       helpObjectiveText: "Dotrzyj do każdego nadajnika i zainstaluj baterię klawiszem B przed upływem 60 sekund.",
       helpProgramTitle: "Zbuduj program",
-      helpProgramText: "Dodaj komendy i uruchom sekwencję. Z cofa, C czyści, a X resetuje poziom.",
+      helpProgramText: "Wybierz komendę, aby wstawić nową za nią. Przeciągaj lub użyj strzałek do zmiany kolejności. Z cofa, C czyści, X resetuje.",
       helpEnergyTitle: "Planuj przed startem",
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Włącz Swobodną jazdę, aby ćwiczyć bez kosztów energii.",
       helpTerrainTitle: "Czytaj teren",
       helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek. Woda kosztuje 3 energii.",
+      helpScoreTitle: "Zdobądź trzy gwiazdki",
+      helpScoreText: "Ukończ misję, osiągnij cel energii i nie przekrocz celu uruchomień.",
+      resultTitle: "Misja ukończona",
+      scoreCompletion: "Ukończ misję",
+      scoreEnergy: "Zmieszcz się w celu energii",
+      scoreRuns: "Zmieszcz się w celu uruchomień",
+      newRecord: "Nowy rekord",
+      recordKept: "Wynik zapisany",
+      retry: "Powtórz",
+      nextLevel: "Następny poziom",
+      moveCommandLeft: "Przesuń wybraną komendę w lewo",
+      moveCommandRight: "Przesuń wybraną komendę w prawo",
+      deleteCommand: "Usuń wybraną komendę",
+      queueLabel: "Kolejka komend programu",
+      lessons: {
+        forwardBattery: "Lekcja: zaplanuj jazdę naprzód, potem zainstaluj baterię.",
+        turns: "Nowe: obracaj robota w lewo i w prawo przed jazdą.",
+        sand: "Nowe: piasek spowalnia i kosztuje więcej energii.",
+        ice: "Nowe: lód przesuwa robota aż do końca ślizgu.",
+        relayTimer: "Nowe: po pierwszym nadajniku rusza timer przekaźnika.",
+        induct: "Nowe: użyj indukcji na stacji ładowania.",
+        water: "Nowe: woda kosztuje więcej energii i trzeba ją odpompować.",
+        practice: "Planuj, przewiduj, uruchamiaj i ulepszaj program."
+      },
       commands: {
         forward: "Naprzód",
         "turn-left": "Skręt w lewo",
@@ -358,10 +429,10 @@
         loopStopped: "Pętla zatrzymana",
         completed: "Sieć nadajników uruchomiona: {value}",
         freeDriveCompleted: "Swobodna jazda ukończona",
-        blocked: "Blokada przy komendzie {value}",
-        depleted: "Brak energii",
-        invalidBattery: "Bateria wymaga pola nadajnika",
-        invalidInduct: "Indukcja wymaga stacji ładowania",
+        blocked: "Komenda {command}: ściana przed robotem, pole {cell}",
+        depleted: "Komenda {command}: brak energii na polu {cell}",
+        invalidBattery: "Komenda {command}: bateria wymaga nadajnika, pole {cell}",
+        invalidInduct: "Komenda {command}: indukcja wymaga ładowarki, pole {cell}",
         batteryDied: "Beacon battery died! ;(",
         ended: "Program zakończony"
       },
@@ -462,11 +533,14 @@
     levelName: document.getElementById("level-name"),
     levelSubtitle: document.getElementById("level-subtitle"),
     energyValue: document.getElementById("energy-value"),
+    routeCostValue: document.getElementById("route-cost-value"),
     runCount: document.getElementById("run-count"),
-    bestStars: document.getElementById("best-stars"),
+    currentStars: document.getElementById("current-stars"),
     runMessage: document.getElementById("run-message"),
+    beaconTimer: document.getElementById("beacon-timer"),
     objectiveStatus: document.getElementById("objective-status"),
     levelList: document.getElementById("level-list"),
+    levelsToggle: document.getElementById("levels-toggle"),
     randomLevel: document.getElementById("random-level"),
     resetLevel: document.getElementById("reset-level"),
     lightLevel: document.getElementById("light-level"),
@@ -481,8 +555,13 @@
     robotHue: document.getElementById("robot-hue"),
     robotColorSwatch: document.getElementById("robot-color-swatch"),
     freeDriveToggle: document.getElementById("free-drive-toggle"),
-    previewToggle: document.getElementById("preview-toggle"),
+    calmModeToggle: document.getElementById("calm-mode-toggle"),
+    previewMode: document.getElementById("preview-mode"),
     commandQueue: document.getElementById("command-queue"),
+    lessonLabel: document.getElementById("lesson-label"),
+    moveCommandLeft: document.getElementById("move-command-left"),
+    moveCommandRight: document.getElementById("move-command-right"),
+    deleteCommand: document.getElementById("delete-command"),
     undoCommand: document.getElementById("undo-command"),
     clearProgram: document.getElementById("clear-program"),
     loopProgram: document.getElementById("loop-program"),
@@ -512,6 +591,18 @@
     celebration: document.getElementById("celebration"),
     confettiCanvas: document.getElementById("confetti-canvas"),
     celebrationMessage: document.getElementById("celebration-message"),
+    resultDialog: document.getElementById("result-dialog"),
+    closeResult: document.getElementById("close-result"),
+    resultStars: document.getElementById("result-stars"),
+    resultRecord: document.getElementById("result-record"),
+    resultCompletion: document.getElementById("result-completion"),
+    resultCompletionValue: document.getElementById("result-completion-value"),
+    resultEnergy: document.getElementById("result-energy"),
+    resultEnergyValue: document.getElementById("result-energy-value"),
+    resultRuns: document.getElementById("result-runs"),
+    resultRunsValue: document.getElementById("result-runs-value"),
+    retryResult: document.getElementById("retry-result"),
+    nextLevel: document.getElementById("next-level"),
     inductLevels: document.getElementById("induct-levels"),
     languageSwitch: document.querySelector(".language-switch"),
     boardPanel: document.querySelector(".board-panel"),
@@ -564,8 +655,10 @@
     robot: null,
     displayPose: null,
     commands: [],
-    preview: false,
+    commandHistory: [],
+    previewMode: loadPreviewMode(),
     freeDrive: loadFreeDrive(),
+    calmMode: loadCalmMode(),
     globalLight: loadGlobalLight(),
     engineMode: loadEngineMode(),
     maxSparkObjects: initialMaxSparkObjects,
@@ -577,6 +670,9 @@
     cameraSnapKey: 0,
     runCount: 0,
     highlightIndex: null,
+    selectedCommandIndex: null,
+    insertIndex: 0,
+    dragCommandIndex: null,
     animating: false,
     animation: null,
     looping: false,
@@ -584,10 +680,14 @@
     gameOver: false,
     batteryDeadline: null,
     batterySecondsRemaining: null,
+    batteryPauseReasons: {},
     language: loadLanguage(),
     messageKey: "ready",
     messageValue: null,
+    messageParameters: null,
     miniMapExpanded: false,
+    levelsExpanded: false,
+    lastResult: null,
     progress: loadProgress()
   };
 
@@ -814,6 +914,39 @@
     }
   }
 
+  function loadCalmMode() {
+    try {
+      return localStorage.getItem(calmModeStorageKey) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function saveCalmMode() {
+    try {
+      localStorage.setItem(calmModeStorageKey, state.calmMode ? "true" : "false");
+    } catch (error) {
+      // The current calm-mode setting still works without storage.
+    }
+  }
+
+  function loadPreviewMode() {
+    try {
+      var saved = localStorage.getItem(previewModeStorageKey);
+      return ["off", "step", "path"].indexOf(saved) === -1 ? "off" : saved;
+    } catch (error) {
+      return "off";
+    }
+  }
+
+  function savePreviewMode() {
+    try {
+      localStorage.setItem(previewModeStorageKey, state.previewMode);
+    } catch (error) {
+      // Preview mode still works for the current session.
+    }
+  }
+
   function simulationOptions() {
     return {
       unlimitedEnergy: state.freeDrive,
@@ -899,22 +1032,31 @@
     drawAll();
   }
 
-  function setMessage(key, value) {
+  function setMessage(key, value, parameters) {
     state.messageKey = key;
     state.messageValue = value == null ? null : String(value);
+    state.messageParameters = parameters || null;
+  }
+
+  function interpolate(template, values) {
+    return String(template).replace(/\{([a-z]+)\}/gi, function (_match, key) {
+      if (values && values[key] != null) return String(values[key]);
+      if (key === "value") return state.messageValue || "";
+      return "";
+    });
   }
 
   function messageText() {
     var template = copy().messages[state.messageKey] || state.messageKey;
-    return uppercase(template.replace("{value}", state.messageValue || ""));
+    return uppercase(interpolate(template, state.messageParameters));
   }
 
   function localizedLevel(level) {
     if (level.generated && level.generation) {
       var routeCount =
-        level.generation.routeCount >= level.generation.routeLimit
-          ? level.generation.routeCount + "+"
-          : String(level.generation.routeCount);
+        level.generation.edgeDisjointRoutes == null
+          ? level.generation.routeCount
+          : level.generation.edgeDisjointRoutes;
       return {
         name: text("generatedLevel"),
         subtitle: uppercase(
@@ -981,11 +1123,17 @@
   function activateLevel(level, index) {
     if (sound) sound.stopAll();
     stopCelebration();
+    closeResultDialog();
     resetBatteryTimer();
     state.levelIndex = index;
     state.level = level;
     state.robot = core.createInitialState(state.level);
     state.commands = [];
+    state.commandHistory = [];
+    state.selectedCommandIndex = null;
+    state.insertIndex = 0;
+    state.dragCommandIndex = null;
+    state.lastResult = null;
     state.runCount = 0;
     state.highlightIndex = null;
     state.animating = false;
@@ -1011,6 +1159,7 @@
   function resetLevel(keepProgram) {
     if (sound) sound.stopAll();
     stopCelebration();
+    closeResultDialog();
     resetBatteryTimer();
     state.robot = core.createInitialState(state.level);
     state.runCount = 0;
@@ -1019,19 +1168,56 @@
     state.animation = null;
     state.looping = false;
     state.loopStopRequested = false;
+    state.lastResult = null;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     setMessage("ready");
     if (!keepProgram) {
       state.commands = [];
+      state.commandHistory = [];
+      state.selectedCommandIndex = null;
+      state.insertIndex = 0;
     }
     syncDisplayPose();
     renderAll();
   }
 
+  function rememberProgram() {
+    state.commandHistory.push(state.commands.slice());
+    if (state.commandHistory.length > 40) state.commandHistory.shift();
+  }
+
+  function undoProgramEdit() {
+    if (state.animating || state.gameOver || state.commandHistory.length === 0) {
+      return;
+    }
+    state.commands = state.commandHistory.pop();
+    state.selectedCommandIndex =
+      state.commands.length > 0 ? state.commands.length - 1 : null;
+    state.insertIndex = state.commands.length;
+    state.highlightIndex = null;
+    renderAll();
+  }
+
   function addCommand(command) {
     if (state.animating || state.gameOver) return;
-    state.commands.push(core.normalizeCommand(command));
+    if (
+      !gameplay.isCommandAvailable(
+        state.level,
+        state.levelIndex,
+        command
+      )
+    ) {
+      return;
+    }
+    rememberProgram();
+    state.commands = gameplay.insertCommand(
+      state.commands,
+      state.insertIndex,
+      command
+    );
+    state.selectedCommandIndex = state.insertIndex;
+    state.insertIndex += 1;
     state.highlightIndex = null;
     setMessage("ready");
     renderAll();
@@ -1039,26 +1225,85 @@
 
   function setLastInductAmount(amount) {
     if (state.animating || state.gameOver || state.commands.length === 0) return;
-    var lastIndex = state.commands.length - 1;
-    if (core.commandType(state.commands[lastIndex]) !== "induct") return;
-    state.commands[lastIndex] = {
+    var targetIndex =
+      state.selectedCommandIndex !== null
+        ? state.selectedCommandIndex
+        : state.insertIndex - 1;
+    if (
+      targetIndex < 0 ||
+      core.commandType(state.commands[targetIndex]) !== "induct"
+    ) {
+      return;
+    }
+    rememberProgram();
+    state.commands[targetIndex] = {
       type: "induct",
       amount: Math.max(1, Math.min(4, Number(amount) || 1))
     };
+    state.selectedCommandIndex = targetIndex;
+    state.insertIndex = targetIndex + 1;
     state.highlightIndex = null;
     renderAll();
   }
 
   function removeCommand(index) {
     if (state.animating || state.gameOver) return;
-    state.commands.splice(index, 1);
+    rememberProgram();
+    state.commands = gameplay.removeCommand(state.commands, index);
+    if (state.commands.length === 0) {
+      state.selectedCommandIndex = null;
+      state.insertIndex = 0;
+    } else {
+      state.selectedCommandIndex = Math.min(index, state.commands.length - 1);
+      state.insertIndex = state.selectedCommandIndex + 1;
+    }
     state.highlightIndex = null;
+    renderAll();
+  }
+
+  function selectCommand(index) {
+    if (state.animating || state.gameOver) return;
+    var selected = Math.floor(Number(index));
+    if (selected < 0 || selected >= state.commands.length) return;
+    state.selectedCommandIndex = selected;
+    state.insertIndex = selected + 1;
+    renderAll();
+  }
+
+  function moveSelectedCommand(amount) {
+    if (state.animating || state.gameOver || state.selectedCommandIndex === null) {
+      return;
+    }
+    var destination = state.selectedCommandIndex + amount;
+    if (destination < 0 || destination >= state.commands.length) return;
+    moveCommand(state.selectedCommandIndex, destination);
+  }
+
+  function moveCommand(fromIndex, toIndex) {
+    if (state.animating || state.gameOver) return;
+    var from = Math.floor(Number(fromIndex));
+    var to = Math.floor(Number(toIndex));
+    if (
+      from < 0 ||
+      from >= state.commands.length ||
+      to < 0 ||
+      to >= state.commands.length
+    ) {
+      return;
+    }
+    rememberProgram();
+    state.commands = gameplay.moveCommand(state.commands, from, to);
+    state.selectedCommandIndex = to;
+    state.insertIndex = to + 1;
     renderAll();
   }
 
   function clearProgram() {
     if (state.animating || state.gameOver) return;
+    if (state.commands.length > 0) rememberProgram();
     state.commands = [];
+    state.selectedCommandIndex = null;
+    state.insertIndex = 0;
     state.highlightIndex = null;
     renderAll();
   }
@@ -1436,26 +1681,66 @@
       if (state.freeDrive) {
         setMessage("freeDriveCompleted");
       } else {
-        var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
+        var previousBest = bestStarsFor(state.level);
+        var breakdown = gameplay.scoreBreakdown(
+          state.level,
+          state.robot,
+          state.runCount
+        );
+        var stars = breakdown.stars;
         state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
         saveProgress();
+        state.lastResult = {
+          levelId: state.level.id,
+          levelIndex: state.levelIndex,
+          breakdown: breakdown,
+          recordImproved: stars > previousBest
+        };
         setMessage("completed", starText(stars));
       }
     } else if (result.stoppedReason === "collision") {
-      setMessage("blocked", state.highlightIndex + 1);
+      setFailureMessage(
+        "blocked",
+        result.events[result.events.length - 1]
+      );
     } else if (result.stoppedReason === "out-of-energy") {
       if (sound) sound.playDepleted(state.language);
-      setMessage("depleted");
+      setFailureMessage(
+        "depleted",
+        result.events[result.events.length - 1]
+      );
     } else if (result.stoppedReason === "invalid-action") {
       var lastEvent = result.events[result.events.length - 1];
-      setMessage(lastEvent.invalidReason === "battery" ? "invalidBattery" : "invalidInduct");
+      setFailureMessage(
+        lastEvent.invalidReason === "battery"
+          ? "invalidBattery"
+          : "invalidInduct",
+        lastEvent
+      );
     } else {
       setMessage("ended");
     }
     renderAll();
     if (result.completed) {
       startCelebration();
+      if (!state.freeDrive && state.lastResult) {
+        window.setTimeout(showResultDialog, 650);
+      }
     }
+  }
+
+  function eventCell(event) {
+    var cell = event.blockedAt || event.after || event.from || { x: 0, y: 0 };
+    var x = Math.max(0, Math.min(state.level.width - 1, cell.x));
+    var y = Math.max(0, Math.min(state.level.height - 1, cell.y));
+    return String(x + 1) + "," + String(y + 1);
+  }
+
+  function setFailureMessage(key, event) {
+    setMessage(key, null, {
+      command: String(Math.max(1, Number(event.commandIndex) + 1)),
+      cell: eventCell(event)
+    });
   }
 
   function handleExecutionEvent(event) {
@@ -1480,6 +1765,7 @@
     stopBatteryInterval();
     state.batteryDeadline = null;
     state.batterySecondsRemaining = null;
+    state.batteryPauseReasons = {};
   }
 
   function resetBatteryTimer() {
@@ -1489,10 +1775,47 @@
 
   function startBatteryCountdown() {
     var duration = Number(state.level.batterySeconds) || 60;
-    state.batteryDeadline = Date.now() + duration * 1000;
     state.batterySecondsRemaining = duration;
+    state.batteryDeadline = null;
+    state.batteryPauseReasons = {};
+    if (state.calmMode) state.batteryPauseReasons.calm = true;
+    if (state.freeDrive) state.batteryPauseReasons.freeDrive = true;
+    stopBatteryInterval();
+    resumeBatteryCountdown("start");
+    drawAll();
+  }
+
+  function pauseBatteryCountdown(reason) {
+    if (reason) state.batteryPauseReasons[reason] = true;
+    if (state.batteryDeadline === null) return;
+    state.batterySecondsRemaining = Math.max(
+      0,
+      (state.batteryDeadline - Date.now()) / 1000
+    );
+    state.batteryDeadline = null;
+    stopBatteryInterval();
+    renderUi();
+    drawAll();
+  }
+
+  function resumeBatteryCountdown(reason) {
+    if (reason && reason !== "start") {
+      delete state.batteryPauseReasons[reason];
+    }
+    if (
+      state.batterySecondsRemaining === null ||
+      state.batterySecondsRemaining <= 0 ||
+      state.gameOver ||
+      core.isComplete(state.level, state.robot) ||
+      Object.keys(state.batteryPauseReasons).length > 0
+    ) {
+      return;
+    }
+    state.batteryDeadline =
+      Date.now() + state.batterySecondsRemaining * 1000;
     stopBatteryInterval();
     batteryTimerId = window.setInterval(updateBatteryCountdown, 200);
+    renderUi();
     drawAll();
   }
 
@@ -1509,6 +1832,7 @@
     );
     if (remaining !== state.batterySecondsRemaining) {
       state.batterySecondsRemaining = remaining;
+      renderUi();
       drawAll();
     }
     if (remaining <= 0) {
@@ -1521,6 +1845,7 @@
     stopBatteryInterval();
     stopCelebration();
     state.batterySecondsRemaining = 0;
+    state.batteryDeadline = null;
     state.gameOver = true;
     state.animating = false;
     state.animation = null;
@@ -1683,6 +2008,51 @@
     celebrationFrame = window.requestAnimationFrame(animateCelebration);
   }
 
+  function setCriterion(element, passed) {
+    element.classList.toggle("is-passed", Boolean(passed));
+  }
+
+  function showResultDialog() {
+    var result = state.lastResult;
+    if (!result || result.levelId !== state.level.id || state.freeDrive) return;
+    var breakdown = result.breakdown;
+    els.resultStars.textContent = starText(breakdown.stars);
+    els.resultRecord.textContent = text(
+      result.recordImproved ? "newRecord" : "recordKept"
+    );
+    els.resultCompletionValue.textContent =
+      String(state.level.goals.length) +
+      " / " +
+      String(state.level.goals.length) +
+      " " +
+      text("beacons");
+    els.resultEnergyValue.textContent =
+      formatEnergy(breakdown.energySpent) +
+      " / " +
+      formatEnergy(breakdown.energyTarget);
+    els.resultRunsValue.textContent =
+      String(breakdown.runCount) + " / " + String(breakdown.runTarget);
+    setCriterion(els.resultCompletion, breakdown.complete);
+    setCriterion(els.resultEnergy, breakdown.energy);
+    setCriterion(els.resultRuns, breakdown.runs);
+    els.nextLevel.hidden =
+      state.levelIndex < 0 || state.levelIndex >= core.LEVELS.length - 1;
+    if (typeof els.resultDialog.showModal === "function") {
+      if (!els.resultDialog.open) els.resultDialog.showModal();
+    } else {
+      els.resultDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeResultDialog() {
+    if (!els.resultDialog || !els.resultDialog.open) return;
+    if (typeof els.resultDialog.close === "function") {
+      els.resultDialog.close();
+    } else {
+      els.resultDialog.removeAttribute("open");
+    }
+  }
+
   function directionAngle(direction) {
     return {
       north: -Math.PI / 2,
@@ -1730,16 +2100,20 @@
       events = state.animation.result.events;
       start = events.length > 0 ? events[0].from : state.robot;
       mode = "execute";
-    } else if (state.preview && state.commands.length > 0) {
+    } else if (state.previewMode !== "off" && state.commands.length > 0) {
+      var previewCommands =
+        state.previewMode === "step"
+          ? state.commands.slice(0, 1)
+          : state.commands;
       var preview = core.simulate(
         state.level,
-        state.commands,
+        previewCommands,
         state.robot,
         simulationOptions()
       );
       events = preview.events;
       start = state.robot;
-      mode = "preview";
+      mode = state.previewMode === "step" ? "step" : "preview";
     }
     if (!events || !start) return null;
 
@@ -1891,6 +2265,10 @@
   function renderUi() {
     var level = state.level;
     var levelCopy = localizedLevel(level);
+    var availableCommands = gameplay.availableCommands(
+      level,
+      state.levelIndex
+    );
     els.levelName.textContent =
       (level.generated ? "RND" : String(state.levelIndex + 1).padStart(2, "0")) +
       " " +
@@ -1900,12 +2278,36 @@
       ? text("noLimit")
       : formatEnergy(state.robot.energyRemaining) + " / " + formatEnergy(level.energyMax);
     els.energyValue.parentElement.classList.toggle("is-unlimited", state.freeDrive);
-    els.runCount.textContent = String(state.runCount);
-    els.bestStars.textContent = starText(bestStarsFor(level));
+    els.routeCostValue.textContent = state.freeDrive
+      ? text("noLimit")
+      : formatEnergy(state.robot.energySpent) +
+        " / " +
+        formatEnergy(level.parEnergy);
+    els.routeCostValue.parentElement.classList.toggle("is-unlimited", state.freeDrive);
+    els.runCount.textContent =
+      String(state.runCount) + " / " + String(level.parRuns);
+    els.currentStars.textContent = starText(bestStarsFor(level));
     renderRunMessage();
     els.runMessage.parentElement.classList.toggle("is-game-over", state.gameOver);
     els.objectiveStatus.textContent =
       collectedCount(level, state.robot) + " / " + level.goals.length + " " + text("beacons");
+    if (state.calmMode) {
+      els.beaconTimer.textContent = text("timerCalm");
+    } else if (state.batterySecondsRemaining === null) {
+      els.beaconTimer.textContent = text("timerWaiting");
+    } else {
+      els.beaconTimer.textContent =
+        text("timer") +
+        " " +
+        String(Math.max(0, Math.ceil(state.batterySecondsRemaining))) +
+        "S";
+    }
+    els.beaconTimer.classList.toggle(
+      "is-critical",
+      !state.calmMode &&
+        state.batterySecondsRemaining !== null &&
+        state.batterySecondsRemaining <= 10
+    );
     els.energyTarget.textContent = state.freeDrive
       ? text("noLimit")
       : formatEnergy(level.parEnergy);
@@ -1934,9 +2336,19 @@
     els.robotHue.value = String(state.robotHue);
     els.robotHue.style.setProperty("--robot-hue-color", robotHueColor(state.robotHue));
     els.robotColorSwatch.style.background = robotHueColor(state.robotHue);
-    els.previewToggle.checked = state.preview;
     els.freeDriveToggle.checked = state.freeDrive;
+    els.calmModeToggle.checked = state.calmMode;
     els.freeDriveToggle.disabled = state.animating;
+    els.previewMode.querySelectorAll("[data-preview-mode]").forEach(function (button) {
+      var isActive = button.dataset.previewMode === state.previewMode;
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      button.disabled = state.animating;
+    });
+    els.lessonLabel.textContent = uppercase(
+      copy().lessons[
+        gameplay.lessonKey(level, state.levelIndex)
+      ] || copy().lessons.practice
+    );
     els.executeProgram.disabled =
       state.animating ||
       state.gameOver ||
@@ -1952,14 +2364,47 @@
     els.loopProgram.setAttribute("aria-pressed", state.looping ? "true" : "false");
     els.loopProgram.textContent = text(state.looping ? "stopLoop" : "loop");
     els.undoCommand.disabled =
-      state.animating || state.gameOver || state.commands.length === 0;
+      state.animating || state.gameOver || state.commandHistory.length === 0;
     els.clearProgram.disabled =
       state.animating || state.gameOver || state.commands.length === 0;
     els.resetLevel.disabled = state.animating;
     els.randomLevel.disabled = state.animating;
-    document.querySelectorAll("[data-command], [data-induct-amount]").forEach(function (button) {
-      button.disabled = state.animating || state.gameOver;
+    document.querySelectorAll("[data-command]").forEach(function (button) {
+      var available =
+        availableCommands.indexOf(button.dataset.command) !== -1;
+      button.hidden = !available;
+      button.disabled = !available || state.animating || state.gameOver;
     });
+    document.querySelectorAll("[data-induct-amount]").forEach(function (button) {
+      button.disabled =
+        availableCommands.indexOf("induct") === -1 ||
+        state.animating ||
+        state.gameOver;
+    });
+    els.inductLevels.closest(".induct-row").hidden =
+      availableCommands.indexOf("induct") === -1;
+
+    var hasSelection =
+      state.selectedCommandIndex !== null &&
+      state.selectedCommandIndex >= 0 &&
+      state.selectedCommandIndex < state.commands.length;
+    els.moveCommandLeft.disabled =
+      state.animating || !hasSelection || state.selectedCommandIndex === 0;
+    els.moveCommandRight.disabled =
+      state.animating ||
+      !hasSelection ||
+      state.selectedCommandIndex === state.commands.length - 1;
+    els.deleteCommand.disabled = state.animating || !hasSelection;
+
+    els.levelList.hidden = !state.levelsExpanded;
+    els.levelsToggle.setAttribute(
+      "aria-expanded",
+      state.levelsExpanded ? "true" : "false"
+    );
+    els.levelList.closest(".levels-section").classList.toggle(
+      "is-expanded",
+      state.levelsExpanded
+    );
 
     renderLevels();
     renderQueue();
@@ -1993,7 +2438,7 @@
       button.disabled = state.animating;
       els.levelList.appendChild(button);
     });
-    if (!centerActiveLevel || !activeButton) {
+    if (!state.levelsExpanded || !centerActiveLevel || !activeButton) {
       els.levelList.scrollLeft = previousScroll;
       return;
     }
@@ -2023,33 +2468,61 @@
       return;
     }
     state.commands.forEach(function (command, index) {
+      if (state.insertIndex === index) {
+        var marker = document.createElement("span");
+        marker.className = "queue-insert-marker";
+        marker.setAttribute("aria-hidden", "true");
+        els.commandQueue.appendChild(marker);
+      }
       var type = core.commandType(command);
       var chip = document.createElement("button");
       chip.className = "queue-chip";
       if (index === state.highlightIndex) {
         chip.classList.add("is-active");
       }
+      if (index === state.selectedCommandIndex) {
+        chip.classList.add("is-selected");
+      }
+      if (index === state.dragCommandIndex) {
+        chip.classList.add("is-dragging");
+      }
       chip.type = "button";
+      chip.draggable = !state.animating && !state.gameOver;
       chip.dataset.commandIndex = String(index);
       chip.textContent =
         type === "forward" || type === "turn-left" || type === "turn-right"
           ? copy().commandLabels[type]
           : core.commandToken(command);
-      chip.title = text("remove") + ": " + uppercase(copy().commands[type]);
+      chip.title = String(index + 1) + ": " + uppercase(copy().commands[type]);
       chip.setAttribute(
         "aria-label",
-        text("remove") + " " + (index + 1) + ": " + uppercase(copy().commands[type])
+        String(index + 1) + ": " + uppercase(copy().commands[type])
+      );
+      chip.setAttribute(
+        "aria-pressed",
+        index === state.selectedCommandIndex ? "true" : "false"
       );
       chip.disabled = state.animating || state.gameOver;
       els.commandQueue.appendChild(chip);
     });
+    if (state.insertIndex === state.commands.length) {
+      var endMarker = document.createElement("span");
+      endMarker.className = "queue-insert-marker";
+      endMarker.setAttribute("aria-hidden", "true");
+      els.commandQueue.appendChild(endMarker);
+    }
   }
 
   function renderInductLevels() {
     if (!els.inductLevels) return;
-    var last = state.commands[state.commands.length - 1];
+    var selected =
+      state.selectedCommandIndex === null
+        ? state.commands[state.commands.length - 1]
+        : state.commands[state.selectedCommandIndex];
     var activeAmount =
-      core.commandType(last) === "induct" ? core.normalizeCommand(last).amount : null;
+      core.commandType(selected) === "induct"
+        ? core.normalizeCommand(selected).amount
+        : null;
     els.inductLevels.querySelectorAll("[data-induct-amount]").forEach(function (button) {
       button.classList.toggle(
         "is-active",
@@ -2098,6 +2571,7 @@
     els.optionsButton.setAttribute("aria-label", text("options"));
     els.closeOptions.setAttribute("aria-label", text("closeOptions"));
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
+    els.closeResult.setAttribute("aria-label", text("closeOptions"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.stage.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute(
@@ -2135,6 +2609,24 @@
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
+    els.previewMode.setAttribute("aria-label", text("preview"));
+    els.previewMode.querySelectorAll("[data-preview-mode]").forEach(function (button) {
+      var key =
+        button.dataset.previewMode === "step"
+          ? "previewStep"
+          : button.dataset.previewMode === "path"
+            ? "previewPath"
+            : "previewOff";
+      button.textContent = text(key);
+      button.title = text(key);
+    });
+    els.commandQueue.setAttribute("aria-label", text("queueLabel"));
+    els.moveCommandLeft.title = text("moveCommandLeft");
+    els.moveCommandLeft.setAttribute("aria-label", text("moveCommandLeft"));
+    els.moveCommandRight.title = text("moveCommandRight");
+    els.moveCommandRight.setAttribute("aria-label", text("moveCommandRight"));
+    els.deleteCommand.title = text("deleteCommand");
+    els.deleteCommand.setAttribute("aria-label", text("deleteCommand"));
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -2222,10 +2714,49 @@
     loadLevel(Number(button.dataset.levelIndex));
   });
 
+  els.levelsToggle.addEventListener("click", function () {
+    state.levelsExpanded = !state.levelsExpanded;
+    if (state.levelsExpanded) centerActiveLevel = true;
+    renderAll();
+  });
+
   els.commandQueue.addEventListener("click", function (event) {
     var button = event.target.closest("[data-command-index]");
     if (!button || state.animating) return;
-    removeCommand(Number(button.dataset.commandIndex));
+    selectCommand(Number(button.dataset.commandIndex));
+  });
+
+  els.commandQueue.addEventListener("dragstart", function (event) {
+    var button = event.target.closest("[data-command-index]");
+    if (!button || state.animating || state.gameOver) return;
+    state.dragCommandIndex = Number(button.dataset.commandIndex);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(state.dragCommandIndex));
+    }
+    renderQueue();
+  });
+
+  els.commandQueue.addEventListener("dragover", function (event) {
+    if (state.dragCommandIndex === null) return;
+    var button = event.target.closest("[data-command-index]");
+    if (!button) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  });
+
+  els.commandQueue.addEventListener("drop", function (event) {
+    var button = event.target.closest("[data-command-index]");
+    if (!button || state.dragCommandIndex === null) return;
+    event.preventDefault();
+    var from = state.dragCommandIndex;
+    state.dragCommandIndex = null;
+    moveCommand(from, Number(button.dataset.commandIndex));
+  });
+
+  els.commandQueue.addEventListener("dragend", function () {
+    state.dragCommandIndex = null;
+    renderQueue();
   });
 
   document.querySelectorAll("[data-command]").forEach(function (button) {
@@ -2240,11 +2771,16 @@
     setLastInductAmount(button.dataset.inductAmount);
   });
 
-  els.undoCommand.addEventListener("click", function () {
-    if (!state.animating && !state.gameOver && state.commands.length > 0) {
-      state.commands.pop();
-      state.highlightIndex = null;
-      renderAll();
+  els.undoCommand.addEventListener("click", undoProgramEdit);
+  els.moveCommandLeft.addEventListener("click", function () {
+    moveSelectedCommand(-1);
+  });
+  els.moveCommandRight.addEventListener("click", function () {
+    moveSelectedCommand(1);
+  });
+  els.deleteCommand.addEventListener("click", function () {
+    if (state.selectedCommandIndex !== null) {
+      removeCommand(state.selectedCommandIndex);
     }
   });
 
@@ -2259,12 +2795,17 @@
     resetLevel(false);
   });
 
-  els.previewToggle.addEventListener("change", function () {
-    state.preview = els.previewToggle.checked;
-    if (state.preview && sound) {
+  els.previewMode.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-preview-mode]");
+    if (!button || state.animating) return;
+    var mode = button.dataset.previewMode;
+    if (["off", "step", "path"].indexOf(mode) === -1) return;
+    state.previewMode = mode;
+    savePreviewMode();
+    if (state.previewMode !== "off" && sound) {
       sound.playShadowEnabled(state.language);
     }
-    drawAll();
+    renderAll();
   });
 
   els.freeDriveToggle.addEventListener("change", function () {
@@ -2274,7 +2815,23 @@
     }
     state.freeDrive = els.freeDriveToggle.checked;
     saveFreeDrive();
+    if (state.freeDrive) {
+      pauseBatteryCountdown("freeDrive");
+    } else {
+      resumeBatteryCountdown("freeDrive");
+    }
     setMessage("ready");
+    renderAll();
+  });
+
+  els.calmModeToggle.addEventListener("change", function () {
+    state.calmMode = els.calmModeToggle.checked;
+    saveCalmMode();
+    if (state.calmMode) {
+      pauseBatteryCountdown("calm");
+    } else {
+      resumeBatteryCountdown("calm");
+    }
     renderAll();
   });
 
@@ -2402,6 +2959,7 @@
   });
 
   els.helpButton.addEventListener("click", function () {
+    pauseBatteryCountdown("help");
     if (typeof els.helpDialog.showModal === "function") {
       els.helpDialog.showModal();
     } else {
@@ -2415,12 +2973,33 @@
     } else {
       els.helpDialog.removeAttribute("open");
     }
+    resumeBatteryCountdown("help");
   });
 
   els.helpDialog.addEventListener("click", function (event) {
     if (event.target === els.helpDialog) {
       els.helpDialog.close();
+      resumeBatteryCountdown("help");
     }
+  });
+
+  els.helpDialog.addEventListener("cancel", function () {
+    window.setTimeout(function () {
+      resumeBatteryCountdown("help");
+    }, 0);
+  });
+
+  els.closeResult.addEventListener("click", closeResultDialog);
+  els.retryResult.addEventListener("click", function () {
+    closeResultDialog();
+    resetLevel(false);
+  });
+  els.nextLevel.addEventListener("click", function () {
+    if (state.levelIndex < 0 || state.levelIndex >= core.LEVELS.length - 1) {
+      return;
+    }
+    closeResultDialog();
+    loadLevel(state.levelIndex + 1);
   });
 
   els.generatorForm.addEventListener("submit", function (event) {
@@ -2441,7 +3020,8 @@
     if (
       els.helpDialog.open ||
       els.optionsDialog.open ||
-      els.generatorDialog.open
+      els.generatorDialog.open ||
+      els.resultDialog.open
     ) return;
     if (event.key === "Escape" && state.miniMapExpanded) {
       event.preventDefault();
@@ -2478,10 +3058,10 @@
       setLastInductAmount(Number(key));
     } else if (event.key === "Backspace" || key === "z") {
       event.preventDefault();
-      if (state.commands.length > 0) {
-        state.commands.pop();
-        renderAll();
-      }
+      undoProgramEdit();
+    } else if (event.key === "Delete" && state.selectedCommandIndex !== null) {
+      event.preventDefault();
+      removeCommand(state.selectedCommandIndex);
     } else if (key === "c") {
       event.preventDefault();
       clearProgram();
@@ -2505,6 +3085,13 @@
 
   window.addEventListener("resize", scheduleBoardRedraw);
   window.addEventListener("load", scheduleBoardRedraw);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      pauseBatteryCountdown("hidden");
+    } else {
+      resumeBatteryCountdown("hidden");
+    }
+  });
   document.addEventListener("pointerdown", function () {
     if (sound) sound.unlock();
   }, { capture: true, once: true });

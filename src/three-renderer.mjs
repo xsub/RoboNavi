@@ -3,13 +3,14 @@ import * as THREE from "../vendor/three/three.module.min.js";
 const stage = document.getElementById("three-stage");
 const bridge = window.RoboNaviRenderBridge;
 const core = window.RoboNaviCore;
+const THEME = window.RoboNaviTheme || {};
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const COLORS = {
-  background: "#39758d",
-  floor: ["#bdd8e2", "#c5dfe7"],
-  floorEdge: "#9bb8c2",
-  wall: "#b6cbb2",
+  background: THEME.screen || "#4f8fa2",
+  floor: [THEME.floor || "#bdd8e2", "#c5dfe7"],
+  floorEdge: "#91b4c0",
+  wall: THEME.wall || "#a8c9b4",
   wallSide: "#789283",
   wallCap: "#d9e5d4",
   wallEdge: "#667f72",
@@ -19,12 +20,12 @@ const COLORS = {
   iceEdge: "#70abba",
   water: "#4faed2",
   waterEdge: "#397f9e",
-  charger: "#65d4c7",
+  charger: THEME.charge || "#55cfc0",
   pink: "#dfb5cb",
   gold: "#d9bd77",
   mint: "#acd8c2",
   lilac: "#c6bde4",
-  orange: "#ff9f2f",
+  orange: THEME.robot || "#ff9f2f",
   orangeLight: "#ffd85a",
   orangeDark: "#dc5b13",
   orangeGlow: "#ff7a00",
@@ -33,11 +34,11 @@ const COLORS = {
   rubber: "#242829",
   graphite: "#354246",
   steel: "#a8b0b0",
-  beacon: "#b85cff",
+  beacon: THEME.beacon || "#b85cff",
   beaconHot: "#f2d5ff",
-  path: "#2fc89c",
+  path: THEME.path || "#42d0a4",
   preview: "#45b7ce",
-  error: "#ef6477"
+  error: THEME.danger || "#c8454d"
 };
 
 function seededRandom(seed) {
