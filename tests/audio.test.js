@@ -14,6 +14,10 @@ const library = JSON.parse(fs.readFileSync(libraryPath, "utf8"));
 const audioSource = fs.readFileSync(path.join(root, "src", "audio.js"), "utf8");
 const appSource = fs.readFileSync(path.join(root, "src", "app.js"), "utf8");
 const htmlSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const rendererSource = fs.readFileSync(
+  path.join(root, "src", "three-renderer.mjs"),
+  "utf8"
+);
 
 assert.strictEqual(library.version, 1);
 assert.strictEqual(library.clips.length, 10);
@@ -95,6 +99,19 @@ assert(
 assert(
   appSource.includes("sound.setVoiceLibraryEnabled"),
   "the options checkbox should control the audio engine"
+);
+assert(
+  htmlSource.includes('id="max-spark-objects"'),
+  "the options dialog should expose the maximum spark object count"
+);
+assert(
+  appSource.includes("maxSparkObjectsStorageKey") &&
+    appSource.includes("els.sparkCount.max = String(state.maxSparkObjects)"),
+  "the spark maximum should persist and control the mission slider"
+);
+assert(
+  rendererSource.includes("ensureSignalSpriteCapacity(requestedCount)"),
+  "the Three.js renderer should create spark sprites up to the selected count"
 );
 
 console.log(`Validated ${library.clips.length} robot voice samples.`);

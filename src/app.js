@@ -9,6 +9,9 @@
   var engineModeStorageKey = "robonavi-engine-mode-v1";
   var legacyEngineSpeedStorageKey = "robonavi-engine-speed-v1";
   var sparkCountStorageKey = "robonavi-spark-count-v1";
+  var maxSparkObjectsStorageKey = "robonavi-max-spark-objects-v1";
+  var defaultMaxSparkObjects = 15;
+  var absoluteMaxSparkObjects = 100;
   var floorHueStorageKey = "robonavi-floor-hue-v1";
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
@@ -59,6 +62,7 @@
       options: "Options",
       closeOptions: "Close options",
       useSoundLibrary: "Use sound library",
+      maxSparkObjects: "Max spark objects",
       sound: "Sound",
       muteSound: "Mute sound",
       enableSound: "Enable sound",
@@ -250,6 +254,7 @@
       options: "Opcje",
       closeOptions: "Zamknij opcje",
       useSoundLibrary: "Używaj biblioteki dźwięków",
+      maxSparkObjects: "Max obiektów spark",
       sound: "Dźwięk",
       muteSound: "Wycisz dźwięk",
       enableSound: "Włącz dźwięk",
@@ -483,6 +488,7 @@
     optionsDialog: document.getElementById("options-dialog"),
     closeOptions: document.getElementById("close-options"),
     voiceLibraryToggle: document.getElementById("voice-library-toggle"),
+    maxSparkObjects: document.getElementById("max-spark-objects"),
     generatorDialog: document.getElementById("generator-dialog"),
     generatorForm: document.getElementById("generator-form"),
     closeGenerator: document.getElementById("close-generator"),
@@ -540,6 +546,7 @@
   var confettiParticles = [];
   var batteryTimerId = null;
   var threeRenderer = null;
+  var initialMaxSparkObjects = loadMaxSparkObjects();
   var state = {
     levelIndex: 0,
     level: core.LEVELS[0],
@@ -550,7 +557,8 @@
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
     engineMode: loadEngineMode(),
-    sparkCount: loadSparkCount(),
+    maxSparkObjects: initialMaxSparkObjects,
+    sparkCount: loadSparkCount(initialMaxSparkObjects),
     floorHue: loadFloorHue(),
     backgroundHue: loadBackgroundHue(),
     robotHue: loadRobotHue(),
@@ -629,14 +637,49 @@
     return engineModes[state.engineMode] || engineModes.med;
   }
 
-  function clampSparkCount(value) {
-    return Math.max(0, Math.min(15, Math.round(Number(value) || 0)));
+  function clampMaxSparkObjects(value) {
+    return Math.max(
+      1,
+      Math.min(
+        absoluteMaxSparkObjects,
+        Math.round(Number(value) || defaultMaxSparkObjects)
+      )
+    );
   }
 
-  function loadSparkCount() {
+  function loadMaxSparkObjects() {
+    try {
+      var saved = localStorage.getItem(maxSparkObjectsStorageKey);
+      return saved === null
+        ? defaultMaxSparkObjects
+        : clampMaxSparkObjects(saved);
+    } catch (error) {
+      return defaultMaxSparkObjects;
+    }
+  }
+
+  function saveMaxSparkObjects() {
+    try {
+      localStorage.setItem(
+        maxSparkObjectsStorageKey,
+        String(state.maxSparkObjects)
+      );
+    } catch (error) {
+      // The current maximum still works when storage is unavailable.
+    }
+  }
+
+  function clampSparkCount(value, maximum) {
+    var limit = clampMaxSparkObjects(
+      maximum == null ? defaultMaxSparkObjects : maximum
+    );
+    return Math.max(0, Math.min(limit, Math.round(Number(value) || 0)));
+  }
+
+  function loadSparkCount(maximum) {
     try {
       var saved = localStorage.getItem(sparkCountStorageKey);
-      return saved === null ? 5 : clampSparkCount(saved);
+      return saved === null ? 5 : clampSparkCount(saved, maximum);
     } catch (error) {
       return 5;
     }
@@ -821,6 +864,26 @@
     els.voiceLibraryToggle.disabled = !supported;
     els.voiceLibraryToggle.checked =
       supported && sound.isVoiceLibraryEnabled();
+  }
+
+  function renderSparkLimitControl() {
+    els.maxSparkObjects.value = String(state.maxSparkObjects);
+    els.sparkCount.max = String(state.maxSparkObjects);
+    els.sparkCount.value = String(state.sparkCount);
+    els.sparkCountValue.textContent = String(state.sparkCount);
+  }
+
+  function applyMaxSparkObjectsInput() {
+    if (els.maxSparkObjects.value.trim() === "") return;
+    state.maxSparkObjects = clampMaxSparkObjects(els.maxSparkObjects.value);
+    state.sparkCount = clampSparkCount(
+      state.sparkCount,
+      state.maxSparkObjects
+    );
+    saveMaxSparkObjects();
+    saveSparkCount();
+    renderSparkLimitControl();
+    drawAll();
   }
 
   function setMessage(key, value) {
@@ -1766,8 +1829,7 @@
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
       button.disabled = state.animating;
     });
-    els.sparkCount.value = String(state.sparkCount);
-    els.sparkCountValue.textContent = String(state.sparkCount);
+    renderSparkLimitControl();
     els.floorHue.value = String(state.floorHue);
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
@@ -1968,6 +2030,7 @@
       button.setAttribute("aria-label", text(labelKey));
     });
     els.sparkCount.setAttribute("aria-label", text("sparkCount"));
+    els.maxSparkObjects.setAttribute("aria-label", text("maxSparkObjects"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
@@ -2131,7 +2194,10 @@
   });
 
   els.sparkCount.addEventListener("input", function () {
-    state.sparkCount = clampSparkCount(els.sparkCount.value);
+    state.sparkCount = clampSparkCount(
+      els.sparkCount.value,
+      state.maxSparkObjects
+    );
     els.sparkCountValue.textContent = String(state.sparkCount);
     saveSparkCount();
     drawAll();
@@ -2205,6 +2271,18 @@
     if (!sound || typeof sound.setVoiceLibraryEnabled !== "function") return;
     sound.setVoiceLibraryEnabled(els.voiceLibraryToggle.checked);
     renderVoiceLibraryControl();
+  });
+
+  els.maxSparkObjects.addEventListener("input", function () {
+    applyMaxSparkObjectsInput();
+  });
+
+  els.maxSparkObjects.addEventListener("change", function () {
+    if (els.maxSparkObjects.value.trim() === "") {
+      renderSparkLimitControl();
+      return;
+    }
+    applyMaxSparkObjectsInput();
   });
 
   els.closeOptions.addEventListener("click", closeOptionsDialog);

@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260725-options2">
+    <link rel="stylesheet" href="styles.css?v=20260725-sparklimit1">
   </head>
   <body>
     <div class="app-shell">
@@ -335,6 +335,18 @@
             <input id="voice-library-toggle" type="checkbox">
             <span data-i18n="useSoundLibrary">Use sound library</span>
           </label>
+          <label class="option-number">
+            <span data-i18n="maxSparkObjects">Max spark objects</span>
+            <input
+              id="max-spark-objects"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              value="15"
+              inputmode="numeric"
+            >
+          </label>
         </div>
       </div>
     </dialog>
@@ -392,7 +404,7 @@
     <script src="src/core.js?v=20260724-speedmodes1"></script>
     <script src="src/generator.js?v=20260724-water1"></script>
     <script src="src/audio.js?v=20260725-voice5"></script>
-    <script src="src/app.js?v=20260725-options1"></script>
-    <script type="module" src="src/three-renderer.mjs?v=20260724-water1"></script>
+    <script src="src/app.js?v=20260725-sparklimit1"></script>
+    <script type="module" src="src/three-renderer.mjs?v=20260725-sparklimit1"></script>
   </body>
 </html>
