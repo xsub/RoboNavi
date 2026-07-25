@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260725-main2">
+    <link rel="stylesheet" href="styles.css?v=20260725-levelpicker1">
   </head>
   <body>
     <div class="app-shell">
@@ -200,17 +200,6 @@
         </section>
 
         <aside class="control-panel" aria-label="Command controls">
-          <section class="panel-section">
-            <div class="section-head">
-              <h2 data-i18n="levels">Levels</h2>
-              <div class="level-actions">
-                <button id="random-level" class="quiet-button" type="button" data-i18n="random">Random</button>
-                <button id="reset-level" class="quiet-button" type="button" data-i18n="reset" aria-keyshortcuts="X">Reset</button>
-              </div>
-            </div>
-            <div id="level-list" class="level-list"></div>
-          </section>
-
           <section class="panel-section program-section">
             <div class="section-head">
               <div>
@@ -251,6 +240,27 @@
               <button id="loop-program" class="quiet-button loop-button" type="button" data-i18n="loop" aria-keyshortcuts="Enter" aria-pressed="false">Loop</button>
               <button id="execute-program" class="execute-button" type="button" data-i18n="execute">Execute</button>
             </div>
+          </section>
+
+          <section class="panel-section levels-section">
+            <div class="section-head">
+              <button
+                id="levels-toggle"
+                class="section-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="level-list"
+              >
+                <span data-i18n="levels">Levels</span>
+                <span id="current-stars" class="current-stars">☆☆☆</span>
+                <span class="section-toggle-icon" aria-hidden="true">+</span>
+              </button>
+              <div class="level-actions">
+                <button id="random-level" class="quiet-button" type="button" data-i18n="random">Random</button>
+                <button id="reset-level" class="quiet-button" type="button" data-i18n="reset" aria-keyshortcuts="X">Reset</button>
+              </div>
+            </div>
+            <div id="level-list" class="level-list" hidden></div>
           </section>
 
           <section class="panel-section stats-panel">
@@ -457,7 +467,7 @@
     <script src="src/gameplay.js?v=20260725-main2"></script>
     <script src="src/generator.js?v=20260725-main2"></script>
     <script src="src/audio.js?v=20260725-voice7"></script>
-    <script src="src/app.js?v=20260725-main2"></script>
+    <script src="src/app.js?v=20260725-levelpicker1"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260725-randomsparks1"></script>
   </body>
 </html>

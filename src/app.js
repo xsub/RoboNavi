@@ -527,6 +527,8 @@
     beaconTimer: document.getElementById("beacon-timer"),
     objectiveStatus: document.getElementById("objective-status"),
     levelList: document.getElementById("level-list"),
+    levelsToggle: document.getElementById("levels-toggle"),
+    currentStars: document.getElementById("current-stars"),
     randomLevel: document.getElementById("random-level"),
     resetLevel: document.getElementById("reset-level"),
     lightLevel: document.getElementById("light-level"),
@@ -664,6 +666,7 @@
     messageKey: "ready",
     messageValue: null,
     miniMapExpanded: false,
+    levelsExpanded: false,
     lastResult: null,
     progress: loadProgress()
   };
@@ -2133,6 +2136,7 @@
     els.energyValue.parentElement.classList.toggle("is-unlimited", state.freeDrive);
     els.runCount.textContent = String(state.runCount);
     els.bestStars.textContent = starText(bestStarsFor(level));
+    els.currentStars.textContent = starText(bestStarsFor(level));
     renderRunMessage();
     els.runMessage.parentElement.classList.toggle("is-game-over", state.gameOver);
     els.objectiveStatus.textContent =
@@ -2228,6 +2232,15 @@
     });
     els.inductLevels.closest(".induct-row").hidden =
       availableCommands.indexOf("induct") === -1;
+    els.levelList.hidden = !state.levelsExpanded;
+    els.levelsToggle.setAttribute(
+      "aria-expanded",
+      state.levelsExpanded ? "true" : "false"
+    );
+    els.levelList.closest(".levels-section").classList.toggle(
+      "is-expanded",
+      state.levelsExpanded
+    );
 
     renderLevels();
     renderQueue();
@@ -2261,7 +2274,7 @@
       button.disabled = state.animating;
       els.levelList.appendChild(button);
     });
-    if (!centerActiveLevel || !activeButton) {
+    if (!state.levelsExpanded || !centerActiveLevel || !activeButton) {
       els.levelList.scrollLeft = previousScroll;
       return;
     }
@@ -2500,6 +2513,12 @@
     var button = event.target.closest("[data-level-index]");
     if (!button || state.animating) return;
     loadLevel(Number(button.dataset.levelIndex));
+  });
+
+  els.levelsToggle.addEventListener("click", function () {
+    state.levelsExpanded = !state.levelsExpanded;
+    if (state.levelsExpanded) centerActiveLevel = true;
+    renderAll();
   });
 
   els.commandQueue.addEventListener("click", function (event) {
