@@ -71,7 +71,16 @@ assert(
 );
 assert(
   audioSource.includes("if (isPolish && !selectedVoice)"),
-  "Polish attention speech should not fall back to an English voice"
+  "Polish speech should not fall back to an English voice"
+);
+assert(
+  (audioSource.match(/createLocalizedUtterance\(/g) || []).length >= 6,
+  "spoken game messages should use the centralized language-safe helper"
+);
+assert(
+  audioSource.includes('"No proszę!"') &&
+    !audioSource.includes('SpeechSynthesisUtterance("No, no!")'),
+  "Polish preview feedback should not speak the English phrase"
 );
 assert(
   audioSource.includes("voiceSampleGainMultiplier = 3"),
