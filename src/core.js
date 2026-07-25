@@ -1145,6 +1145,7 @@
     var events = [];
     var normalized = commands.map(normalizeCommand);
     var unlimitedEnergy = Boolean(options && options.unlimitedEnergy);
+    var ignoreCompletion = Boolean(options && options.ignoreCompletion);
     var energyMultiplier = movementCostMultiplier(options);
 
     if (normalized.length > 0) {
@@ -1191,6 +1192,9 @@
       } else {
         event = inductAction(level, state, command, index, unlimitedEnergy);
       }
+      if (ignoreCompletion && event.status === "complete") {
+        event.status = "ok";
+      }
       events.push(event);
 
       if (
@@ -1215,7 +1219,7 @@
       }
     }
 
-    var completed = isComplete(level, state);
+    var completed = !ignoreCompletion && isComplete(level, state);
     var nextMovementCost = minimumMovementEnergy(
       level,
       state,

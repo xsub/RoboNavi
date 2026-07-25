@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "source": "Okopowa.m4a",
+  "clips": [
+    {
+      "id": "idle-melody",
+      "file": "idle-melody.m4a",
+      "sourceRange": [0.32, 1.66],
+      "mood": ["idle", "friendly", "melodic"]
+    },
+    {
+      "id": "ack-chirp",
+      "file": "ack-chirp.m4a",
+      "sourceRange": [2.47, 3.05],
+      "mood": ["acknowledge", "short", "chirp"]
+    },
+    {
+      "id": "curious-gliss",
+      "file": "curious-gliss.m4a",
+      "sourceRange": [4.39, 5.47],
+      "mood": ["curious", "question", "glissando"]
+    },
+    {
+      "id": "happy-chuckle",
+      "file": "happy-chuckle.m4a",
+      "sourceRange": [6.58, 7.31],
+      "mood": ["happy", "short", "chuckle"]
+    },
+    {
+      "id": "confused-grumble",
+      "file": "confused-grumble.m4a",
+      "sourceRange": [9.17, 11.22],
+      "mood": ["confused", "failure", "grumble"]
+    },
+    {
+      "id": "success-cackle",
+      "file": "success-cackle.m4a",
+      "sourceRange": [14.33, 15.82],
+      "mood": ["success", "excited", "cackle"]
+    },
+    {
+      "id": "fault-snort",
+      "file": "fault-snort.m4a",
+      "sourceRange": [18.75, 19.53],
+      "mood": ["fault", "collision", "snort"]
+    },
+    {
+      "id": "robot-phrase",
+      "file": "robot-phrase.m4a",
+      "sourceRange": [24.03, 24.83],
+      "mood": ["speech", "acknowledge", "phrase"]
+    },
+    {
+      "id": "scan-warble",
+      "file": "scan-warble.m4a",
+      "sourceRange": [27.7, 29.22],
+      "mood": ["scan", "curious", "modulated-pseudo-speech"]
+    },
+    {
+      "id": "disappointed-whimper",
+      "file": "disappointed-whimper.m4a",
+      "sourceRange": [34.12, 35.62],
+      "mood": ["depleted", "sad", "whimper"]
+    }
+  ]
+}

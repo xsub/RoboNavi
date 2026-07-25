@@ -9,6 +9,9 @@
   var engineModeStorageKey = "robonavi-engine-mode-v1";
   var legacyEngineSpeedStorageKey = "robonavi-engine-speed-v1";
   var sparkCountStorageKey = "robonavi-spark-count-v1";
+  var maxSparkObjectsStorageKey = "robonavi-max-spark-objects-v1";
+  var defaultMaxSparkObjects = 15;
+  var absoluteMaxSparkObjects = 100;
   var floorHueStorageKey = "robonavi-floor-hue-v1";
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
@@ -56,6 +59,10 @@
       mission: "Mission",
       missionParameters: "Mission parameters",
       help: "Help",
+      options: "Options",
+      closeOptions: "Close options",
+      useSoundLibrary: "Use sound library",
+      maxSparkObjects: "Max spark objects",
       sound: "Sound",
       muteSound: "Mute sound",
       enableSound: "Enable sound",
@@ -98,6 +105,8 @@
       shadow: "Shadow",
       undo: "Undo",
       clear: "Clear",
+      loop: "Loop",
+      stopLoop: "Stop",
       execute: "Execute",
       energyTarget: "Energy target",
       runTarget: "Run target",
@@ -147,6 +156,9 @@
       messages: {
         ready: "Ready",
         executing: "Executing",
+        loopRunning: "Loop running — press Enter to stop",
+        loopStopping: "Stopping loop",
+        loopStopped: "Loop stopped",
         completed: "Beacon network restored: {value}",
         freeDriveCompleted: "Free drive complete",
         blocked: "Blocked at command {value}",
@@ -244,6 +256,10 @@
       mission: "Misja",
       missionParameters: "Parametry misji",
       help: "Pomoc",
+      options: "Opcje",
+      closeOptions: "Zamknij opcje",
+      useSoundLibrary: "Używaj biblioteki dźwięków",
+      maxSparkObjects: "Max obiektów spark",
       sound: "Dźwięk",
       muteSound: "Wycisz dźwięk",
       enableSound: "Włącz dźwięk",
@@ -286,6 +302,8 @@
       shadow: "Podgląd",
       undo: "Cofnij",
       clear: "Wyczyść",
+      loop: "Pętla",
+      stopLoop: "Stop",
       execute: "Uruchom",
       energyTarget: "Cel energii",
       runTarget: "Cel uruchomień",
@@ -335,6 +353,9 @@
       messages: {
         ready: "Gotowy",
         executing: "Wykonywanie",
+        loopRunning: "Pętla działa — Enter zatrzymuje",
+        loopStopping: "Zatrzymywanie pętli",
+        loopStopped: "Pętla zatrzymana",
         completed: "Sieć nadajników uruchomiona: {value}",
         freeDriveCompleted: "Swobodna jazda ukończona",
         blocked: "Blokada przy komendzie {value}",
@@ -464,15 +485,21 @@
     commandQueue: document.getElementById("command-queue"),
     undoCommand: document.getElementById("undo-command"),
     clearProgram: document.getElementById("clear-program"),
+    loopProgram: document.getElementById("loop-program"),
     executeProgram: document.getElementById("execute-program"),
     energyTarget: document.getElementById("energy-target"),
     runTarget: document.getElementById("run-target"),
     facingValue: document.getElementById("facing-value"),
     helpButton: document.getElementById("help-button"),
+    optionsButton: document.getElementById("options-button"),
     soundToggle: document.getElementById("sound-toggle"),
     soundIcon: document.getElementById("sound-icon"),
     helpDialog: document.getElementById("help-dialog"),
     closeHelp: document.getElementById("close-help"),
+    optionsDialog: document.getElementById("options-dialog"),
+    closeOptions: document.getElementById("close-options"),
+    voiceLibraryToggle: document.getElementById("voice-library-toggle"),
+    maxSparkObjects: document.getElementById("max-spark-objects"),
     generatorDialog: document.getElementById("generator-dialog"),
     generatorForm: document.getElementById("generator-form"),
     closeGenerator: document.getElementById("close-generator"),
@@ -530,6 +557,7 @@
   var confettiParticles = [];
   var batteryTimerId = null;
   var threeRenderer = null;
+  var initialMaxSparkObjects = loadMaxSparkObjects();
   var state = {
     levelIndex: 0,
     level: core.LEVELS[0],
@@ -540,7 +568,8 @@
     freeDrive: loadFreeDrive(),
     globalLight: loadGlobalLight(),
     engineMode: loadEngineMode(),
-    sparkCount: loadSparkCount(),
+    maxSparkObjects: initialMaxSparkObjects,
+    sparkCount: loadSparkCount(initialMaxSparkObjects),
     floorHue: loadFloorHue(),
     backgroundHue: loadBackgroundHue(),
     robotHue: loadRobotHue(),
@@ -550,6 +579,8 @@
     highlightIndex: null,
     animating: false,
     animation: null,
+    looping: false,
+    loopStopRequested: false,
     gameOver: false,
     batteryDeadline: null,
     batterySecondsRemaining: null,
@@ -619,14 +650,49 @@
     return engineModes[state.engineMode] || engineModes.med;
   }
 
-  function clampSparkCount(value) {
-    return Math.max(0, Math.min(15, Math.round(Number(value) || 0)));
+  function clampMaxSparkObjects(value) {
+    return Math.max(
+      1,
+      Math.min(
+        absoluteMaxSparkObjects,
+        Math.round(Number(value) || defaultMaxSparkObjects)
+      )
+    );
   }
 
-  function loadSparkCount() {
+  function loadMaxSparkObjects() {
+    try {
+      var saved = localStorage.getItem(maxSparkObjectsStorageKey);
+      return saved === null
+        ? defaultMaxSparkObjects
+        : clampMaxSparkObjects(saved);
+    } catch (error) {
+      return defaultMaxSparkObjects;
+    }
+  }
+
+  function saveMaxSparkObjects() {
+    try {
+      localStorage.setItem(
+        maxSparkObjectsStorageKey,
+        String(state.maxSparkObjects)
+      );
+    } catch (error) {
+      // The current maximum still works when storage is unavailable.
+    }
+  }
+
+  function clampSparkCount(value, maximum) {
+    var limit = clampMaxSparkObjects(
+      maximum == null ? defaultMaxSparkObjects : maximum
+    );
+    return Math.max(0, Math.min(limit, Math.round(Number(value) || 0)));
+  }
+
+  function loadSparkCount(maximum) {
     try {
       var saved = localStorage.getItem(sparkCountStorageKey);
-      return saved === null ? 5 : clampSparkCount(saved);
+      return saved === null ? 5 : clampSparkCount(saved, maximum);
     } catch (error) {
       return 5;
     }
@@ -802,6 +868,37 @@
     els.soundIcon.textContent = active ? "\ud83d\udd0a" : "\ud83d\udd07";
   }
 
+  function renderVoiceLibraryControl() {
+    var supported = Boolean(
+      sound &&
+      sound.isSupported() &&
+      typeof sound.isVoiceLibraryEnabled === "function"
+    );
+    els.voiceLibraryToggle.disabled = !supported;
+    els.voiceLibraryToggle.checked =
+      supported && sound.isVoiceLibraryEnabled();
+  }
+
+  function renderSparkLimitControl() {
+    els.maxSparkObjects.value = String(state.maxSparkObjects);
+    els.sparkCount.max = String(state.maxSparkObjects);
+    els.sparkCount.value = String(state.sparkCount);
+    els.sparkCountValue.textContent = String(state.sparkCount);
+  }
+
+  function applyMaxSparkObjectsInput() {
+    if (els.maxSparkObjects.value.trim() === "") return;
+    state.maxSparkObjects = clampMaxSparkObjects(els.maxSparkObjects.value);
+    state.sparkCount = clampSparkCount(
+      state.sparkCount,
+      state.maxSparkObjects
+    );
+    saveMaxSparkObjects();
+    saveSparkCount();
+    renderSparkLimitControl();
+    drawAll();
+  }
+
   function setMessage(key, value) {
     state.messageKey = key;
     state.messageValue = value == null ? null : String(value);
@@ -893,6 +990,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     centerActiveLevel = true;
@@ -918,6 +1017,8 @@
     state.highlightIndex = null;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     setMessage("ready");
@@ -962,22 +1063,25 @@
     renderAll();
   }
 
-  function executeProgram() {
-    if (
+  function canStartProgram() {
+    return !(
       state.animating ||
       state.gameOver ||
       state.commands.length === 0 ||
-      core.isComplete(state.level, state.robot)
-    ) {
-      return;
-    }
-    if (sound) sound.speakExecution(state.language);
+      (!state.freeDrive && core.isComplete(state.level, state.robot))
+    );
+  }
+
+  function startProgramAnimation(loopIteration) {
+    var options = simulationOptions();
+    options.ignoreCompletion = state.looping;
+    if (!loopIteration && sound) sound.speakExecution(state.language);
     state.runCount += 1;
     var result = core.simulate(
       state.level,
       state.commands,
       state.robot,
-      simulationOptions()
+      options
     );
     state.animation = {
       result: result,
@@ -985,15 +1089,58 @@
       index: 0,
       startedAt: 0,
       step: null,
-      preparing: true,
+      preparing: !loopIteration,
       prepareStartedAt: 0,
-      prepareDuration: 360
+      prepareDuration: loopIteration ? 0 : 360
     };
     state.animating = true;
     state.highlightIndex = null;
-    setMessage("executing");
+    setMessage(state.looping ? "loopRunning" : "executing");
     renderAll();
     window.requestAnimationFrame(tickAnimation);
+  }
+
+  function executeProgram() {
+    if (!canStartProgram()) return;
+    state.looping = false;
+    state.loopStopRequested = false;
+    startProgramAnimation(false);
+  }
+
+  function requestLoopStop() {
+    if (!state.looping || state.loopStopRequested) return;
+    state.loopStopRequested = true;
+    setMessage("loopStopping");
+    renderAll();
+  }
+
+  function stopLoopExecution() {
+    if (sound) sound.stopDrive();
+    state.animating = false;
+    state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
+    syncDisplayPose();
+    setMessage("loopStopped");
+    renderAll();
+  }
+
+  function toggleProgramLoop() {
+    if (state.looping) {
+      requestLoopStop();
+      return;
+    }
+    if (
+      !state.freeDrive ||
+      !canStartProgram() ||
+      state.gameOver ||
+      state.commands.length === 0
+    ) {
+      return;
+    }
+    state.looping = true;
+    state.loopStopRequested = false;
+    startProgramAnimation(false);
   }
 
   function buildAnimationSteps(events) {
@@ -1166,6 +1313,10 @@
         return;
       }
       animation.preparing = false;
+      if (state.looping && state.loopStopRequested) {
+        stopLoopExecution();
+        return;
+      }
     }
 
     if (!animation.step) {
@@ -1226,6 +1377,10 @@
         step,
         animation.steps[animation.index + 1]
       );
+      if (step.endsCommand && state.looping && state.loopStopRequested) {
+        stopLoopExecution();
+        return;
+      }
       animation.index += 1;
       animation.step = animation.steps[animation.index] || null;
       animation.startedAt += step.duration;
@@ -1243,6 +1398,25 @@
     if (sound) sound.stopDrive();
     state.robot = core.cloneState(result.finalState);
     syncDisplayPose();
+
+    if (
+      state.looping &&
+      !state.loopStopRequested &&
+      result.stoppedReason === "program-ended"
+    ) {
+      state.animation = null;
+      state.highlightIndex = null;
+      startProgramAnimation(true);
+      return;
+    }
+
+    if (state.looping && state.loopStopRequested) {
+      stopLoopExecution();
+      return;
+    }
+
+    state.looping = false;
+    state.loopStopRequested = false;
     state.animating = false;
     state.animation = null;
     state.highlightIndex =
@@ -1350,6 +1524,8 @@
     state.gameOver = true;
     state.animating = false;
     state.animation = null;
+    state.looping = false;
+    state.loopStopRequested = false;
     state.highlightIndex = null;
     syncDisplayPose();
     setMessage("batteryDied");
@@ -1745,8 +1921,7 @@
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
       button.disabled = state.animating;
     });
-    els.sparkCount.value = String(state.sparkCount);
-    els.sparkCountValue.textContent = String(state.sparkCount);
+    renderSparkLimitControl();
     els.floorHue.value = String(state.floorHue);
     els.floorHue.style.setProperty("--floor-hue-color", floorHueColor(state.floorHue));
     els.floorColorSwatch.style.background = floorHueColor(state.floorHue);
@@ -1766,7 +1941,16 @@
       state.animating ||
       state.gameOver ||
       state.commands.length === 0 ||
-      core.isComplete(level, state.robot);
+      (!state.freeDrive && core.isComplete(level, state.robot));
+    els.loopProgram.disabled =
+      !state.freeDrive ||
+      state.gameOver ||
+      state.commands.length === 0 ||
+      (state.animating && !state.looping) ||
+      state.loopStopRequested;
+    els.loopProgram.classList.toggle("is-active", state.looping);
+    els.loopProgram.setAttribute("aria-pressed", state.looping ? "true" : "false");
+    els.loopProgram.textContent = text(state.looping ? "stopLoop" : "loop");
     els.undoCommand.disabled =
       state.animating || state.gameOver || state.commands.length === 0;
     els.clearProgram.disabled =
@@ -1910,6 +2094,9 @@
 
     els.languageSwitch.setAttribute("aria-label", text("language"));
     els.closeHelp.setAttribute("aria-label", text("closeHelp"));
+    els.optionsButton.title = text("options");
+    els.optionsButton.setAttribute("aria-label", text("options"));
+    els.closeOptions.setAttribute("aria-label", text("closeOptions"));
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.stage.setAttribute("aria-label", text("canvasLabel"));
@@ -1928,6 +2115,7 @@
     els.cameraZoomIn.title = text("zoomCameraIn");
     els.cameraZoomIn.setAttribute("aria-label", text("zoomCameraIn"));
     renderSoundControl();
+    renderVoiceLibraryControl();
     els.celebrationMessage.textContent = text("congratulations");
     els.inductLevels.setAttribute("aria-label", text("inductPower"));
     els.lightLevel.setAttribute("aria-label", text("globalLight"));
@@ -1943,6 +2131,7 @@
       button.setAttribute("aria-label", text(labelKey));
     });
     els.sparkCount.setAttribute("aria-label", text("sparkCount"));
+    els.maxSparkObjects.setAttribute("aria-label", text("maxSparkObjects"));
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
@@ -1978,6 +2167,23 @@
       els.generatorDialog.showModal();
     } else {
       els.generatorDialog.setAttribute("open", "");
+    }
+  }
+
+  function openOptionsDialog() {
+    renderVoiceLibraryControl();
+    if (typeof els.optionsDialog.showModal === "function") {
+      els.optionsDialog.showModal();
+    } else {
+      els.optionsDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeOptionsDialog() {
+    if (typeof els.optionsDialog.close === "function") {
+      els.optionsDialog.close();
+    } else {
+      els.optionsDialog.removeAttribute("open");
     }
   }
 
@@ -2045,6 +2251,7 @@
   els.clearProgram.addEventListener("click", clearProgram);
 
   els.executeProgram.addEventListener("click", executeProgram);
+  els.loopProgram.addEventListener("click", toggleProgramLoop);
 
   els.randomLevel.addEventListener("click", openGeneratorDialog);
 
@@ -2089,7 +2296,10 @@
   });
 
   els.sparkCount.addEventListener("input", function () {
-    state.sparkCount = clampSparkCount(els.sparkCount.value);
+    state.sparkCount = clampSparkCount(
+      els.sparkCount.value,
+      state.maxSparkObjects
+    );
     els.sparkCountValue.textContent = String(state.sparkCount);
     saveSparkCount();
     drawAll();
@@ -2157,6 +2367,34 @@
     renderSoundControl();
   });
 
+  els.optionsButton.addEventListener("click", openOptionsDialog);
+
+  els.voiceLibraryToggle.addEventListener("change", function () {
+    if (!sound || typeof sound.setVoiceLibraryEnabled !== "function") return;
+    sound.setVoiceLibraryEnabled(els.voiceLibraryToggle.checked);
+    renderVoiceLibraryControl();
+  });
+
+  els.maxSparkObjects.addEventListener("input", function () {
+    applyMaxSparkObjectsInput();
+  });
+
+  els.maxSparkObjects.addEventListener("change", function () {
+    if (els.maxSparkObjects.value.trim() === "") {
+      renderSparkLimitControl();
+      return;
+    }
+    applyMaxSparkObjectsInput();
+  });
+
+  els.closeOptions.addEventListener("click", closeOptionsDialog);
+
+  els.optionsDialog.addEventListener("click", function (event) {
+    if (event.target === els.optionsDialog) {
+      closeOptionsDialog();
+    }
+  });
+
   els.languageSwitch.addEventListener("click", function (event) {
     var button = event.target.closest("[data-language]");
     if (!button) return;
@@ -2200,10 +2438,19 @@
   });
 
   window.addEventListener("keydown", function (event) {
-    if (els.helpDialog.open || els.generatorDialog.open) return;
+    if (
+      els.helpDialog.open ||
+      els.optionsDialog.open ||
+      els.generatorDialog.open
+    ) return;
     if (event.key === "Escape" && state.miniMapExpanded) {
       event.preventDefault();
       setMiniMapExpanded(false);
+      return;
+    }
+    if (event.key === "Enter" && state.looping) {
+      event.preventDefault();
+      requestLoopStop();
       return;
     }
     if (event.target && ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].indexOf(event.target.tagName) !== -1) {

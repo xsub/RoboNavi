@@ -291,4 +291,43 @@ core.LEVELS.slice(10).forEach((level) => {
   assert.strictEqual(collision.stoppedReason, "collision");
 }
 
+{
+  const level = {
+    id: "free-drive-loop-completion",
+    width: 5,
+    height: 3,
+    energyMax: 1,
+    parEnergy: 1,
+    parRuns: 1,
+    start: { x: 1, y: 1, direction: "east" },
+    goals: [{ x: 2, y: 1 }],
+    grid: [
+      ".....",
+      ".....",
+      "....."
+    ],
+    walls: []
+  };
+  const commands = core.parseProgram("FBF");
+  const regular = core.simulate(
+    level,
+    commands,
+    undefined,
+    { unlimitedEnergy: true }
+  );
+  const looping = core.simulate(
+    level,
+    commands,
+    undefined,
+    { unlimitedEnergy: true, ignoreCompletion: true }
+  );
+
+  assert.strictEqual(regular.completed, true);
+  assert.strictEqual(regular.events.length, 2);
+  assert.strictEqual(looping.completed, false);
+  assert.strictEqual(looping.stoppedReason, "program-ended");
+  assert.strictEqual(looping.events.length, 3);
+  assert.strictEqual(looping.finalState.x, 3);
+}
+
 console.log(`Validated ${core.LEVELS.length} RoboNavi levels.`);

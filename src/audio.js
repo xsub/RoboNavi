@@ -3,6 +3,7 @@
 
   var AudioContextClass = window.AudioContext || window.webkitAudioContext;
   var storageKey = "robonavi-sound-enabled-v1";
+  var voiceLibraryStorageKey = "robonavi-voice-library-enabled-v1";
   var context = null;
   var masterGain = null;
   var whistleTimer = null;
@@ -10,6 +11,49 @@
   var noiseBuffer = null;
   var speech = window.speechSynthesis || null;
   var enabled = loadEnabled();
+  var voiceLibraryEnabled = loadVoiceLibraryEnabled();
+  var voiceSampleVersion = "20260725-voice4";
+  var voiceSampleGainMultiplier = 3;
+  var voiceSampleBase = "assets/audio/robot-voice/";
+  var voiceSampleDefinitions = {
+    "idle-melody": { file: "idle-melody.m4a", gain: 0.68, rate: 1.04, detune: 45 },
+    "ack-chirp": { file: "ack-chirp.m4a", gain: 0.64, rate: 1.08, detune: 80 },
+    "curious-gliss": { file: "curious-gliss.m4a", gain: 0.62, rate: 1.03, detune: 70 },
+    "happy-chuckle": { file: "happy-chuckle.m4a", gain: 0.64, rate: 1.08, detune: 95 },
+    "confused-grumble": {
+      file: "confused-grumble.m4a",
+      gain: 0.58,
+      rate: 0.96,
+      detune: -75
+    },
+    "success-cackle": {
+      file: "success-cackle.m4a",
+      gain: 0.62,
+      rate: 1.06,
+      detune: 55
+    },
+    "fault-snort": { file: "fault-snort.m4a", gain: 0.58, rate: 0.94, detune: -110 },
+    "robot-phrase": { file: "robot-phrase.m4a", gain: 0.58, rate: 1.08, detune: 90 },
+    "scan-warble": { file: "scan-warble.m4a", gain: 0.54, rate: 1, detune: 45 },
+    "disappointed-whimper": {
+      file: "disappointed-whimper.m4a",
+      gain: 0.58,
+      rate: 0.92,
+      detune: -120
+    }
+  };
+  var voiceSampleGroups = {
+    idle: ["idle-melody", "happy-chuckle", "scan-warble"],
+    acknowledge: ["ack-chirp", "robot-phrase"],
+    curious: ["curious-gliss", "scan-warble"],
+    failure: ["confused-grumble", "fault-snort"],
+    success: ["success-cackle", "happy-chuckle"]
+  };
+  var voiceSampleBuffers = Object.create(null);
+  var voiceSampleLoads = Object.create(null);
+  var voiceSampleFailures = Object.create(null);
+  var activeVoiceSample = null;
+  var previousVoiceSample = null;
 
   function loadEnabled() {
     try {
@@ -17,6 +61,48 @@
     } catch (error) {
       return true;
     }
+  }
+
+  function loadVoiceLibraryEnabled() {
+    try {
+      return localStorage.getItem(voiceLibraryStorageKey) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function saveVoiceLibraryEnabled() {
+    try {
+      localStorage.setItem(
+        voiceLibraryStorageKey,
+        voiceLibraryEnabled ? "true" : "false"
+      );
+    } catch (error) {
+      // The setting still works for the current session.
+    }
+  }
+
+  function findSpeechVoice(language) {
+    if (!speech || typeof speech.getVoices !== "function") return null;
+    var languagePrefix =
+      String(language || "").toLowerCase().indexOf("pl") === 0 ? "pl" : "en";
+    var preferredNames =
+      languagePrefix === "pl"
+        ? ["zosia", "krzysztof", "ewa"]
+        : ["samantha", "daniel", "alex"];
+    var matchingVoices = speech.getVoices().filter(function (voice) {
+      return (
+        String(voice.lang || "").toLowerCase().indexOf(languagePrefix) === 0
+      );
+    });
+    if (matchingVoices.length === 0) return null;
+    var preferredVoice = matchingVoices.find(function (voice) {
+      var voiceName = String(voice.name || "").toLowerCase();
+      return preferredNames.some(function (preferredName) {
+        return voiceName.indexOf(preferredName) !== -1;
+      });
+    });
+    return preferredVoice || matchingVoices[0];
   }
 
   function saveEnabled() {
@@ -43,6 +129,7 @@
     compressor.release.value = 0.22;
     masterGain.connect(compressor);
     compressor.connect(context.destination);
+    if (voiceLibraryEnabled) preloadVoiceSamples();
     return true;
   }
 
@@ -53,6 +140,180 @@
       masterGain &&
       context.state === "running"
     );
+  }
+
+  function decodeVoiceSample(arrayBuffer) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      function finish(callback, value) {
+        if (settled) return;
+        settled = true;
+        callback(value);
+      }
+      var result = context.decodeAudioData(
+        arrayBuffer.slice(0),
+        function (buffer) {
+          finish(resolve, buffer);
+        },
+        function (error) {
+          finish(reject, error);
+        }
+      );
+      if (result && typeof result.then === "function") {
+        result.then(
+          function (buffer) {
+            finish(resolve, buffer);
+          },
+          function (error) {
+            finish(reject, error);
+          }
+        );
+      }
+    });
+  }
+
+  function loadVoiceSample(name) {
+    var definition = voiceSampleDefinitions[name];
+    if (!voiceLibraryEnabled || !context || !definition || !window.fetch) {
+      return Promise.resolve(null);
+    }
+    if (voiceSampleBuffers[name]) {
+      return Promise.resolve(voiceSampleBuffers[name]);
+    }
+    if (voiceSampleLoads[name]) return voiceSampleLoads[name];
+
+    var url =
+      voiceSampleBase +
+      definition.file +
+      "?v=" +
+      voiceSampleVersion;
+    voiceSampleLoads[name] = window.fetch(url, { cache: "force-cache" })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Voice sample request failed: " + response.status);
+        }
+        return response.arrayBuffer();
+      })
+      .then(decodeVoiceSample)
+      .then(function (buffer) {
+        voiceSampleBuffers[name] = buffer;
+        delete voiceSampleFailures[name];
+        return buffer;
+      })
+      .catch(function () {
+        voiceSampleFailures[name] = true;
+        return null;
+      });
+    return voiceSampleLoads[name];
+  }
+
+  function preloadVoiceSamples() {
+    if (!voiceLibraryEnabled || !context) return;
+    Object.keys(voiceSampleDefinitions).forEach(function (name) {
+      loadVoiceSample(name);
+    });
+  }
+
+  function stopVoiceSample(release) {
+    if (!activeVoiceSample || !context) return;
+    var voice = activeVoiceSample;
+    activeVoiceSample = null;
+    var now = context.currentTime;
+    var fade = Math.max(0.02, Number(release) || 0.055);
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setTargetAtTime(0.0001, now, fade / 3);
+    try {
+      voice.source.stop(now + fade + 0.025);
+    } catch (error) {
+      // A completed sample cannot be stopped twice.
+    }
+    disconnectLater(voice.nodes, Math.ceil((fade + 0.12) * 1000));
+  }
+
+  function playVoiceSample(name, options) {
+    options = options || {};
+    if (!voiceLibraryEnabled || !enabled || !context) return false;
+    var definition = voiceSampleDefinitions[name];
+    if (!definition) return false;
+    var buffer = voiceSampleBuffers[name];
+    if (!buffer) {
+      if (!voiceSampleFailures[name]) {
+        loadVoiceSample(name).then(function (loaded) {
+          if (loaded && enabled && context && context.state === "running") {
+            playVoiceSample(name, options);
+          }
+        });
+      }
+      return false;
+    }
+    if (!canPlay()) return false;
+
+    stopVoiceSample(0.035);
+    var source = context.createBufferSource();
+    var highpass = context.createBiquadFilter();
+    var lowpass = context.createBiquadFilter();
+    var gain = context.createGain();
+    var now = context.currentTime + Math.max(0, Number(options.delay) || 0);
+    var rate =
+      (Number(options.rate) || definition.rate || 1) *
+      (0.985 + Math.random() * 0.03);
+    var detune =
+      (Number.isFinite(Number(options.detune))
+        ? Number(options.detune)
+        : definition.detune || 0) +
+      (Math.random() * 30 - 15);
+    var peak =
+      (Number(options.gain) || definition.gain || 0.58) *
+      voiceSampleGainMultiplier;
+    var duration = buffer.duration / rate;
+    var end = now + duration;
+
+    source.buffer = buffer;
+    source.playbackRate.value = rate;
+    source.detune.value = detune;
+    highpass.type = "highpass";
+    highpass.frequency.value = 110;
+    highpass.Q.value = 0.45;
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = 7200;
+    lowpass.Q.value = 0.35;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(peak, now + 0.018);
+    gain.gain.setValueAtTime(peak * 0.92, Math.max(now + 0.02, end - 0.07));
+    gain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(gain);
+    gain.connect(masterGain);
+    source.start(now);
+    source.stop(end + 0.025);
+
+    activeVoiceSample = {
+      name: name,
+      source: source,
+      gain: gain,
+      nodes: [source, highpass, lowpass, gain]
+    };
+    previousVoiceSample = name;
+    source.onended = function () {
+      if (activeVoiceSample && activeVoiceSample.source === source) {
+        activeVoiceSample = null;
+      }
+      disconnectLater([source, highpass, lowpass, gain], 20);
+    };
+    return true;
+  }
+
+  function playVoiceGroup(groupName, options) {
+    var choices = voiceSampleGroups[groupName] || [];
+    if (choices.length === 0) return false;
+    var available = choices.filter(function (name) {
+      return name !== previousVoiceSample;
+    });
+    if (available.length === 0) available = choices;
+    var name = available[Math.floor(Math.random() * available.length)];
+    return playVoiceSample(name, options);
   }
 
   function ensureNoiseBuffer() {
@@ -335,6 +596,11 @@
       nodes.push(oscillator, gain);
     });
     nodes = nodes.concat(addNoiseBurst(filter, now, 0.09, 3100, 0.2));
+    playVoiceSample("robot-phrase", {
+      delay: 0.12,
+      gain: 0.42,
+      rate: 1.12
+    });
     disconnectLater(nodes, 620);
   }
 
@@ -402,6 +668,11 @@
       nodes.push(oscillator, gain);
     });
 
+    playVoiceSample(power >= 3 ? "scan-warble" : "ack-chirp", {
+      delay: 0.14,
+      gain: power >= 3 ? 0.34 : 0.38,
+      rate: power >= 3 ? 1.2 : 1.08
+    });
     disconnectLater(nodes, 1050);
   }
 
@@ -439,7 +710,14 @@
   function speakExecution(language) {
     if (!enabled) return;
     if (ensureContext()) {
-      context.resume().then(playExecutionChime).catch(function () {
+      context.resume().then(function () {
+        playExecutionChime();
+        playVoiceSample("ack-chirp", {
+          delay: 0.06,
+          gain: 0.34,
+          rate: 1.16
+        });
+      }).catch(function () {
         // Speech can still play when Web Audio remains locked.
       });
     }
@@ -551,7 +829,14 @@
     if (!enabled) return;
     if (speech) speech.cancel();
     if (ensureContext()) {
-      context.resume().then(playDepletedGroan).catch(function () {
+      context.resume().then(function () {
+        playDepletedGroan();
+        playVoiceSample("disappointed-whimper", {
+          delay: 0.14,
+          gain: 0.5,
+          rate: 0.94
+        });
+      }).catch(function () {
         // The voice fallback can still play when Web Audio stays locked.
       });
     }
@@ -561,10 +846,10 @@
     utterance.lang = language === "pl" ? "pl-PL" : "en-US";
     utterance.rate = 0.56;
     utterance.pitch = 0.34;
-    utterance.volume = 0.58;
+    utterance.volume = 0.42;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 30);
+    }, 980);
   }
 
   function playSuccessFanfare() {
@@ -636,7 +921,14 @@
     if (!enabled) return;
     if (speech) speech.cancel();
     if (ensureContext()) {
-      context.resume().then(playSuccessFanfare).catch(function () {
+      context.resume().then(function () {
+        playSuccessFanfare();
+        playVoiceSample("success-cackle", {
+          delay: 0.08,
+          gain: 0.5,
+          rate: 1.08
+        });
+      }).catch(function () {
         // The spoken flourish can still play if Web Audio stays locked.
       });
     }
@@ -649,7 +941,7 @@
     utterance.volume = 0.68;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 260);
+    }, 1180);
   }
 
   function playFailureTone() {
@@ -696,7 +988,13 @@
     if (!enabled) return;
     if (speech) speech.cancel();
     if (ensureContext()) {
-      context.resume().then(playFailureTone).catch(function () {
+      context.resume().then(function () {
+        playFailureTone();
+        playVoiceGroup("failure", {
+          delay: 0.16,
+          gain: 0.46
+        });
+      }).catch(function () {
         // The spoken reaction can still play when Web Audio stays locked.
       });
     }
@@ -709,10 +1007,10 @@
     utterance.lang = isPolish ? "pl-PL" : "en-US";
     utterance.rate = 0.66;
     utterance.pitch = 0.46;
-    utterance.volume = 0.58;
+    utterance.volume = 0.46;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 105);
+    }, 820);
   }
 
   function playShadowWhistleTone() {
@@ -765,7 +1063,14 @@
     if (!enabled) return;
     if (speech) speech.cancel();
     if (ensureContext()) {
-      context.resume().then(playShadowWhistleTone).catch(function () {
+      context.resume().then(function () {
+        playShadowWhistleTone();
+        playVoiceGroup("curious", {
+          delay: 0.1,
+          gain: 0.4,
+          rate: 1.12
+        });
+      }).catch(function () {
         // The whistles remain optional when Web Audio stays locked.
       });
     }
@@ -778,7 +1083,7 @@
     utterance.volume = 0.58;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 470);
+    }, 840);
   }
 
   function playSparkCollision() {
@@ -877,27 +1182,41 @@
     if (!enabled) return;
     if (speech) speech.cancel();
     if (ensureContext()) {
-      context.resume().then(playWhistle).catch(function () {
+      context.resume().then(function () {
+        playWhistle();
+        playVoiceSample("happy-chuckle", {
+          delay: 0.18,
+          gain: 0.4,
+          rate: 1.12
+        });
+      }).catch(function () {
         // The spoken greeting can still play if Web Audio stays locked.
       });
     }
     if (!speech || typeof window.SpeechSynthesisUtterance !== "function") return;
 
-    var isPolish = language === "pl";
+    var isPolish =
+      String(language || "").toLowerCase().indexOf("pl") === 0;
+    var selectedVoice = findSpeechVoice(isPolish ? "pl" : "en");
+    if (isPolish && !selectedVoice) {
+      return;
+    }
     var utterance = new window.SpeechSynthesisUtterance(
-      isPolish ? "Hej, ty!" : "Hey, you!"
+      isPolish ? "Hej ty." : "Hey, you!"
     );
     utterance.lang = isPolish ? "pl-PL" : "en-US";
-    utterance.rate = 0.82;
-    utterance.pitch = 1.08;
-    utterance.volume = 0.62;
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = isPolish ? 0.94 : 0.82;
+    utterance.pitch = isPolish ? 0.98 : 1.08;
+    utterance.volume = isPolish ? 0.68 : 0.62;
     window.setTimeout(function () {
       if (enabled) speech.speak(utterance);
-    }, 380);
+    }, 620);
   }
 
   function stopAll() {
     stopDrive(0.035);
+    stopVoiceSample(0.035);
     if (speech) speech.cancel();
   }
 
@@ -969,7 +1288,16 @@
       : 12000 + Math.random() * 16000;
     whistleTimer = window.setTimeout(function () {
       whistleTimer = null;
-      if (!document.hidden) playWhistle();
+      if (!document.hidden) {
+        if (voiceLibraryEnabled && Math.random() < 0.72) {
+          playVoiceGroup("idle", {
+            gain: 0.4,
+            rate: 1.04
+          });
+        } else {
+          playWhistle();
+        }
+      }
       scheduleWhistle(false);
     }, delay);
   }
@@ -995,6 +1323,17 @@
       // A later user interaction can try to resume the context again.
     });
     return enabled;
+  }
+
+  function setVoiceLibraryEnabled(nextEnabled) {
+    voiceLibraryEnabled = Boolean(nextEnabled);
+    saveVoiceLibraryEnabled();
+    if (!voiceLibraryEnabled) {
+      stopVoiceSample(0.035);
+      return voiceLibraryEnabled;
+    }
+    if (context) preloadVoiceSamples();
+    return voiceLibraryEnabled;
   }
 
   function unlock() {
@@ -1026,7 +1365,11 @@
     isEnabled: function () {
       return enabled;
     },
+    isVoiceLibraryEnabled: function () {
+      return voiceLibraryEnabled;
+    },
     setEnabled: setEnabled,
+    setVoiceLibraryEnabled: setVoiceLibraryEnabled,
     toggle: function () {
       return setEnabled(!enabled);
     },
@@ -1045,6 +1388,16 @@
     playSparkCollision: playSparkCollision,
     playWaterPump: playWaterPump,
     speakHeyYou: speakHeyYou,
+    playVoiceSample: playVoiceSample,
+    getVoiceLibraryStatus: function () {
+      return {
+        enabled: voiceLibraryEnabled,
+        total: Object.keys(voiceSampleDefinitions).length,
+        loaded: Object.keys(voiceSampleBuffers).length,
+        failed: Object.keys(voiceSampleFailures).length,
+        clips: Object.keys(voiceSampleDefinitions)
+      };
+    },
     stopAll: stopAll
   };
 })();

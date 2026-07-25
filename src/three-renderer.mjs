@@ -1395,12 +1395,24 @@ class RoboNaviThreeView {
   }
 
   createSignalPulse() {
-    const texture = makeSignalTexture();
+    this.signalTexture = makeSignalTexture();
+    this.ensureSignalSpriteCapacity(15);
+    this.signalLight = new THREE.PointLight("#8affdf", 0.9, 2.1, 2);
+    this.scene.add(this.signalLight);
+  }
+
+  ensureSignalSpriteCapacity(requestedCount) {
+    const targetCount = THREE.MathUtils.clamp(
+      Math.round(Number(requestedCount) || 0),
+      0,
+      100
+    );
     const colors = ["#efffff", "#8affdf", "#65ddef", "#74bfff", "#b68cff"];
-    this.signalSprites = Array.from({ length: 15 }, (_, index) => {
+    while (this.signalSprites.length < targetCount) {
+      const index = this.signalSprites.length;
       const color = colors[index % colors.length];
       const material = new THREE.SpriteMaterial({
-        map: texture,
+        map: this.signalTexture,
         color,
         transparent: true,
         opacity: 0.92,
@@ -1415,13 +1427,11 @@ class RoboNaviThreeView {
       sprite.renderOrder = 8;
       sprite.userData.routeSpeed = 0.024 + (index % 5) * 0.0065;
       sprite.userData.routeDirection = index % 3 === 0 ? -1 : 1;
-      sprite.userData.routeOffset = index / 15;
+      sprite.userData.routeOffset = (index * 0.61803398875) % 1;
       sprite.userData.baseScale = size;
       this.scene.add(sprite);
-      return sprite;
-    });
-    this.signalLight = new THREE.PointLight("#8affdf", 0.9, 2.1, 2);
-    this.scene.add(this.signalLight);
+      this.signalSprites.push(sprite);
+    }
   }
 
   updateSignalRoute(level) {
@@ -1454,11 +1464,13 @@ class RoboNaviThreeView {
 
   animateSignal(time) {
     if (!this.signalCurve) return;
-    const count = THREE.MathUtils.clamp(
+    const requestedCount = THREE.MathUtils.clamp(
       Math.round(Number(this.snapshot?.sparkCount) || 0),
       0,
-      this.signalSprites.length
+      100
     );
+    this.ensureSignalSpriteCapacity(requestedCount);
+    const count = Math.min(requestedCount, this.signalSprites.length);
     const frameDelta = this.lastSignalTime === null
       ? 1 / 60
       : Math.min(0.05, Math.max(0, time - this.lastSignalTime));
