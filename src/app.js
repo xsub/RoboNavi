@@ -2,6 +2,7 @@
   "use strict";
 
   var core = window.RoboNaviCore;
+  var gameplay = window.RoboNaviGameplay;
   var generator = window.RoboNaviGenerator;
   var sound = window.RoboNaviSound;
   var storageKey = "robonavi-progress-v1";
@@ -16,6 +17,8 @@
   var backgroundHueStorageKey = "robonavi-background-hue-v1";
   var robotHueStorageKey = "robonavi-robot-hue-v1";
   var freeDriveStorageKey = "robonavi-free-drive-v1";
+  var calmModeStorageKey = "robonavi-calm-mode-v1";
+  var previewModeStorageKey = "robonavi-preview-mode-v2";
   var repositoryUrl = "https://github.com/xsub/RoboNavi";
   var repositoryApiUrl = "https://api.github.com/repos/xsub/RoboNavi/commits/main";
   var fallbackProgramVersion = "834f799";
@@ -101,8 +104,13 @@
       backgroundColor: "Background color",
       robotColor: "Robot color",
       freeDrive: "Free drive",
+      calmMode: "Calm mode: no beacon timer",
       noLimit: "No limit",
       shadow: "Shadow",
+      preview: "Preview",
+      previewOff: "Off",
+      previewStep: "Step",
+      previewPath: "Path",
       undo: "Undo",
       clear: "Clear",
       loop: "Loop",
@@ -111,6 +119,9 @@
       energyTarget: "Energy target",
       runTarget: "Run target",
       facing: "Facing",
+      timer: "Timer",
+      timerCalm: "Timer calm",
+      timerWaiting: "Timer --",
       empty: "Empty",
       beacons: "beacons",
       loadLevel: "Load level",
@@ -138,6 +149,26 @@
       helpEnergyText: "Every run has a startup cost. Enable Free drive to practice without energy costs.",
       helpTerrainTitle: "Read the terrain",
       helpTerrainText: "Use B on a beacon. Use I on a charging station; I1-I4 trade energy for a larger charge. Water costs 3 energy.",
+      helpScoreTitle: "Earn three stars",
+      helpScoreText: "Finish the mission, meet the energy target, and stay within the run target.",
+      resultTitle: "Mission complete",
+      scoreCompletion: "Complete mission",
+      scoreEnergy: "Meet energy target",
+      scoreRuns: "Meet run target",
+      newRecord: "New record",
+      recordKept: "Result saved",
+      retry: "Retry",
+      nextLevel: "Next level",
+      lessons: {
+        forwardBattery: "Lesson: plan forward moves, then install the battery.",
+        turns: "New: rotate left and right before moving.",
+        sand: "New: sand is slower and costs more energy.",
+        ice: "New: ice keeps the robot moving.",
+        relayTimer: "New: after the first beacon, the relay timer starts.",
+        induct: "New: use induction on a charging station.",
+        water: "New: water costs more energy and must be pumped out.",
+        practice: "Plan, predict, execute, then improve the program."
+      },
       commands: {
         forward: "Forward",
         "turn-left": "Turn left",
@@ -298,8 +329,13 @@
       backgroundColor: "Kolor tła",
       robotColor: "Kolor robota",
       freeDrive: "Swobodna jazda",
+      calmMode: "Tryb spokojny: bez timera nadajników",
       noLimit: "No limit",
       shadow: "Podgląd",
+      preview: "Podgląd",
+      previewOff: "Wył.",
+      previewStep: "Krok",
+      previewPath: "Trasa",
       undo: "Cofnij",
       clear: "Wyczyść",
       loop: "Pętla",
@@ -308,6 +344,9 @@
       energyTarget: "Cel energii",
       runTarget: "Cel uruchomień",
       facing: "Kierunek",
+      timer: "Timer",
+      timerCalm: "Timer spokojny",
+      timerWaiting: "Timer --",
       empty: "Pusto",
       beacons: "nadajniki",
       loadLevel: "Wczytaj poziom",
@@ -335,6 +374,26 @@
       helpEnergyText: "Każde uruchomienie ma koszt startowy. Włącz Swobodną jazdę, aby ćwiczyć bez kosztów energii.",
       helpTerrainTitle: "Czytaj teren",
       helpTerrainText: "Użyj B na nadajniku. Użyj I na stacji ładowania; I1-I4 wymienia energię na większy ładunek. Woda kosztuje 3 energii.",
+      helpScoreTitle: "Zdobądź trzy gwiazdki",
+      helpScoreText: "Ukończ misję, osiągnij cel energii i nie przekrocz celu uruchomień.",
+      resultTitle: "Misja ukończona",
+      scoreCompletion: "Ukończ misję",
+      scoreEnergy: "Zmieszcz się w celu energii",
+      scoreRuns: "Zmieszcz się w celu uruchomień",
+      newRecord: "Nowy rekord",
+      recordKept: "Wynik zapisany",
+      retry: "Powtórz",
+      nextLevel: "Następny poziom",
+      lessons: {
+        forwardBattery: "Lekcja: zaplanuj jazdę naprzód, potem zainstaluj baterię.",
+        turns: "Nowe: obracaj robota w lewo i w prawo przed jazdą.",
+        sand: "Nowe: piasek spowalnia i kosztuje więcej energii.",
+        ice: "Nowe: lód przesuwa robota aż do końca ślizgu.",
+        relayTimer: "Nowe: po pierwszym nadajniku rusza timer przekaźnika.",
+        induct: "Nowe: użyj indukcji na stacji ładowania.",
+        water: "Nowe: woda kosztuje więcej energii i trzeba ją odpompować.",
+        practice: "Planuj, przewiduj, uruchamiaj i ulepszaj program."
+      },
       commands: {
         forward: "Naprzód",
         "turn-left": "Skręt w lewo",
@@ -362,7 +421,7 @@
         depleted: "Brak energii",
         invalidBattery: "Bateria wymaga pola nadajnika",
         invalidInduct: "Indukcja wymaga stacji ładowania",
-        batteryDied: "Beacon battery died! ;(",
+        batteryDied: "Bateria nadajnika rozładowała się! ;(",
         ended: "Program zakończony"
       },
       levelData: {
@@ -465,6 +524,7 @@
     runCount: document.getElementById("run-count"),
     bestStars: document.getElementById("best-stars"),
     runMessage: document.getElementById("run-message"),
+    beaconTimer: document.getElementById("beacon-timer"),
     objectiveStatus: document.getElementById("objective-status"),
     levelList: document.getElementById("level-list"),
     randomLevel: document.getElementById("random-level"),
@@ -481,8 +541,10 @@
     robotHue: document.getElementById("robot-hue"),
     robotColorSwatch: document.getElementById("robot-color-swatch"),
     freeDriveToggle: document.getElementById("free-drive-toggle"),
-    previewToggle: document.getElementById("preview-toggle"),
+    calmModeToggle: document.getElementById("calm-mode-toggle"),
+    previewMode: document.getElementById("preview-mode"),
     commandQueue: document.getElementById("command-queue"),
+    lessonLabel: document.getElementById("lesson-label"),
     undoCommand: document.getElementById("undo-command"),
     clearProgram: document.getElementById("clear-program"),
     loopProgram: document.getElementById("loop-program"),
@@ -512,6 +574,18 @@
     celebration: document.getElementById("celebration"),
     confettiCanvas: document.getElementById("confetti-canvas"),
     celebrationMessage: document.getElementById("celebration-message"),
+    resultDialog: document.getElementById("result-dialog"),
+    closeResult: document.getElementById("close-result"),
+    resultStars: document.getElementById("result-stars"),
+    resultRecord: document.getElementById("result-record"),
+    resultCompletion: document.getElementById("result-completion"),
+    resultCompletionValue: document.getElementById("result-completion-value"),
+    resultEnergy: document.getElementById("result-energy"),
+    resultEnergyValue: document.getElementById("result-energy-value"),
+    resultRuns: document.getElementById("result-runs"),
+    resultRunsValue: document.getElementById("result-runs-value"),
+    retryResult: document.getElementById("retry-result"),
+    nextLevel: document.getElementById("next-level"),
     inductLevels: document.getElementById("induct-levels"),
     languageSwitch: document.querySelector(".language-switch"),
     boardPanel: document.querySelector(".board-panel"),
@@ -564,8 +638,9 @@
     robot: null,
     displayPose: null,
     commands: [],
-    preview: false,
+    previewMode: loadPreviewMode(),
     freeDrive: loadFreeDrive(),
+    calmMode: loadCalmMode(),
     globalLight: loadGlobalLight(),
     engineMode: loadEngineMode(),
     maxSparkObjects: initialMaxSparkObjects,
@@ -584,10 +659,12 @@
     gameOver: false,
     batteryDeadline: null,
     batterySecondsRemaining: null,
+    batteryPauseReasons: {},
     language: loadLanguage(),
     messageKey: "ready",
     messageValue: null,
     miniMapExpanded: false,
+    lastResult: null,
     progress: loadProgress()
   };
 
@@ -814,6 +891,39 @@
     }
   }
 
+  function loadCalmMode() {
+    try {
+      return localStorage.getItem(calmModeStorageKey) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function saveCalmMode() {
+    try {
+      localStorage.setItem(calmModeStorageKey, state.calmMode ? "true" : "false");
+    } catch (error) {
+      // Calm mode still works for the current session.
+    }
+  }
+
+  function loadPreviewMode() {
+    try {
+      var saved = localStorage.getItem(previewModeStorageKey);
+      return ["off", "step", "path"].indexOf(saved) === -1 ? "off" : saved;
+    } catch (error) {
+      return "off";
+    }
+  }
+
+  function savePreviewMode() {
+    try {
+      localStorage.setItem(previewModeStorageKey, state.previewMode);
+    } catch (error) {
+      // Preview mode still works for the current session.
+    }
+  }
+
   function simulationOptions() {
     return {
       unlimitedEnergy: state.freeDrive,
@@ -981,6 +1091,7 @@
   function activateLevel(level, index) {
     if (sound) sound.stopAll();
     stopCelebration();
+    closeResultDialog();
     resetBatteryTimer();
     state.levelIndex = index;
     state.level = level;
@@ -992,6 +1103,7 @@
     state.animation = null;
     state.looping = false;
     state.loopStopRequested = false;
+    state.lastResult = null;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     centerActiveLevel = true;
@@ -1011,6 +1123,7 @@
   function resetLevel(keepProgram) {
     if (sound) sound.stopAll();
     stopCelebration();
+    closeResultDialog();
     resetBatteryTimer();
     state.robot = core.createInitialState(state.level);
     state.runCount = 0;
@@ -1019,6 +1132,7 @@
     state.animation = null;
     state.looping = false;
     state.loopStopRequested = false;
+    state.lastResult = null;
     state.cameraQuarterTurns = initialCameraTurns(state.robot.direction);
     state.cameraSnapKey += 1;
     setMessage("ready");
@@ -1031,6 +1145,16 @@
 
   function addCommand(command) {
     if (state.animating || state.gameOver) return;
+    if (
+      gameplay &&
+      !gameplay.isCommandAvailable(
+        state.level,
+        state.levelIndex,
+        core.commandType(command)
+      )
+    ) {
+      return;
+    }
     state.commands.push(core.normalizeCommand(command));
     state.highlightIndex = null;
     setMessage("ready");
@@ -1436,9 +1560,21 @@
       if (state.freeDrive) {
         setMessage("freeDriveCompleted");
       } else {
-        var stars = core.scoreCompletion(state.level, state.robot, state.runCount);
-        state.progress[state.level.id] = Math.max(bestStarsFor(state.level), stars);
+        var previousBest = bestStarsFor(state.level);
+        var breakdown = gameplay.scoreBreakdown(
+          state.level,
+          state.robot,
+          state.runCount
+        );
+        var stars = breakdown.stars;
+        state.progress[state.level.id] = Math.max(previousBest, stars);
         saveProgress();
+        state.lastResult = {
+          levelId: state.level.id,
+          levelIndex: state.levelIndex,
+          breakdown: breakdown,
+          recordImproved: stars > previousBest
+        };
         setMessage("completed", starText(stars));
       }
     } else if (result.stoppedReason === "collision") {
@@ -1455,6 +1591,9 @@
     renderAll();
     if (result.completed) {
       startCelebration();
+      if (!state.freeDrive && state.lastResult) {
+        window.setTimeout(showResultDialog, 650);
+      }
     }
   }
 
@@ -1480,6 +1619,7 @@
     stopBatteryInterval();
     state.batteryDeadline = null;
     state.batterySecondsRemaining = null;
+    state.batteryPauseReasons = {};
   }
 
   function resetBatteryTimer() {
@@ -1489,10 +1629,47 @@
 
   function startBatteryCountdown() {
     var duration = Number(state.level.batterySeconds) || 60;
-    state.batteryDeadline = Date.now() + duration * 1000;
     state.batterySecondsRemaining = duration;
+    state.batteryDeadline = null;
+    state.batteryPauseReasons = {};
+    if (state.calmMode) state.batteryPauseReasons.calm = true;
+    if (state.freeDrive) state.batteryPauseReasons.freeDrive = true;
+    stopBatteryInterval();
+    resumeBatteryCountdown("start");
+    drawAll();
+  }
+
+  function pauseBatteryCountdown(reason) {
+    if (reason) state.batteryPauseReasons[reason] = true;
+    if (state.batteryDeadline === null) return;
+    state.batterySecondsRemaining = Math.max(
+      0,
+      (state.batteryDeadline - Date.now()) / 1000
+    );
+    state.batteryDeadline = null;
+    stopBatteryInterval();
+    renderUi();
+    drawAll();
+  }
+
+  function resumeBatteryCountdown(reason) {
+    if (reason && reason !== "start") {
+      delete state.batteryPauseReasons[reason];
+    }
+    if (
+      state.batterySecondsRemaining === null ||
+      state.batterySecondsRemaining <= 0 ||
+      state.gameOver ||
+      core.isComplete(state.level, state.robot) ||
+      Object.keys(state.batteryPauseReasons).length > 0
+    ) {
+      return;
+    }
+    state.batteryDeadline =
+      Date.now() + state.batterySecondsRemaining * 1000;
     stopBatteryInterval();
     batteryTimerId = window.setInterval(updateBatteryCountdown, 200);
+    renderUi();
     drawAll();
   }
 
@@ -1509,6 +1686,7 @@
     );
     if (remaining !== state.batterySecondsRemaining) {
       state.batterySecondsRemaining = remaining;
+      renderUi();
       drawAll();
     }
     if (remaining <= 0) {
@@ -1521,6 +1699,7 @@
     stopBatteryInterval();
     stopCelebration();
     state.batterySecondsRemaining = 0;
+    state.batteryDeadline = null;
     state.gameOver = true;
     state.animating = false;
     state.animation = null;
@@ -1683,6 +1862,51 @@
     celebrationFrame = window.requestAnimationFrame(animateCelebration);
   }
 
+  function setCriterion(element, passed) {
+    element.classList.toggle("is-passed", Boolean(passed));
+  }
+
+  function showResultDialog() {
+    var result = state.lastResult;
+    if (!result || result.levelId !== state.level.id || state.freeDrive) return;
+    var breakdown = result.breakdown;
+    els.resultStars.textContent = starText(breakdown.stars);
+    els.resultRecord.textContent = text(
+      result.recordImproved ? "newRecord" : "recordKept"
+    );
+    els.resultCompletionValue.textContent =
+      String(state.level.goals.length) +
+      " / " +
+      String(state.level.goals.length) +
+      " " +
+      text("beacons");
+    els.resultEnergyValue.textContent =
+      formatEnergy(breakdown.energySpent) +
+      " / " +
+      formatEnergy(breakdown.energyTarget);
+    els.resultRunsValue.textContent =
+      String(breakdown.runCount) + " / " + String(breakdown.runTarget);
+    setCriterion(els.resultCompletion, breakdown.complete);
+    setCriterion(els.resultEnergy, breakdown.energy);
+    setCriterion(els.resultRuns, breakdown.runs);
+    els.nextLevel.hidden =
+      state.levelIndex < 0 || state.levelIndex >= core.LEVELS.length - 1;
+    if (typeof els.resultDialog.showModal === "function") {
+      if (!els.resultDialog.open) els.resultDialog.showModal();
+    } else {
+      els.resultDialog.setAttribute("open", "");
+    }
+  }
+
+  function closeResultDialog() {
+    if (!els.resultDialog || !els.resultDialog.open) return;
+    if (typeof els.resultDialog.close === "function") {
+      els.resultDialog.close();
+    } else {
+      els.resultDialog.removeAttribute("open");
+    }
+  }
+
   function directionAngle(direction) {
     return {
       north: -Math.PI / 2,
@@ -1730,16 +1954,20 @@
       events = state.animation.result.events;
       start = events.length > 0 ? events[0].from : state.robot;
       mode = "execute";
-    } else if (state.preview && state.commands.length > 0) {
+    } else if (state.previewMode !== "off" && state.commands.length > 0) {
+      var previewCommands =
+        state.previewMode === "step"
+          ? state.commands.slice(0, 1)
+          : state.commands;
       var preview = core.simulate(
         state.level,
-        state.commands,
+        previewCommands,
         state.robot,
         simulationOptions()
       );
       events = preview.events;
       start = state.robot;
-      mode = "preview";
+      mode = state.previewMode === "step" ? "step" : "preview";
     }
     if (!events || !start) return null;
 
@@ -1891,6 +2119,9 @@
   function renderUi() {
     var level = state.level;
     var levelCopy = localizedLevel(level);
+    var availableCommands = gameplay
+      ? gameplay.availableCommands(level, state.levelIndex)
+      : ["turn-left", "forward", "turn-right", "battery", "induct"];
     els.levelName.textContent =
       (level.generated ? "RND" : String(state.levelIndex + 1).padStart(2, "0")) +
       " " +
@@ -1906,6 +2137,23 @@
     els.runMessage.parentElement.classList.toggle("is-game-over", state.gameOver);
     els.objectiveStatus.textContent =
       collectedCount(level, state.robot) + " / " + level.goals.length + " " + text("beacons");
+    if (state.calmMode) {
+      els.beaconTimer.textContent = text("timerCalm");
+    } else if (state.batterySecondsRemaining === null) {
+      els.beaconTimer.textContent = text("timerWaiting");
+    } else {
+      els.beaconTimer.textContent =
+        text("timer") +
+        " " +
+        String(Math.max(0, Math.ceil(state.batterySecondsRemaining))) +
+        "S";
+    }
+    els.beaconTimer.classList.toggle(
+      "is-critical",
+      !state.calmMode &&
+        state.batterySecondsRemaining !== null &&
+        state.batterySecondsRemaining <= 10
+    );
     els.energyTarget.textContent = state.freeDrive
       ? text("noLimit")
       : formatEnergy(level.parEnergy);
@@ -1934,9 +2182,19 @@
     els.robotHue.value = String(state.robotHue);
     els.robotHue.style.setProperty("--robot-hue-color", robotHueColor(state.robotHue));
     els.robotColorSwatch.style.background = robotHueColor(state.robotHue);
-    els.previewToggle.checked = state.preview;
     els.freeDriveToggle.checked = state.freeDrive;
+    els.calmModeToggle.checked = state.calmMode;
     els.freeDriveToggle.disabled = state.animating;
+    els.previewMode.querySelectorAll("[data-preview-mode]").forEach(function (button) {
+      var isActive = button.dataset.previewMode === state.previewMode;
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      button.disabled = state.animating;
+    });
+    els.lessonLabel.textContent = uppercase(
+      copy().lessons[
+        gameplay.lessonKey(level, state.levelIndex)
+      ] || copy().lessons.practice
+    );
     els.executeProgram.disabled =
       state.animating ||
       state.gameOver ||
@@ -1957,9 +2215,19 @@
       state.animating || state.gameOver || state.commands.length === 0;
     els.resetLevel.disabled = state.animating;
     els.randomLevel.disabled = state.animating;
-    document.querySelectorAll("[data-command], [data-induct-amount]").forEach(function (button) {
-      button.disabled = state.animating || state.gameOver;
+    document.querySelectorAll("[data-command]").forEach(function (button) {
+      var available = availableCommands.indexOf(button.dataset.command) !== -1;
+      button.hidden = !available;
+      button.disabled = !available || state.animating || state.gameOver;
     });
+    document.querySelectorAll("[data-induct-amount]").forEach(function (button) {
+      button.disabled =
+        availableCommands.indexOf("induct") === -1 ||
+        state.animating ||
+        state.gameOver;
+    });
+    els.inductLevels.closest(".induct-row").hidden =
+      availableCommands.indexOf("induct") === -1;
 
     renderLevels();
     renderQueue();
@@ -2098,6 +2366,7 @@
     els.optionsButton.setAttribute("aria-label", text("options"));
     els.closeOptions.setAttribute("aria-label", text("closeOptions"));
     els.closeGenerator.setAttribute("aria-label", text("cancel"));
+    els.closeResult.setAttribute("aria-label", text("closeOptions"));
     els.boardPanel.setAttribute("aria-label", text("boardLabel"));
     els.stage.setAttribute("aria-label", text("canvasLabel"));
     els.miniMap.setAttribute(
@@ -2135,6 +2404,17 @@
     els.floorHue.setAttribute("aria-label", text("floorColor"));
     els.backgroundHue.setAttribute("aria-label", text("backgroundColor"));
     els.robotHue.setAttribute("aria-label", text("robotColor"));
+    els.previewMode.setAttribute("aria-label", text("preview"));
+    els.previewMode.querySelectorAll("[data-preview-mode]").forEach(function (button) {
+      var key =
+        button.dataset.previewMode === "step"
+          ? "previewStep"
+          : button.dataset.previewMode === "path"
+            ? "previewPath"
+            : "previewOff";
+      button.textContent = text(key);
+      button.title = text(key);
+    });
 
     document.querySelectorAll("[data-command]").forEach(function (button) {
       var commandName = uppercase(copy().commands[button.dataset.command]);
@@ -2259,12 +2539,17 @@
     resetLevel(false);
   });
 
-  els.previewToggle.addEventListener("change", function () {
-    state.preview = els.previewToggle.checked;
-    if (state.preview && sound) {
+  els.previewMode.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-preview-mode]");
+    if (!button || state.animating) return;
+    var mode = button.dataset.previewMode;
+    if (["off", "step", "path"].indexOf(mode) === -1) return;
+    state.previewMode = mode;
+    savePreviewMode();
+    if (state.previewMode !== "off" && sound) {
       sound.playShadowEnabled(state.language);
     }
-    drawAll();
+    renderAll();
   });
 
   els.freeDriveToggle.addEventListener("change", function () {
@@ -2274,7 +2559,23 @@
     }
     state.freeDrive = els.freeDriveToggle.checked;
     saveFreeDrive();
+    if (state.freeDrive) {
+      pauseBatteryCountdown("freeDrive");
+    } else {
+      resumeBatteryCountdown("freeDrive");
+    }
     setMessage("ready");
+    renderAll();
+  });
+
+  els.calmModeToggle.addEventListener("change", function () {
+    state.calmMode = els.calmModeToggle.checked;
+    saveCalmMode();
+    if (state.calmMode) {
+      pauseBatteryCountdown("calm");
+    } else {
+      resumeBatteryCountdown("calm");
+    }
     renderAll();
   });
 
@@ -2402,6 +2703,7 @@
   });
 
   els.helpButton.addEventListener("click", function () {
+    pauseBatteryCountdown("help");
     if (typeof els.helpDialog.showModal === "function") {
       els.helpDialog.showModal();
     } else {
@@ -2415,12 +2717,33 @@
     } else {
       els.helpDialog.removeAttribute("open");
     }
+    resumeBatteryCountdown("help");
   });
 
   els.helpDialog.addEventListener("click", function (event) {
     if (event.target === els.helpDialog) {
       els.helpDialog.close();
+      resumeBatteryCountdown("help");
     }
+  });
+
+  els.helpDialog.addEventListener("cancel", function () {
+    window.setTimeout(function () {
+      resumeBatteryCountdown("help");
+    }, 0);
+  });
+
+  els.closeResult.addEventListener("click", closeResultDialog);
+  els.retryResult.addEventListener("click", function () {
+    closeResultDialog();
+    resetLevel(false);
+  });
+  els.nextLevel.addEventListener("click", function () {
+    if (state.levelIndex < 0 || state.levelIndex >= core.LEVELS.length - 1) {
+      return;
+    }
+    closeResultDialog();
+    loadLevel(state.levelIndex + 1);
   });
 
   els.generatorForm.addEventListener("submit", function (event) {
@@ -2441,7 +2764,8 @@
     if (
       els.helpDialog.open ||
       els.optionsDialog.open ||
-      els.generatorDialog.open
+      els.generatorDialog.open ||
+      els.resultDialog.open
     ) return;
     if (event.key === "Escape" && state.miniMapExpanded) {
       event.preventDefault();
@@ -2505,6 +2829,13 @@
 
   window.addEventListener("resize", scheduleBoardRedraw);
   window.addEventListener("load", scheduleBoardRedraw);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      pauseBatteryCountdown("hidden");
+    } else {
+      resumeBatteryCountdown("hidden");
+    }
+  });
   document.addEventListener("pointerdown", function () {
     if (sound) sound.unlock();
   }, { capture: true, once: true });

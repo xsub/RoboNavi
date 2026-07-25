@@ -14,8 +14,11 @@ the whole program.
 ## Features
 
 - 20 hand-authored levels with progressively larger boards
+- Progressive lessons that reveal turns, terrain, timers, and charging as they
+  are introduced
 - Procedural levels with configurable size, route count, and wall density
-- Dijkstra validation and A* reference programs for generated boards
+- Dijkstra validation requiring edge-disjoint routes and A* reference programs
+  for generated boards
 - Forward, left, right, beacon-battery, and inductive-charge programming
 - Floor, thin edge walls, sand, ice, charging stations, and signal beacons
 - Three.js 3D board and robot with metallic PBR materials, animated multicolor
@@ -25,9 +28,10 @@ the whole program.
 - Persistent spectrum controls for the floor, cockpit background, and robot paint
 - Animated electronic signal pulses travelling through the background grid
 - Quarter-turn camera rotation, zoom controls, wheel or touchpad zoom, and drag-to-pan navigation
-- Optional route preview without a ghost robot
+- Route preview with `OFF`, single-command `STEP`, and full `PATH` modes
 - Unlimited-energy Free Drive mode for relaxed practice
-- Energy and execution targets with three-star scoring
+- Pausable beacon timer in the HUD plus a Calm mode without a time limit
+- Energy and execution targets with an explained three-star result screen
 - Full-screen confetti celebration after the final beacon
 - A 60-second beacon-network countdown after the first battery is installed
 - Procedural Web Audio for the motor, wheels, turns, wall collisions, batteries,
@@ -52,8 +56,9 @@ the whole program.
 - `EXECUTE`: run the program
 - `RANDOM`: open the procedural generator
 - `FREE DRIVE`: disable energy costs and display `NO LIMIT`
-- `SHADOW`: preview the programmed route
-- `OPTIONS`: control the sampled robot voice library and maximum spark count
+- `PREVIEW`: choose `OFF`, `STEP`, or `PATH`
+- `OPTIONS`: control Calm mode, the sampled robot voice library, and maximum
+  spark count
 - `↺`, `↻`: rotate the camera by 90 degrees
 - `-`, `+` or the mouse wheel/touchpad: zoom the board
 - Click or touch and drag the board to pan the camera
@@ -81,11 +86,12 @@ stored in `vendor/three`.
 npm test
 ```
 
-The test suite validates syntax, all campaign reference solutions, terrain
-behavior, Dijkstra route counting, A* programs, generated levels, and energy
-reserves. It also checks the sampled robot voice manifest, assets, and event
-mappings. GitHub Actions runs it on every push to `main` and on every pull
-request.
+The test suite validates syntax, progressive command availability, the
+three-star score breakdown, all campaign reference solutions, terrain
+behavior, Dijkstra route counting and edge-disjoint paths, A* programs,
+generated levels, and energy reserves. It also checks the sampled robot voice
+manifest, assets, and event mappings. GitHub Actions runs it on every push to
+`main` and on every pull request.
 
 ## Procedural Generator
 
@@ -94,7 +100,8 @@ The generator pipeline:
 
 1. Builds a weighted grid and places thin walls between tiles plus sand terrain.
 2. Uses Dijkstra to verify reachability and count shortest routes.
-3. Rejects boards below the selected minimum route count.
+3. Repeats Dijkstra while removing used edges and rejects boards without the
+   selected number of edge-disjoint routes.
 4. Uses A* over position and robot orientation to find the optimal command
    program.
 5. Sets the energy target from the A* result and adds a practical battery

@@ -74,13 +74,20 @@
     return x + "," + y + "," + direction;
   }
 
+  function edgeKey(firstX, firstY, secondX, secondY) {
+    var first = cellKey(firstX, firstY);
+    var second = cellKey(secondX, secondY);
+    return first < second ? first + "|" + second : second + "|" + first;
+  }
+
   function roundQuarter(value) {
     return Math.ceil((value - EPSILON) * 4) / 4;
   }
 
-  function dijkstra(level, start, goal, routeLimit) {
+  function dijkstra(level, start, goal, routeLimit, blockedEdges) {
     var distances = {};
     var routeCounts = {};
+    var previous = {};
     var queue = new MinHeap();
     var startKey = cellKey(start.x, start.y);
     var limit = Math.max(1, Number(routeLimit) || 10000);
@@ -101,6 +108,12 @@
         var nextX = current.x + delta.x;
         var nextY = current.y + delta.y;
         if (!core.canMove(level, current.x, current.y, nextX, nextY)) return;
+        if (
+          blockedEdges &&
+          blockedEdges[edgeKey(current.x, current.y, nextX, nextY)]
+        ) {
+          return;
+        }
 
         var terrain = core.terrainAt(level, nextX, nextY);
         var nextCost = current.cost + core.TERRAIN[terrain].cost;
@@ -110,6 +123,7 @@
         if (known === undefined || nextCost < known - EPSILON) {
           distances[nextKey] = nextCost;
           routeCounts[nextKey] = routeCounts[currentKey];
+          previous[nextKey] = currentKey;
           queue.push({
             x: nextX,
             y: nextY,
@@ -126,11 +140,49 @@
     }
 
     var goalKey = cellKey(goal.x, goal.y);
+    var path = [];
+    var pathKey = goalKey;
+    if (distances[goalKey] !== undefined) {
+      while (pathKey) {
+        var coordinates = pathKey.split(",").map(Number);
+        path.push({ x: coordinates[0], y: coordinates[1] });
+        if (pathKey === startKey) break;
+        pathKey = previous[pathKey];
+      }
+      path.reverse();
+    }
     return {
       reachable: distances[goalKey] !== undefined,
       distance: distances[goalKey] === undefined ? Infinity : distances[goalKey],
       routeCount: routeCounts[goalKey] || 0,
       routeLimit: limit,
+      path: path,
+      visited: visited
+    };
+  }
+
+  function edgeDisjointRoutes(level, start, goal, routeLimit) {
+    var limit = Math.max(1, Math.min(4, Math.floor(Number(routeLimit) || 2)));
+    var blockedEdges = {};
+    var routes = [];
+    var visited = 0;
+
+    while (routes.length < limit) {
+      var result = dijkstra(level, start, goal, 1, blockedEdges);
+      visited += result.visited;
+      if (!result.reachable || result.path.length < 2) break;
+      routes.push(result.path);
+      for (var index = 1; index < result.path.length; index += 1) {
+        var first = result.path[index - 1];
+        var second = result.path[index];
+        blockedEdges[edgeKey(first.x, first.y, second.x, second.y)] = true;
+      }
+    }
+
+    return {
+      count: routes.length,
+      routeLimit: limit,
+      routes: routes,
       visited: visited
     };
   }
@@ -385,7 +437,7 @@
     return {
       size: size,
       density: density,
-      minSolutions: Math.max(1, Math.min(8, Math.floor(Number(source.minSolutions) || 2))),
+      minSolutions: Math.max(1, Math.min(4, Math.floor(Number(source.minSolutions) || 2))),
       maxAttempts: Math.max(10, Math.floor(Number(source.maxAttempts) || 160)),
       seed:
         source.seed === undefined
@@ -394,7 +446,15 @@
     };
   }
 
-  function finalizeLevel(candidate, options, seed, attempt, dijkstraResult, aStarResult) {
+  function finalizeLevel(
+    candidate,
+    options,
+    seed,
+    attempt,
+    dijkstraResult,
+    diverseResult,
+    aStarResult
+  ) {
     var optimalEnergy = roundQuarter(aStarResult.energy);
     var safetyMargin = Math.max(3, optimalEnergy * 0.3);
     var energyMax = roundQuarter(optimalEnergy + safetyMargin);
@@ -423,6 +483,8 @@
         minSolutions: options.minSolutions,
         routeCount: dijkstraResult.routeCount,
         routeLimit: dijkstraResult.routeLimit,
+        edgeDisjointRoutes: diverseResult.count,
+        diversityVisited: diverseResult.visited,
         dijkstraCost: dijkstraResult.distance,
         dijkstraVisited: dijkstraResult.visited,
         optimalEnergy: optimalEnergy,
@@ -460,6 +522,14 @@
         continue;
       }
 
+      var diverseResult = edgeDisjointRoutes(
+        candidate,
+        candidate.start,
+        candidate.goals[0],
+        normalized.minSolutions
+      );
+      if (diverseResult.count < normalized.minSolutions) continue;
+
       var aStarResult = aStar(candidate, candidate.start, candidate.goals[0]);
       if (!aStarResult.found) continue;
       return finalizeLevel(
@@ -468,6 +538,7 @@
         normalized.seed,
         attempt,
         dijkstraResult,
+        diverseResult,
         aStarResult
       );
     }
@@ -481,8 +552,15 @@
       routeLimit
     );
     var fallbackAStar = aStar(fallback, fallback.start, fallback.goals[0]);
+    var fallbackDiverse = edgeDisjointRoutes(
+      fallback,
+      fallback.start,
+      fallback.goals[0],
+      normalized.minSolutions
+    );
     if (
       fallbackDijkstra.routeCount < normalized.minSolutions ||
+      fallbackDiverse.count < normalized.minSolutions ||
       !fallbackAStar.found
     ) {
       throw new Error("Unable to generate a level with the requested route count");
@@ -493,6 +571,7 @@
       normalized.seed,
       normalized.maxAttempts + 1,
       fallbackDijkstra,
+      fallbackDiverse,
       fallbackAStar
     );
   }
@@ -502,6 +581,7 @@
     aStar: aStar,
     createRng: createRng,
     dijkstra: dijkstra,
+    edgeDisjointRoutes: edgeDisjointRoutes,
     generateLevel: generateLevel,
     normalizeOptions: normalizeOptions
   };

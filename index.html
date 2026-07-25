@@ -8,7 +8,7 @@
       content="RoboNavi is a small robot-programming puzzle game prototype."
     >
     <title>ROBONAVI</title>
-    <link rel="stylesheet" href="styles.css?v=20260725-freeloop1">
+    <link rel="stylesheet" href="styles.css?v=20260725-main2">
   </head>
   <body>
     <div class="app-shell">
@@ -86,10 +86,14 @@
                 <input id="free-drive-toggle" type="checkbox">
                 <span data-i18n="freeDrive">Free drive</span>
               </label>
-              <label class="toggle">
-                <input id="preview-toggle" type="checkbox">
-                <span data-i18n="shadow">Shadow</span>
-              </label>
+              <div id="preview-mode" class="preview-mode" role="group">
+                <span data-i18n="preview">Preview</span>
+                <span class="preview-mode-buttons">
+                  <button type="button" data-preview-mode="off" aria-pressed="true">Off</button>
+                  <button type="button" data-preview-mode="step" aria-pressed="false">Step</button>
+                  <button type="button" data-preview-mode="path" aria-pressed="false">Path</button>
+                </span>
+              </div>
             </div>
           </div>
         </section>
@@ -190,6 +194,7 @@
           </div>
           <div class="message-row">
             <span id="run-message">Ready</span>
+            <span id="beacon-timer" class="beacon-timer" aria-live="polite">Timer --</span>
             <span id="objective-status">0 / 1 beacons</span>
           </div>
         </section>
@@ -208,7 +213,10 @@
 
           <section class="panel-section program-section">
             <div class="section-head">
-              <h2 data-i18n="program">Program</h2>
+              <div>
+                <h2 data-i18n="program">Program</h2>
+                <p id="lesson-label" class="lesson-label"></p>
+              </div>
             </div>
             <div id="command-queue" class="command-queue" aria-live="polite"></div>
             <div class="command-pad">
@@ -318,6 +326,13 @@
               <p data-i18n="helpTerrainText">Sand costs more, water costs 3 energy, ice keeps the robot sliding, and chargers restore power.</p>
             </div>
           </section>
+          <section>
+            <span class="help-index">05</span>
+            <div>
+              <h3 data-i18n="helpScoreTitle">Earn three stars</h3>
+              <p data-i18n="helpScoreText">Finish the mission, meet the energy target, and stay within the run target.</p>
+            </div>
+          </section>
         </div>
       </div>
     </dialog>
@@ -336,6 +351,10 @@
             <input id="voice-library-toggle" type="checkbox">
             <span data-i18n="useSoundLibrary">Use sound library</span>
           </label>
+          <label class="option-toggle">
+            <input id="calm-mode-toggle" type="checkbox">
+            <span data-i18n="calmMode">Calm mode: no beacon timer</span>
+          </label>
           <label class="option-number">
             <span data-i18n="maxSparkObjects">Max spark objects</span>
             <input
@@ -348,6 +367,40 @@
               inputmode="numeric"
             >
           </label>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title">
+      <div class="result-window">
+        <header class="result-head">
+          <div>
+            <span class="help-code">RN://MISSION COMPLETE</span>
+            <h2 id="result-title" data-i18n="resultTitle">Mission complete</h2>
+          </div>
+          <button id="close-result" class="icon-button" type="button" aria-label="Close result">&times;</button>
+        </header>
+        <div class="result-score">
+          <strong id="result-stars">★★★</strong>
+          <p id="result-record"></p>
+        </div>
+        <div class="result-criteria">
+          <div id="result-completion">
+            <span aria-hidden="true">★</span>
+            <p><b data-i18n="scoreCompletion">Complete mission</b><small id="result-completion-value"></small></p>
+          </div>
+          <div id="result-energy">
+            <span aria-hidden="true">★</span>
+            <p><b data-i18n="scoreEnergy">Meet energy target</b><small id="result-energy-value"></small></p>
+          </div>
+          <div id="result-runs">
+            <span aria-hidden="true">★</span>
+            <p><b data-i18n="scoreRuns">Meet run target</b><small id="result-runs-value"></small></p>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button id="retry-result" class="quiet-button" type="button" data-i18n="retry">Retry</button>
+          <button id="next-level" class="execute-button next-level-button" type="button" data-i18n="nextLevel">Next level</button>
         </div>
       </div>
     </dialog>
@@ -381,8 +434,6 @@
               <option value="2" selected>2</option>
               <option value="3">3</option>
               <option value="4">4</option>
-              <option value="6">6</option>
-              <option value="8">8</option>
             </select>
           </label>
           <label>
@@ -403,9 +454,10 @@
     </dialog>
 
     <script src="src/core.js?v=20260725-freeloop1"></script>
-    <script src="src/generator.js?v=20260724-water1"></script>
+    <script src="src/gameplay.js?v=20260725-main2"></script>
+    <script src="src/generator.js?v=20260725-main2"></script>
     <script src="src/audio.js?v=20260725-voice6"></script>
-    <script src="src/app.js?v=20260725-freeloop1"></script>
+    <script src="src/app.js?v=20260725-main2"></script>
     <script type="module" src="src/three-renderer.mjs?v=20260725-sparklimit1"></script>
   </body>
 </html>
